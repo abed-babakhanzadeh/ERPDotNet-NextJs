@@ -8,7 +8,6 @@
 **/*.user
 **/appsettings.Development.json
 **/appsettings.local.json
-*.slnx
 *.suo
 
 # =========================
