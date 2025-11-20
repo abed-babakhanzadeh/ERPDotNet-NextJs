@@ -12,6 +12,33 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false); // <--- State مدال
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null); // <--- یوزری که قراره ادیت بشه
+  
+  // تابع باز کردن مدال برای ایجاد
+  const handleCreate = () => {
+    setEditingUser(null); // خالی می‌کنیم
+    setIsModalOpen(true);
+  };
+
+  // تابع باز کردن مدال برای ویرایش
+  const handleEdit = (user: User) => {
+    setEditingUser(user); // یوزر انتخاب شده را ست می‌کنیم
+    setIsModalOpen(true);
+  };
+
+  // تابع حذف
+  const handleDelete = async (id: string) => {
+    if (!confirm("آیا از حذف این کاربر اطمینان دارید؟ این عملیات غیرقابل بازگشت است.")) return;
+
+    try {
+      await apiClient.delete(`/Users/${id}`);
+      toast.success("کاربر با موفقیت حذف شد");
+      fetchUsers(); // رفرش لیست
+    } catch (error: any) {
+      toast.error(error.response?.data || "خطا در حذف کاربر");
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -35,7 +62,7 @@ export default function UsersPage() {
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <h1 className="text-2xl font-bold text-gray-800">مدیریت کاربران</h1>
         <button 
-          onClick={() => setIsCreateModalOpen(true)} // <--- باز کردن مدال
+          onClick={handleCreate} // <--- باز کردن مدال
           className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
         >
           <Plus size={18} />
@@ -53,6 +80,7 @@ export default function UsersPage() {
                   <th className="px-6 py-3">نام و نام خانوادگی</th>
                   <th className="px-6 py-3">نام کاربری</th>
                   <th className="px-6 py-3">کد پرسنلی</th>
+                  <th className="px-6 py-3">نقش</th>
                   <th className="px-6 py-3">وضعیت</th>
                   <th className="px-6 py-3">عملیات</th>
                 </tr>
@@ -65,6 +93,17 @@ export default function UsersPage() {
                     </td>
                     <td className="px-6 py-4">{user.username}</td>
                     <td className="px-6 py-4">{user.personnelCode || "-"}</td>
+
+                    <td className="px-6 py-4">
+                        <div className="flex gap-1">
+                            {user.roles && user.roles.map(role => (
+                                <span key={role} className="rounded bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-600 border border-blue-100">
+                                    {role}
+                                </span>
+                            ))}
+                        </div>
+                    </td>
+
                     <td className="px-6 py-4">
                       {user.isActive ? (
                         <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
@@ -77,10 +116,18 @@ export default function UsersPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 flex gap-3">
-                      <button className="text-blue-600 hover:text-blue-800">
+                      <button 
+                        onClick={() => handleEdit(user)} // <--- اتصال ویرایش
+                        className="text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded"
+                        title="ویرایش"
+                      >
                         <Edit size={18} />
                       </button>
-                      <button className="text-red-600 hover:text-red-800">
+                      <button 
+                        onClick={() => handleDelete(user.id)} // <--- اتصال حذف
+                        className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded"
+                        title="حذف"
+                      >
                         <Trash2 size={18} />
                       </button>
                     </td>
@@ -90,17 +137,18 @@ export default function UsersPage() {
             </table>
       </div>
 
-      {/* مودال افزودن کاربر */}
+{/* مودال هوشمند */}
       <Modal 
-        isOpen={isCreateModalOpen} 
-        onClose={() => setIsCreateModalOpen(false)}
-        title="افزودن کاربر جدید"
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)}
+        title={editingUser ? "ویرایش مشخصات کاربر" : "افزودن کاربر جدید"} // تایتل پویا
       >
         <CreateUserForm 
-          onCancel={() => setIsCreateModalOpen(false)}
+          userToEdit={editingUser} // <--- ارسال یوزر برای ویرایش
+          onCancel={() => setIsModalOpen(false)}
           onSuccess={() => {
-            setIsCreateModalOpen(false);
-            fetchUsers(); // رفرش کردن جدول
+            setIsModalOpen(false);
+            fetchUsers();
           }} 
         />
       </Modal>

@@ -1,21 +1,18 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace ERPDotNet.Application.Modules.UserAccess.DTOs;
 
-public class CreateUserDto
+public class UpdateUserDto
 {
     [Required]
     public string FirstName { get; set; }
     [Required]
     public string LastName { get; set; }
     [Required]
-    public string Username { get; set; }
-    [Required]
     [EmailAddress]
     public string Email { get; set; }
-    [Required]
-    public string Role { get; set; }
-    [Required]
-    public string Password { get; set; }
     public string PersonnelCode { get; set; }
+    
+    public string Role { get; set; } // برای تغییر نقش
+    public bool IsActive { get; set; } // برای فعال/غیرفعال کردن
 }

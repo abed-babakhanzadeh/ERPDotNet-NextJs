@@ -3,6 +3,7 @@ using System;
 using ERPDotNet.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ERPDotNet.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251120102641_SeedRoles")]
+    partial class SeedRoles
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,103 +24,6 @@ namespace ERPDotNet.Infrastructure.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("ERPDotNet.Domain.Modules.UserAccess.Entities.Permission", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("IsMenu")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int?>("ParentId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Url")
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ParentId");
-
-                    b.ToTable("permissions", "security");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            IsMenu = false,
-                            Name = "System",
-                            Title = "سیستم"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            IsMenu = true,
-                            Name = "UserAccess",
-                            ParentId = 1,
-                            Title = "مدیریت کاربران",
-                            Url = "/users"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            IsMenu = false,
-                            Name = "UserAccess.View",
-                            ParentId = 2,
-                            Title = "مشاهده لیست"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            IsMenu = false,
-                            Name = "UserAccess.Create",
-                            ParentId = 2,
-                            Title = "افزودن کاربر"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            IsMenu = false,
-                            Name = "UserAccess.Edit",
-                            ParentId = 2,
-                            Title = "ویرایش کاربر"
-                        },
-                        new
-                        {
-                            Id = 6,
-                            IsMenu = false,
-                            Name = "UserAccess.Delete",
-                            ParentId = 2,
-                            Title = "حذف کاربر"
-                        });
-                });
-
-            modelBuilder.Entity("ERPDotNet.Domain.Modules.UserAccess.Entities.RolePermission", b =>
-                {
-                    b.Property<string>("RoleId")
-                        .HasColumnType("text");
-
-                    b.Property<int>("PermissionId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("RoleId", "PermissionId");
-
-                    b.HasIndex("PermissionId");
-
-                    b.ToTable("role_permissions", "security");
-                });
 
             modelBuilder.Entity("ERPDotNet.Domain.Modules.UserAccess.Entities.User", b =>
                 {
@@ -209,24 +115,6 @@ namespace ERPDotNet.Infrastructure.Migrations
                         .HasDatabaseName("UserNameIndex");
 
                     b.ToTable("users", "security");
-                });
-
-            modelBuilder.Entity("ERPDotNet.Domain.Modules.UserAccess.Entities.UserPermission", b =>
-                {
-                    b.Property<string>("UserId")
-                        .HasColumnType("text");
-
-                    b.Property<int>("PermissionId")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("IsGranted")
-                        .HasColumnType("boolean");
-
-                    b.HasKey("UserId", "PermissionId");
-
-                    b.HasIndex("PermissionId");
-
-                    b.ToTable("user_permissions", "security");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -391,54 +279,6 @@ namespace ERPDotNet.Infrastructure.Migrations
                     b.ToTable("user_tokens", "security");
                 });
 
-            modelBuilder.Entity("ERPDotNet.Domain.Modules.UserAccess.Entities.Permission", b =>
-                {
-                    b.HasOne("ERPDotNet.Domain.Modules.UserAccess.Entities.Permission", "Parent")
-                        .WithMany("Children")
-                        .HasForeignKey("ParentId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Parent");
-                });
-
-            modelBuilder.Entity("ERPDotNet.Domain.Modules.UserAccess.Entities.RolePermission", b =>
-                {
-                    b.HasOne("ERPDotNet.Domain.Modules.UserAccess.Entities.Permission", "Permission")
-                        .WithMany()
-                        .HasForeignKey("PermissionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", "Role")
-                        .WithMany()
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Permission");
-
-                    b.Navigation("Role");
-                });
-
-            modelBuilder.Entity("ERPDotNet.Domain.Modules.UserAccess.Entities.UserPermission", b =>
-                {
-                    b.HasOne("ERPDotNet.Domain.Modules.UserAccess.Entities.Permission", "Permission")
-                        .WithMany()
-                        .HasForeignKey("PermissionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("ERPDotNet.Domain.Modules.UserAccess.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Permission");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -488,11 +328,6 @@ namespace ERPDotNet.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("ERPDotNet.Domain.Modules.UserAccess.Entities.Permission", b =>
-                {
-                    b.Navigation("Children");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/modules/dashboard/Sidebar";
 import Header from "@/components/modules/dashboard/Header";
+import { clsx } from "clsx"; // برای مدیریت کلاس‌ها
 
 export default function DashboardLayout({
   children,
@@ -11,8 +12,9 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // موبایل
+  const [isCollapsed, setIsCollapsed] = useState(false);     // دسکتاپ (جدید)
 
-  // Auth Guard: چک کردن اینکه آیا کاربر لاگین است؟
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     if (!token) {
@@ -22,15 +24,29 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* منوی راست */}
-      <Sidebar />
+      
+      <Sidebar 
+        isOpen={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)}
+        isCollapsed={isCollapsed} 
+        toggleCollapse={() => setIsCollapsed(!isCollapsed)} // تابع تغییر وضعیت
+      />
 
-      {/* محتوای اصلی */}
-      <div className="mr-64 min-h-screen pt-16 transition-all max-md:mr-0">
-        <Header />
+      {/* تغییر مهم: فاصله مارجین (md:mr) باید دینامیک باشد 
+         اگر جمع شده: mr-20 (80px)
+         اگر باز است: mr-64 (256px)
+      */}
+      <div className={clsx(
+        "min-h-screen pt-16 transition-all duration-300",
+        isCollapsed ? "md:mr-20" : "md:mr-64" 
+      )}>
         
-        {/* اینجا صفحات مختلف رندر می‌شوند */}
-        <main className="p-6">
+        <Header 
+          onMenuClick={() => setIsSidebarOpen(true)} 
+          isCollapsed={isCollapsed} // <--- این خط اضافه شد
+        />
+        
+        <main className="p-4 sm:p-6">
           {children}
         </main>
       </div>

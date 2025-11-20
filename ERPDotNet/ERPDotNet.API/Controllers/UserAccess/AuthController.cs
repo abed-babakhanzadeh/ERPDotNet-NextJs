@@ -43,8 +43,14 @@ public class AuthController : ControllerBase
         if (!result.Succeeded)
             return BadRequest(result.Errors);
 
-        // تولید توکن برای ورود خودکار بعد از ثبت نام
-        var token = _tokenService.GenerateToken(user, new List<string>());
+        // === اصلاحیه: اختصاص نقش پیش‌فرض "User" ===
+        await _userManager.AddToRoleAsync(user, "User"); 
+        // ===========================================
+
+        // تولید توکن (حالا که نقش دارد، نقش در توکن هم قرار می‌گیرد)
+        // دوباره نقش‌ها را می‌گیریم تا مطمئن شویم
+        var roles = await _userManager.GetRolesAsync(user);
+        var token = _tokenService.GenerateToken(user, roles);
 
         return Ok(new { User = user.UserName, Token = token });
     }

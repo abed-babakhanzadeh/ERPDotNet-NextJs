@@ -49,6 +49,7 @@ builder.Services.AddAuthentication(options =>
 
 // 4. Services
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
+builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddControllers();
 
 // 5. OpenAPI with JWT Support
