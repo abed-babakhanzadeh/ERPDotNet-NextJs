@@ -6,6 +6,7 @@ import PermissionTree from "@/components/modules/roles/PermissionTree";
 import { toast } from "sonner";
 import { Save, Shield, Plus, Trash2, Loader2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
+import ProtectedPage from "@/components/ui/ProtectedPage";
 
 // DTO
 interface Role {
@@ -210,6 +211,7 @@ export default function RolesPage() {
 
 
 return (
+  <ProtectedPage permission="UserAccess.Roles">
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-800">مدیریت دسترسی نقش‌ها</h1>
@@ -314,5 +316,6 @@ return (
         </form>
       </Modal>
     </div>
+  </ProtectedPage>
   );
 }

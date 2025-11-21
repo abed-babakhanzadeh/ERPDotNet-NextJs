@@ -3,12 +3,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ERPDotNet.API.Attributes;
 
 namespace ERPDotNet.API.Controllers.UserAccess;
 
 [Route("api/[controller]")]
 [ApiController]
 [Authorize] // بهتر است اینجا [HasPermission("UserAccess.Roles")] باشد
+[HasPermission("UserAccess.Roles")]
 public class RolesController : ControllerBase
 {
     private readonly RoleManager<IdentityRole> _roleManager;

@@ -1,4 +1,5 @@
-﻿using ERPDotNet.Application.Modules.UserAccess.DTOs;
+﻿using ERPDotNet.API.Attributes;
+using ERPDotNet.Application.Modules.UserAccess.DTOs;
 using ERPDotNet.Domain.Modules.UserAccess.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -20,6 +21,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet]
+    [HasPermission("UserAccess.View")] // فقط مشاهده
     public async Task<ActionResult<IEnumerable<UserDto>>> GetAll()
     {
         // دریافت یوزرها به همراه نقش‌هایشان (نیاز به Join دارد)
@@ -53,6 +55,7 @@ public class UsersController : ControllerBase
 
     // 1. ایجاد کاربر (Create)
     [HttpPost]
+    [HasPermission("UserAccess.Create")] // فقط ایجاد
     public async Task<IActionResult> Create([FromBody] CreateUserDto dto)
     {
         // بررسی تکراری نبودن نام کاربری
@@ -99,6 +102,7 @@ public class UsersController : ControllerBase
 
     // 2. ویرایش کاربر (Update)
     [HttpPut("{id}")]
+    [HasPermission("UserAccess.Edit")]
     public async Task<IActionResult> Update(string id, [FromBody] UpdateUserDto dto)
     {
         var user = await _userManager.FindByIdAsync(id);
@@ -136,6 +140,7 @@ public class UsersController : ControllerBase
 
     // 2. حذف کاربر
     [HttpDelete("{id}")]
+    [HasPermission("UserAccess.Delete")]
     public async Task<IActionResult> Delete(string id)
     {
         var user = await _userManager.FindByIdAsync(id);

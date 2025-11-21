@@ -346,7 +346,7 @@ const handleCopyPermissions = async () => {
                           </button>
                         </PermissionGuard>
 
-                        <PermissionGuard permission="UserAccess.Edit">
+                        <PermissionGuard permission="UserAccess.SpecialPermissions">
                             <button 
                                 onClick={() => handleSpecialPermissions(user)}
                                 className="text-amber-600 hover:text-amber-800 p-1 hover:bg-amber-50 rounded"

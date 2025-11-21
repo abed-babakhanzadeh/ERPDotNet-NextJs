@@ -19,21 +19,29 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
         // === Seed Data (داده‌های اولیه درخت) ===
         // اینجا ساختار درختی پایه را می‌سازیم
         builder.HasData(
-            // ریشه اصلی
+            // 1-ریشه اصلی
             new Permission { Id = 1, Name = "System", Title = "سیستم", IsMenu = false, ParentId = null },
+            // ===  ماژول عمومی (به عنوان یک منوی اصلی) ===
+            new Permission { Id = 100, Name = "General", Title = "عمومی", IsMenu = true, ParentId = 1 }, // خودش زیرمجموعه سیستم است یا نال
             
-            // ماژول مدیریت کاربران (منو)
-            new Permission { Id = 2, Name = "UserAccess", Title = "مدیریت کاربران", IsMenu = true, ParentId = 1, Url = "/users" },
+            // 2- ماژول مدیریت کاربران (منو)
+            new Permission { Id = 2, Name = "UserAccess", Title = "مدیریت کاربران", IsMenu = true, ParentId = 100, Url = "/users" },
             
             // زیرمجموعه‌های مدیریت کاربران (دکمه‌ها)
             new Permission { Id = 3, Name = "UserAccess.View", Title = "مشاهده لیست", IsMenu = false, ParentId = 2 },
             new Permission { Id = 4, Name = "UserAccess.Create", Title = "افزودن کاربر", IsMenu = false, ParentId = 2 },
             new Permission { Id = 5, Name = "UserAccess.Edit", Title = "ویرایش کاربر", IsMenu = false, ParentId = 2 },
             new Permission { Id = 6, Name = "UserAccess.Delete", Title = "حذف کاربر", IsMenu = false, ParentId = 2 },
-            // ===  مدیریت نقش‌ها ===
-            new Permission { Id = 7, Name = "UserAccess.Roles", Title = "مدیریت نقش‌ها", IsMenu = true, ParentId = 2, Url = "/roles" },
+
+            // === 3- مدیریت نقش‌ها ===
+            new Permission { Id = 7, Name = "UserAccess.Roles", Title = "مدیریت نقش‌ها", IsMenu = true, ParentId = 100, Url = "/roles" },
             new Permission { Id = 8, Name = "UserAccess.Roles.Create", Title = "تعریف نقش", IsMenu = false, ParentId = 7 },
-            new Permission { Id = 9, Name = "UserAccess.Roles.Edit", Title = "ویرایش دسترسی‌ها", IsMenu = false, ParentId = 7 }
+            new Permission { Id = 9, Name = "UserAccess.Roles.Edit", Title = "ویرایش دسترسی‌ها", IsMenu = false, ParentId = 7 },
+            // === جدید: دسترسی ویژه ===
+            new Permission { Id = 10, Name = "UserAccess.SpecialPermissions", Title = "مدیریت دسترسی‌های ویژه", IsMenu = false, ParentId = 2 },
+            
+            // 4. تنظیمات 
+    new     Permission { Id = 90, Name = "General.Settings", Title = "تنظیمات سیستم", IsMenu = true, ParentId = 100, Url = "/settings" }
         );
     }
 }

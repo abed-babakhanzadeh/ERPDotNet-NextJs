@@ -25,7 +25,9 @@ public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermissi
             new RolePermission { RoleId = "1", PermissionId = 6 },  // Delete
             new RolePermission { RoleId = "1", PermissionId = 7 },
             new RolePermission { RoleId = "1", PermissionId = 8 },
-            new RolePermission { RoleId = "1", PermissionId = 9 }
+            new RolePermission { RoleId = "1", PermissionId = 9 },
+            new RolePermission { RoleId = "1", PermissionId = 90 },
+            new RolePermission { RoleId = "1", PermissionId = 100 }
         );
     }
 }
