@@ -3,6 +3,7 @@ using System;
 using ERPDotNet.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ERPDotNet.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251120135324_SeedAdminPermissions")]
+    partial class SeedAdminPermissions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -101,31 +104,6 @@ namespace ERPDotNet.Infrastructure.Migrations
                             Name = "UserAccess.Delete",
                             ParentId = 2,
                             Title = "حذف کاربر"
-                        },
-                        new
-                        {
-                            Id = 7,
-                            IsMenu = true,
-                            Name = "UserAccess.Roles",
-                            ParentId = 2,
-                            Title = "مدیریت نقش‌ها",
-                            Url = "/roles"
-                        },
-                        new
-                        {
-                            Id = 8,
-                            IsMenu = false,
-                            Name = "UserAccess.Roles.Create",
-                            ParentId = 7,
-                            Title = "تعریف نقش"
-                        },
-                        new
-                        {
-                            Id = 9,
-                            IsMenu = false,
-                            Name = "UserAccess.Roles.Edit",
-                            ParentId = 7,
-                            Title = "ویرایش دسترسی‌ها"
                         });
                 });
 
@@ -173,21 +151,6 @@ namespace ERPDotNet.Infrastructure.Migrations
                         {
                             RoleId = "1",
                             PermissionId = 6
-                        },
-                        new
-                        {
-                            RoleId = "1",
-                            PermissionId = 7
-                        },
-                        new
-                        {
-                            RoleId = "1",
-                            PermissionId = 8
-                        },
-                        new
-                        {
-                            RoleId = "1",
-                            PermissionId = 9
                         });
                 });
 

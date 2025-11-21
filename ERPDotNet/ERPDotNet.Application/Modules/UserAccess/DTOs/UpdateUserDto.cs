@@ -13,6 +13,6 @@ public class UpdateUserDto
     public string Email { get; set; }
     public string PersonnelCode { get; set; }
     
-    public string Role { get; set; } // برای تغییر نقش
+    public List<string> Roles { get; set; } = new(); // برای تغییر نقش
     public bool IsActive { get; set; } // برای فعال/غیرفعال کردن
 }

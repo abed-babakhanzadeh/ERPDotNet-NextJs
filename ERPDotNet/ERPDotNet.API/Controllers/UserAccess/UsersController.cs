@@ -51,9 +51,11 @@ public class UsersController : ControllerBase
     }
 
 
+    // 1. ایجاد کاربر (Create)
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateUserDto dto)
     {
+        // بررسی تکراری نبودن نام کاربری
         if (await _userManager.FindByNameAsync(dto.Username) != null)
             return BadRequest("این نام کاربری قبلاً استفاده شده است.");
 
@@ -68,26 +70,34 @@ public class UsersController : ControllerBase
             EmailConfirmed = true
         };
 
+        // ساخت کاربر در دیتابیس (با پسورد)
         var result = await _userManager.CreateAsync(user, dto.Password);
 
         if (!result.Succeeded)
             return BadRequest(result.Errors.FirstOrDefault()?.Description);
 
-        // === اختصاص نقش ===
-        // اگر نقشی که فرانت فرستاده معتبر باشد، به یوزر می‌دهیم
-        var roleResult = await _userManager.AddToRoleAsync(user, dto.Role);
-        
-        if (!roleResult.Succeeded)
+        // === اصلاحیه: اختصاص لیست نقش‌ها ===
+        if (dto.Roles != null && dto.Roles.Any())
         {
-            // اگر نقش پیدا نشد، لاگ می‌اندازیم ولی یوزر ساخته شده
-            return Ok(new { message = "کاربر ساخته شد اما نقش نامعتبر بود", userId = user.Id });
+            // اگر نقشی انتخاب شده، همه را یکجا اضافه کن
+            // نکته: متد AddToRolesAsync (جمع) به جای AddToRoleAsync (مفرد)
+            var roleResult = await _userManager.AddToRolesAsync(user, dto.Roles);
+            
+            if (!roleResult.Succeeded)
+            {
+                return Ok(new { message = "کاربر ساخته شد اما برخی نقش‌ها نامعتبر بودند", userId = user.Id });
+            }
+        }
+        else
+        {
+            // اگر هیچ نقشی انتخاب نشده، نقش پیش‌فرض "User" را بده
+            await _userManager.AddToRoleAsync(user, "User");
         }
 
         return Ok(new { message = "کاربر با موفقیت ایجاد شد", userId = user.Id });
     }
 
-
-    // 1. ویرایش کاربر
+    // 2. ویرایش کاربر (Update)
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(string id, [FromBody] UpdateUserDto dto)
     {
@@ -101,19 +111,24 @@ public class UsersController : ControllerBase
         user.PersonnelCode = dto.PersonnelCode;
         user.IsActive = dto.IsActive;
 
-        // آپدیت در دیتابیس
         var result = await _userManager.UpdateAsync(user);
         if (!result.Succeeded) return BadRequest(result.Errors);
 
-        // === آپدیت نقش (کمی پیچیده است) ===
-        if (!string.IsNullOrEmpty(dto.Role))
+        // === اصلاحیه: آپدیت لیست نقش‌ها ===
+        // فقط اگر لیست نقش‌ها ارسال شده باشد (حتی اگر خالی باشد یعنی همه نقش‌ها را بگیر)
+        if (dto.Roles != null)
         {
-            // نقش‌های قبلی را می‌گیریم
+            // 1. دریافت نقش‌های فعلی کاربر
             var currentRoles = await _userManager.GetRolesAsync(user);
-            // حذف همه نقش‌های قبلی
+
+            // 2. حذف تمام نقش‌های فعلی (پاکسازی)
             await _userManager.RemoveFromRolesAsync(user, currentRoles);
-            // افزودن نقش جدید
-            await _userManager.AddToRoleAsync(user, dto.Role);
+
+            // 3. افزودن نقش‌های جدید انتخاب شده
+            if (dto.Roles.Any())
+            {
+                await _userManager.AddToRolesAsync(user, dto.Roles);
+            }
         }
 
         return Ok(new { message = "اطلاعات کاربر ویرایش شد" });

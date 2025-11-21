@@ -14,7 +14,7 @@ public class CreateUserDto
     [EmailAddress]
     public string Email { get; set; }
     [Required]
-    public string Role { get; set; }
+    public List<string> Roles { get; set; } = new();
     [Required]
     public string Password { get; set; }
     public string PersonnelCode { get; set; }
