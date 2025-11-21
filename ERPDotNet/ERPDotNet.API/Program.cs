@@ -11,6 +11,10 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 using System.Text;
+using ERPDotNet.Application; // برای متد اکستنشن
+using ERPDotNet.Application.Common.Interfaces;
+using ERPDotNet.Infrastructure.Common.Services;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -47,10 +51,22 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// 1. سرویس‌های لایه اپلیکیشن (MediatR)
+builder.Services.AddApplicationServices();
+// 2. سرویس‌های کش (Redis)
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString("Redis");
+});
+
 // 4. Services
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddControllers();
+builder.Services.AddScoped<ICacheService, RedisCacheService>();
+
+
+
 
 // 5. OpenAPI with JWT Support
 builder.Services.AddOpenApi("v1", options =>
