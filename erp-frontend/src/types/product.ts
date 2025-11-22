@@ -1,10 +1,15 @@
+export interface ProductConversionDto {
+  alternativeUnitName: string;
+  factor: number;
+}
+
 export interface Product {
   id: number;
   code: string;
   name: string;
   unitName: string;
   supplyType: string;
-  conversionCount: number;
+  conversions: ProductConversionDto[]; // <--- فیلد جدید
 }
 
 // این برای فرم ثبت است (ساختار ورودی به API)

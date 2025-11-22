@@ -13,11 +13,12 @@ public record ProductDto(
     string Name, 
     string UnitName,      // نام واحد اصلی
     string SupplyType,    // عنوان فارسی نوع تامین
-    int ConversionCount   // تعداد واحدهای فرعی (برای اطلاع)
+    List<ProductConversionDto> Conversions   // تعداد واحدهای فرعی (برای اطلاع)
 );
 
 [Cached(timeToLiveSeconds: 600, "Products")] // کش با تگ Products
 public record GetAllProductsQuery : IRequest<List<ProductDto>>;
+public record ProductConversionDto(string AlternativeUnitName, decimal Factor);
 
 public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, List<ProductDto>>
 {
@@ -34,6 +35,7 @@ public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, List<P
             .AsNoTracking()
             .Include(p => p.Unit) // بارگذاری واحد اصلی
             .Include(p => p.UnitConversions) // بارگذاری تبدیل‌ها (برای شمارش)
+            .ThenInclude(c => c.AlternativeUnit)
             .OrderBy(p => p.Code)
             .Select(p => new ProductDto(
                 p.Id,
@@ -42,8 +44,14 @@ public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, List<P
                 p.Unit.Title, // نام واحد
                 p.SupplyType == ProductSupplyType.Purchased ? "خریدنی" : 
                 p.SupplyType == ProductSupplyType.Manufactured ? "تولیدی" : "خدمات",
-                p.UnitConversions.Count
+                // مپ کردن لیست تبدیل‌ها
+                p.UnitConversions.Select(c => new ProductConversionDto(
+                    c.AlternativeUnit.Title, 
+                    c.Factor
+                )).ToList()
             ))
             .ToListAsync(cancellationToken);
     }
+
+    
 }

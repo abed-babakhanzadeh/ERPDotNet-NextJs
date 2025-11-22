@@ -26,7 +26,7 @@ public class UnitsController : ControllerBase
     }
 
     [HttpGet]
-    [HasPermission("BaseInfo.Units.View")]
+    [HasPermission("BaseInfo.Units")]
     public async Task<ActionResult<List<UnitDto>>> GetAll()
     {
         var result = await _mediator.Send(new GetAllUnitsQuery());
