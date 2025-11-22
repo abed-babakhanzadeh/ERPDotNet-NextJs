@@ -26,7 +26,7 @@ public class UnitsController : ControllerBase
     }
 
     [HttpGet]
-    // [HasPermission("BaseInfo.Units.View")] // فعلا باز می‌گذاریم برای تست
+    [HasPermission("BaseInfo.Units.View")]
     public async Task<ActionResult<List<UnitDto>>> GetAll()
     {
         var result = await _mediator.Send(new GetAllUnitsQuery());

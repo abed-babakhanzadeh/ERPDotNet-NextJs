@@ -55,16 +55,16 @@ export const MENU_ITEMS: MenuItem[] = [
           icon: Ruler, 
           permission: "BaseInfo.Units" 
         },
-        // بعداً کالاها اینجا میاد
-      ]
-    },
-
-    { 
+            { 
         title: "مدیریت کالاها", 
         href: "/base-info/products", 
         icon: Package, // ایمپورت کنید
         permission: "BaseInfo.Products" 
       },
+
+      ]
+    },
+
 
   // === بعدا انبار اینجا میاد ===
   /*
