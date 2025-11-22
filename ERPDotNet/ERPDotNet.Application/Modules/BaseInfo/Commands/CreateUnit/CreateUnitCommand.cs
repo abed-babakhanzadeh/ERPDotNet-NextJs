@@ -7,7 +7,7 @@ using ERPDotNet.Application.Common.Attributes;
 
 namespace ERPDotNet.Application.Modules.BaseInfo.Commands.CreateUnit;
 
-[CacheInvalidation("Units")]
+[CacheInvalidation("Units", "UnitsLookup")]
 public record CreateUnitCommand : IRequest<int>
 {
     public string Title { get; set; }

@@ -34,6 +34,7 @@ public class RolesController : ControllerBase
 
     // 2. ایجاد نقش جدید
     [HttpPost]
+    [HasPermission("UserAccess.Roles.Create")]
     public async Task<IActionResult> Create([FromBody] CreateRoleDto dto)
     {
         if (await _roleManager.RoleExistsAsync(dto.Name))
@@ -49,6 +50,7 @@ public class RolesController : ControllerBase
 
     // 3. حذف نقش
     [HttpDelete("{id}")]
+    [HasPermission("UserAccess.Roles.Delete")]
     public async Task<IActionResult> Delete(string id)
     {
         var role = await _roleManager.FindByIdAsync(id);

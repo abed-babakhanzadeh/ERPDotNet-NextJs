@@ -36,9 +36,11 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             // === 3- مدیریت نقش‌ها ===
             new Permission { Id = 7, Name = "UserAccess.Roles", Title = "مدیریت نقش‌ها", IsMenu = true, ParentId = 100, Url = "/roles" },
             new Permission { Id = 8, Name = "UserAccess.Roles.Create", Title = "تعریف نقش", IsMenu = false, ParentId = 7 },
-            new Permission { Id = 9, Name = "UserAccess.Roles.Edit", Title = "ویرایش دسترسی‌ها", IsMenu = false, ParentId = 7 },
+            new Permission { Id = 9, Name = "UserAccess.Roles.Delete", Title = "حذف نقش", IsMenu = false, ParentId = 7 },
+            new Permission { Id = 10, Name = "UserAccess.Roles.Edit", Title = "ویرایش دسترسی‌ها", IsMenu = false, ParentId = 7 },
+
             // === جدید: دسترسی ویژه ===
-            new Permission { Id = 10, Name = "UserAccess.SpecialPermissions", Title = "مدیریت دسترسی‌های ویژه", IsMenu = false, ParentId = 2 },
+            new Permission { Id = 11, Name = "UserAccess.SpecialPermissions", Title = "مدیریت دسترسی‌های ویژه", IsMenu = false, ParentId = 2 },
             
             // 4. تنظیمات 
             new Permission { Id = 90, Name = "General.Settings", Title = "تنظیمات سیستم", IsMenu = true, ParentId = 100, Url = "/settings" },

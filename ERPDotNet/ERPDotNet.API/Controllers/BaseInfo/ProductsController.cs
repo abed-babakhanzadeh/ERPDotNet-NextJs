@@ -1,4 +1,5 @@
 using ERPDotNet.API.Attributes;
+using ERPDotNet.Application.Common.Models;
 using ERPDotNet.Application.Modules.BaseInfo.Commands.CreateProduct;
 using ERPDotNet.Application.Modules.BaseInfo.Queries.GetAllProducts;
 using MediatR;
@@ -25,11 +26,11 @@ public class ProductsController : ControllerBase
         return Ok(new { id });
     }
 
-    [HttpGet]
-    [HasPermission("BaseInfo.Products")] // دسترسی مشاهده
-    public async Task<ActionResult<List<ProductDto>>> GetAll()
+    [HttpPost("search")] // تغییر به POST
+    [HasPermission("BaseInfo.Products")]
+    public async Task<ActionResult<PaginatedResult<ProductDto>>> GetAll([FromBody] GetAllProductsQuery query)
     {
-        var result = await _mediator.Send(new GetAllProductsQuery());
+        var result = await _mediator.Send(query);
         return Ok(result);
     }
 }

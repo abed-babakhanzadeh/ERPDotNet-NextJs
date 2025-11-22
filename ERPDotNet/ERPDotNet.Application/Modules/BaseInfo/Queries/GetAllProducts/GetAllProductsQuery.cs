@@ -3,6 +3,8 @@ using ERPDotNet.Application.Common.Interfaces;
 using ERPDotNet.Domain.Modules.BaseInfo.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ERPDotNet.Application.Common.Extensions;
+using ERPDotNet.Application.Common.Models;
 
 namespace ERPDotNet.Application.Modules.BaseInfo.Queries.GetAllProducts;
 
@@ -16,11 +18,12 @@ public record ProductDto(
     List<ProductConversionDto> Conversions   // تعداد واحدهای فرعی (برای اطلاع)
 );
 
-[Cached(timeToLiveSeconds: 600, "Products")] // کش با تگ Products
-public record GetAllProductsQuery : IRequest<List<ProductDto>>;
+// 1. ارث‌بری از PaginatedRequest و فعال‌سازی کش
+[Cached(timeToLiveSeconds: 600, "Products")]
+public record GetAllProductsQuery : PaginatedRequest, IRequest<PaginatedResult<ProductDto>>;
 public record ProductConversionDto(string AlternativeUnitName, decimal Factor);
 
-public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, List<ProductDto>>
+public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, PaginatedResult<ProductDto>>
 {
     private readonly IApplicationDbContext _context;
 
@@ -29,29 +32,53 @@ public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, List<P
         _context = context;
     }
 
-    public async Task<List<ProductDto>> Handle(GetAllProductsQuery request, CancellationToken cancellationToken)
+    public async Task<PaginatedResult<ProductDto>> Handle(GetAllProductsQuery request, CancellationToken cancellationToken)
     {
-        return await _context.Products
+        // 1. کوئری پایه
+        var query = _context.Products
             .AsNoTracking()
-            .Include(p => p.Unit) // بارگذاری واحد اصلی
-            .Include(p => p.UnitConversions) // بارگذاری تبدیل‌ها (برای شمارش)
+            .Include(p => p.Unit)
+            .Include(p => p.UnitConversions)
             .ThenInclude(c => c.AlternativeUnit)
-            .OrderBy(p => p.Code)
-            .Select(p => new ProductDto(
-                p.Id,
-                p.Code,
-                p.Name,
-                p.Unit.Title, // نام واحد
-                p.SupplyType == ProductSupplyType.Purchased ? "خریدنی" : 
-                p.SupplyType == ProductSupplyType.Manufactured ? "تولیدی" : "خدمات",
-                // مپ کردن لیست تبدیل‌ها
-                p.UnitConversions.Select(c => new ProductConversionDto(
-                    c.AlternativeUnit.Title, 
-                    c.Factor
-                )).ToList()
-            ))
-            .ToListAsync(cancellationToken);
-    }
+            .AsQueryable();
 
-    
+        // 2. اعمال فیلتر متنی ساده (SearchBox)
+        if (!string.IsNullOrWhiteSpace(request.SearchTerm))
+        {
+            query = query.Where(p => 
+                p.Name.Contains(request.SearchTerm) || 
+                p.Code.Contains(request.SearchTerm));
+        }
+
+        // 3. اعمال فیلترهای پیشرفته (JSON Filters)
+        query = query.ApplyDynamicFilters(request.Filters);
+
+        // 4. اعمال سورت داینامیک
+        if (!string.IsNullOrEmpty(request.SortColumn))
+        {
+            query = query.OrderByDynamic(request.SortColumn, request.SortDescending);
+        }
+        else
+        {
+            query = query.OrderBy(p => p.Code); // سورت پیش‌فرض
+        }
+
+        // 5. پروجکشن به DTO
+        var dtoQuery = query.Select(p => new ProductDto(
+            p.Id,
+            p.Code,
+            p.Name,
+            p.Unit.Title,
+            p.SupplyType == ProductSupplyType.Purchased ? "خریدنی" : 
+            p.SupplyType == ProductSupplyType.Manufactured ? "تولیدی" : "خدمات",
+            // مپ کردن لیست تبدیل‌ها
+            p.UnitConversions.Select(c => new ProductConversionDto(
+                c.AlternativeUnit.Title, 
+                c.Factor
+            )).ToList()
+        ));
+
+        // 6. خروجی صفحه‌بندی شده
+        return await dtoQuery.ToPaginatedListAsync(request.PageNumber, request.PageSize, cancellationToken);
+    }
 }

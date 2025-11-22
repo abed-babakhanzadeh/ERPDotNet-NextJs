@@ -1,170 +1,212 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
-import apiClient from "@/services/apiClient";
+import { useMemo, useState, useEffect } from "react";
+// ایمپورت MRT_Row برای رفع خطای تایپ
+import {
+  MantineReactTable,
+  useMantineReactTable,
+  type MRT_ColumnDef,
+  type MRT_Row,
+} from "mantine-react-table";
 import { Product } from "@/types/product";
-import { Plus, Package, ChevronDown, ChevronRight, Box } from "lucide-react"; // آیکون‌های جدید
+import apiClient from "@/services/apiClient";
+import { Plus, Edit, Trash } from "lucide-react";
 import ProtectedPage from "@/components/ui/ProtectedPage";
 import PermissionGuard from "@/components/ui/PermissionGuard";
 import Modal from "@/components/ui/Modal";
 import CreateProductForm from "./CreateProductForm";
+import { useTabs } from "@/providers/TabsProvider";
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<Product[]>([]);
+  const [isError, setIsError] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRefetching, setIsRefetching] = useState(false);
+  const [rowCount, setRowCount] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
-  // State برای نگهداری آیدی سطرهای باز شده
-  const [expandedRows, setExpandedRows] = useState<number[]>([]);
 
-  const fetchProducts = async () => {
+  const { addTab } = useTabs();
+
+  const [columnFilters, setColumnFilters] = useState<any[]>([]);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [sorting, setSorting] = useState<any[]>([]);
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
+  const fetchData = async () => {
+    if (!data.length) setIsLoading(true);
+    else setIsRefetching(true);
+
     try {
-      const { data } = await apiClient.get<Product[]>("/Products");
-      setProducts(data);
+      const backendFilters = columnFilters.map((f) => ({
+        propertyName: f.id,
+        value: f.value,
+        operation: "contains",
+      }));
+
+      const payload = {
+        pageNumber: pagination.pageIndex + 1,
+        pageSize: pagination.pageSize,
+        searchTerm: globalFilter ?? "",
+        sortColumn: sorting.length > 0 ? sorting[0].id : null,
+        sortDescending: sorting.length > 0 ? sorting[0].desc : false,
+        filters: backendFilters,
+      };
+
+      const { data: response } = await apiClient.post<any>(
+        "/Products/search",
+        payload
+      );
+      setData(response.items);
+      setRowCount(response.totalCount);
+      setIsError(false);
     } catch (error) {
-      console.error(error);
+      setIsError(true);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
+      setIsRefetching(false);
     }
   };
 
   useEffect(() => {
-    fetchProducts();
-  }, []);
+    fetchData();
+  }, [
+    pagination.pageIndex,
+    pagination.pageSize,
+    sorting,
+    columnFilters,
+    globalFilter,
+  ]);
 
-  // تابع تغییر وضعیت باز/بسته بودن سطر
-  const toggleRow = (id: number) => {
-    if (expandedRows.includes(id)) {
-      setExpandedRows(expandedRows.filter(rowId => rowId !== id));
-    } else {
-      setExpandedRows([...expandedRows, id]);
-    }
-  };
+  const columns = useMemo<MRT_ColumnDef<Product>[]>(
+    () => [
+      {
+        accessorKey: "code",
+        header: "کد کالا",
+        size: 100,
+        Cell: ({ renderedCellValue }) => (
+          <span className="font-mono font-bold text-blue-600">
+            {renderedCellValue}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "name",
+        header: "نام کالا",
+        size: 250,
+      },
+      {
+        accessorKey: "unitName",
+        header: "واحد",
+        size: 100,
+      },
+      {
+        accessorKey: "supplyType",
+        header: "نوع",
+        size: 120,
+        Cell: ({ cell }) => (
+          <span
+            className={`px-2 py-1 rounded-full text-xs border ${
+              cell.getValue() === "خریدنی"
+                ? "bg-green-50 text-green-700 border-green-200"
+                : "bg-orange-50 text-orange-700 border-orange-200"
+            }`}
+          >
+            {cell.getValue() as string}
+          </span>
+        ),
+      },
+    ],
+    []
+  );
+
+  const table = useMantineReactTable({
+    columns,
+    data,
+    enableRowSelection: true,
+    manualFiltering: true,
+    manualPagination: true,
+    manualSorting: true,
+    rowCount,
+    onColumnFiltersChange: setColumnFilters,
+    onGlobalFilterChange: setGlobalFilter,
+    onPaginationChange: setPagination,
+    onSortingChange: setSorting,
+    state: {
+      columnFilters,
+      globalFilter,
+      isLoading,
+      pagination,
+      showAlertBanner: isError,
+      showProgressBars: isRefetching,
+      sorting,
+    },
+    // === اصلاح مهم: استفاده از mantine...Props بجای mui...Props ===
+    mantinePaperProps: {
+      shadow: "none",
+      style: { borderRadius: "12px", border: "1px solid #e5e7eb" },
+    },
+    mantineTableHeadCellProps: {
+      style: { backgroundColor: "#f9fafb", fontWeight: "bold" },
+    },
+
+    enableRowActions: true,
+    // === اصلاح مهم: تعریف تایپ row ===
+    renderRowActions: ({ row }: { row: MRT_Row<Product> }) => (
+      <div className="flex gap-2">
+        <button onClick={() => alert("Edit")} className="text-blue-600">
+          <Edit size={16} />
+        </button>
+        <button className="text-red-600">
+          <Trash size={16} />
+        </button>
+      </div>
+    ),
+
+    mantineTableBodyRowProps: ({ row }) => ({
+      onDoubleClick: () => {
+        addTab(
+          `کالا: ${row.original.name}`,
+          `/base-info/products/${row.original.id}`
+        );
+      },
+      className: "cursor-pointer hover:bg-blue-50 transition-colors",
+    }),
+
+    renderTopToolbarCustomActions: () => (
+      <PermissionGuard permission="BaseInfo.Products.Create">
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm"
+        >
+          <Plus size={16} />
+          کالای جدید
+        </button>
+      </PermissionGuard>
+    ),
+  });
 
   return (
     <ProtectedPage permission="BaseInfo.Products">
-      <div className="space-y-6">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-            <Package className="text-blue-600" />
-            مدیریت کالاها
-          </h1>
-          
-          <PermissionGuard permission="BaseInfo.Products.Create">
-            <button 
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-            >
-              <Plus size={18} />
-              کالای جدید
-            </button>
-          </PermissionGuard>
-        </div>
-
-        {/* Table */}
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-          {loading ? (
-             <div className="p-8 text-center text-gray-500">در حال بارگذاری...</div>
-          ) : (
-            <table className="w-full text-right text-sm text-gray-600">
-              <thead className="bg-gray-50 text-xs uppercase text-gray-700 font-bold">
-                <tr>
-                  <th className="w-10 px-4 py-3"></th>
-                  <th className="px-6 py-3">کد کالا</th>
-                  <th className="px-6 py-3">نام کالا</th>
-                  <th className="px-6 py-3">واحد اصلی</th>
-                  <th className="px-6 py-3">نوع</th>
-                  <th className="px-6 py-3">واحدهای فرعی</th>
-                </tr>
-              </thead>
-              <tbody>
-                {products.map((product) => {
-                  const isExpanded = expandedRows.includes(product.id);
-                  const hasConversions = product.conversions && product.conversions.length > 0;
-
-                  return (
-                    // تغییر مهم: استفاده از Fragment برای دادن Key به کل گروه
-                    <Fragment key={product.id}> 
-                      
-                      {/* سطر اصلی (key را از اینجا حذف کنید چون به Fragment دادیم) */}
-                      <tr 
-                        className={`border-b transition cursor-pointer ${isExpanded ? 'bg-blue-50/50' : 'hover:bg-gray-50'}`}
-                        onClick={() => hasConversions && toggleRow(product.id)}
-                      >
-                        <td className="px-4 py-4 text-center">
-                          {hasConversions ? (
-                            <button className="text-gray-400 hover:text-blue-600">
-                              {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                            </button>
-                          ) : (
-                            <span className="block w-4 h-4 rounded-full bg-gray-100 mx-auto"></span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 font-mono font-bold text-blue-600">{product.code}</td>
-                        <td className="px-6 py-4 font-medium text-gray-900">{product.name}</td>
-                        <td className="px-6 py-4">{product.unitName}</td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            product.supplyType === 'خریدنی' ? 'bg-green-100 text-green-700' : 
-                            product.supplyType === 'تولیدی' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100'
-                          }`}>
-                            {product.supplyType}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                            {hasConversions ? (
-                                <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">
-                                    {product.conversions.length} واحد فرعی
-                                </span>
-                            ) : (
-                                <span className="text-xs text-gray-400">-</span>
-                            )}
-                        </td>
-                      </tr>
-
-                      {/* سطر جزئیات */}
-                      {isExpanded && hasConversions && (
-                        <tr className="bg-gray-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                          <td colSpan={6} className="px-4 py-4 border-b">
-                            <div className="mr-10 flex gap-4 overflow-x-auto">
-                              {product.conversions.map((conv, idx) => (
-                                <div key={idx} className="flex items-center gap-3 bg-white border border-gray-200 rounded-lg p-3 shadow-sm min-w-[200px]">
-                                  <div className="bg-orange-100 p-2 rounded-lg text-orange-600">
-                                    <Box size={20} />
-                                  </div>
-                                  <div>
-                                    <p className="text-xs text-gray-500 mb-1">فرمول تبدیل</p>
-                                    <p className="text-sm font-bold text-gray-800">
-                                      1 {conv.alternativeUnitName} = {conv.factor} {product.unitName}
-                                    </p>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </Fragment> 
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        {/* Modal */}
-        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="تعریف کالای جدید">
-          <CreateProductForm 
-            onCancel={() => setIsModalOpen(false)}
-            onSuccess={() => {
-              setIsModalOpen(false);
-              fetchProducts();
-            }}
-          />
-        </Modal>
+      <div className="p-2">
+        <MantineReactTable table={table} />
       </div>
+
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="تعریف کالای جدید"
+      >
+        <CreateProductForm
+          onCancel={() => setIsModalOpen(false)}
+          onSuccess={() => {
+            setIsModalOpen(false);
+            fetchData();
+          }}
+        />
+      </Modal>
     </ProtectedPage>
   );
 }

@@ -1,0 +1,38 @@
+using ERPDotNet.Application.Common.Attributes;
+using ERPDotNet.Application.Common.Interfaces;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+
+namespace ERPDotNet.Application.Modules.BaseInfo.Queries.GetAllUnits;
+
+// این کوئری فقط لیست ساده برمی‌گرداند (برای دراپ‌داون)
+// کش طولانی‌مدت (چون واحدها دیر به دیر عوض می‌شوند)
+[Cached(timeToLiveSeconds: 3600, "UnitsLookup")] 
+public record GetUnitsLookupQuery : IRequest<List<UnitDto>>;
+
+public class GetUnitsLookupHandler : IRequestHandler<GetUnitsLookupQuery, List<UnitDto>>
+{
+    private readonly IApplicationDbContext _context;
+
+    public GetUnitsLookupHandler(IApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<List<UnitDto>> Handle(GetUnitsLookupQuery request, CancellationToken cancellationToken)
+    {
+        return await _context.Units
+            .AsNoTracking()
+            // فقط واحدهای فعال را برای دراپ‌داون می‌خواهیم
+            .Where(x => x.IsActive) 
+            .OrderBy(x => x.Id)
+            .Select(x => new UnitDto(
+                x.Id, 
+                x.Title, 
+                x.Symbol, 
+                x.ConversionFactor, 
+                x.BaseUnit != null ? x.BaseUnit.Title : null
+            ))
+            .ToListAsync(cancellationToken);
+    }
+}

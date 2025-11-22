@@ -4,6 +4,8 @@ using ERPDotNet.Domain.Modules.UserAccess.Entities;
 using System.Reflection;
 using ERPDotNet.Application.Common.Interfaces;
 using ERPDotNet.Domain.Modules.BaseInfo.Entities;
+using ERPDotNet.Domain.Modules.ProductEngineering.Entities;
+
 
 namespace ERPDotNet.Infrastructure.Persistence;
 
@@ -17,7 +19,11 @@ public class AppDbContext : IdentityDbContext<User>, IApplicationDbContext
     public DbSet<Product> Products { get; set; }
     public DbSet<ProductUnitConversion> ProductUnitConversions { get; set; }
 
-
+    // ماژول مهندسی محصول
+    public DbSet<BOMHeader> BOMHeaders { get; set; }
+    public DbSet<BOMDetail> BOMDetails { get; set; }
+    public DbSet<BOMSubstitute> BOMSubstitutes { get; set; }
+    
 
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
