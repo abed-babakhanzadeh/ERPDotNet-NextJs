@@ -1,4 +1,5 @@
-import { LayoutDashboard, Users, Settings, Shield, Layers, Grid } from "lucide-react"; // آیکون Layers یا Grid برای عمومی خوبه
+import { LayoutDashboard, Users, Settings, Shield, Layers, Grid, Package } from "lucide-react"; // آیکون Layers یا Grid برای عمومی خوبه
+import { Database, Ruler } from "lucide-react";
 
 export interface MenuItem {
   title: string;
@@ -41,6 +42,29 @@ export const MENU_ITEMS: MenuItem[] = [
       },
     ]
   },
+
+
+  {
+      title: "اطلاعات پایه",
+      icon: Database,
+      permission: "BaseInfo",
+      submenu: [
+        { 
+          title: "واحد سنجش", 
+          href: "/base-info/units", 
+          icon: Ruler, 
+          permission: "BaseInfo.Units" 
+        },
+        // بعداً کالاها اینجا میاد
+      ]
+    },
+
+    { 
+        title: "مدیریت کالاها", 
+        href: "/base-info/products", 
+        icon: Package, // ایمپورت کنید
+        permission: "BaseInfo.Products" 
+      },
 
   // === بعدا انبار اینجا میاد ===
   /*

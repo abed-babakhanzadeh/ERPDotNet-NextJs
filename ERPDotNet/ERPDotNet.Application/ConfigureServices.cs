@@ -16,6 +16,7 @@ public static class ConfigureServices
             
             // ترتیب مهم است: اول کشینگ، بعد ولیدیشن (یا برعکس بسته به نیاز)
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(CachingBehavior<,>));
+            cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(CacheInvalidationBehavior<,>));
         });
 
         // 2. رجیستر کردن Validators

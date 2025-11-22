@@ -43,8 +43,13 @@ public class CachingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, 
         var response = await next();
 
         // 5. حالا ذخیره کن برای دفعه بعد
-        await _cacheService.SetAsync(cacheKey, response, TimeSpan.FromSeconds(cacheAttribute.TimeToLiveSeconds), cancellationToken);
-
+        await _cacheService.SetAsync(
+            cacheKey, 
+            response, 
+            TimeSpan.FromSeconds(cacheAttribute.TimeToLiveSeconds), 
+            cacheAttribute.Tags?.ToList(), // <--- ارسال تگ‌ها
+            cancellationToken
+        );
         return response;
     }
 

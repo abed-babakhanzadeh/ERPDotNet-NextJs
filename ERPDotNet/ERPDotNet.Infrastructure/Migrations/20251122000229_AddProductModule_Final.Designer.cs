@@ -3,6 +3,7 @@ using System;
 using ERPDotNet.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ERPDotNet.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251122000229_AddProductModule_Final")]
+    partial class AddProductModule_Final
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -29,6 +32,9 @@ namespace ERPDotNet.Infrastructure.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BaseUnitId")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Code")
                         .IsRequired()
@@ -58,15 +64,12 @@ namespace ERPDotNet.Infrastructure.Migrations
                     b.Property<string>("TechnicalSpec")
                         .HasColumnType("text");
 
-                    b.Property<int>("UnitId")
-                        .HasColumnType("integer");
-
                     b.HasKey("Id");
+
+                    b.HasIndex("BaseUnitId");
 
                     b.HasIndex("Code")
                         .IsUnique();
-
-                    b.HasIndex("UnitId");
 
                     b.ToTable("products", "base");
                 });
@@ -754,13 +757,13 @@ namespace ERPDotNet.Infrastructure.Migrations
 
             modelBuilder.Entity("ERPDotNet.Domain.Modules.BaseInfo.Entities.Product", b =>
                 {
-                    b.HasOne("ERPDotNet.Domain.Modules.BaseInfo.Entities.Unit", "Unit")
+                    b.HasOne("ERPDotNet.Domain.Modules.BaseInfo.Entities.Unit", "BaseUnit")
                         .WithMany()
-                        .HasForeignKey("UnitId")
+                        .HasForeignKey("BaseUnitId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Unit");
+                    b.Navigation("BaseUnit");
                 });
 
             modelBuilder.Entity("ERPDotNet.Domain.Modules.BaseInfo.Entities.ProductUnitConversion", b =>

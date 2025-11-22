@@ -3,6 +3,7 @@ using System;
 using ERPDotNet.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ERPDotNet.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251121213521_AddBaseInfoPermissions")]
+    partial class AddBaseInfoPermissions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,95 +24,6 @@ namespace ERPDotNet.Infrastructure.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("ERPDotNet.Domain.Modules.BaseInfo.Entities.Product", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime?>("LastModifiedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<int>("SupplyType")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("TechnicalSpec")
-                        .HasColumnType("text");
-
-                    b.Property<int>("UnitId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.HasIndex("UnitId");
-
-                    b.ToTable("products", "base");
-                });
-
-            modelBuilder.Entity("ERPDotNet.Domain.Modules.BaseInfo.Entities.ProductUnitConversion", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("AlternativeUnitId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<decimal>("Factor")
-                        .HasPrecision(18, 6)
-                        .HasColumnType("numeric(18,6)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime?>("LastModifiedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("ProductId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AlternativeUnitId");
-
-                    b.HasIndex("ProductId", "AlternativeUnitId")
-                        .IsUnique();
-
-                    b.ToTable("product_unit_conversions", "base");
-                });
 
             modelBuilder.Entity("ERPDotNet.Domain.Modules.BaseInfo.Entities.Unit", b =>
                 {
@@ -327,39 +241,6 @@ namespace ERPDotNet.Infrastructure.Migrations
                             Name = "BaseInfo.Units.Delete",
                             ParentId = 31,
                             Title = "حذف واحد"
-                        },
-                        new
-                        {
-                            Id = 35,
-                            IsMenu = true,
-                            Name = "BaseInfo.Products",
-                            ParentId = 30,
-                            Title = "مدیریت کالاها",
-                            Url = "/base-info/products"
-                        },
-                        new
-                        {
-                            Id = 36,
-                            IsMenu = false,
-                            Name = "BaseInfo.Products.Create",
-                            ParentId = 35,
-                            Title = "تعریف کالا"
-                        },
-                        new
-                        {
-                            Id = 37,
-                            IsMenu = false,
-                            Name = "BaseInfo.Products.Edit",
-                            ParentId = 35,
-                            Title = "ویرایش کالا"
-                        },
-                        new
-                        {
-                            Id = 38,
-                            IsMenu = false,
-                            Name = "BaseInfo.Products.Delete",
-                            ParentId = 35,
-                            Title = "حذف کالا"
                         });
                 });
 
@@ -457,26 +338,6 @@ namespace ERPDotNet.Infrastructure.Migrations
                         {
                             RoleId = "1",
                             PermissionId = 34
-                        },
-                        new
-                        {
-                            RoleId = "1",
-                            PermissionId = 35
-                        },
-                        new
-                        {
-                            RoleId = "1",
-                            PermissionId = 36
-                        },
-                        new
-                        {
-                            RoleId = "1",
-                            PermissionId = 37
-                        },
-                        new
-                        {
-                            RoleId = "1",
-                            PermissionId = 38
                         });
                 });
 
@@ -752,36 +613,6 @@ namespace ERPDotNet.Infrastructure.Migrations
                     b.ToTable("user_tokens", "security");
                 });
 
-            modelBuilder.Entity("ERPDotNet.Domain.Modules.BaseInfo.Entities.Product", b =>
-                {
-                    b.HasOne("ERPDotNet.Domain.Modules.BaseInfo.Entities.Unit", "Unit")
-                        .WithMany()
-                        .HasForeignKey("UnitId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Unit");
-                });
-
-            modelBuilder.Entity("ERPDotNet.Domain.Modules.BaseInfo.Entities.ProductUnitConversion", b =>
-                {
-                    b.HasOne("ERPDotNet.Domain.Modules.BaseInfo.Entities.Unit", "AlternativeUnit")
-                        .WithMany()
-                        .HasForeignKey("AlternativeUnitId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("ERPDotNet.Domain.Modules.BaseInfo.Entities.Product", "Product")
-                        .WithMany("UnitConversions")
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("AlternativeUnit");
-
-                    b.Navigation("Product");
-                });
-
             modelBuilder.Entity("ERPDotNet.Domain.Modules.BaseInfo.Entities.Unit", b =>
                 {
                     b.HasOne("ERPDotNet.Domain.Modules.BaseInfo.Entities.Unit", "BaseUnit")
@@ -889,11 +720,6 @@ namespace ERPDotNet.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("ERPDotNet.Domain.Modules.BaseInfo.Entities.Product", b =>
-                {
-                    b.Navigation("UnitConversions");
                 });
 
             modelBuilder.Entity("ERPDotNet.Domain.Modules.UserAccess.Entities.Permission", b =>

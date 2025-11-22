@@ -41,7 +41,21 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             new Permission { Id = 10, Name = "UserAccess.SpecialPermissions", Title = "مدیریت دسترسی‌های ویژه", IsMenu = false, ParentId = 2 },
             
             // 4. تنظیمات 
-    new     Permission { Id = 90, Name = "General.Settings", Title = "تنظیمات سیستم", IsMenu = true, ParentId = 100, Url = "/settings" }
+            new Permission { Id = 90, Name = "General.Settings", Title = "تنظیمات سیستم", IsMenu = true, ParentId = 100, Url = "/settings" },
+            // === ماژول اطلاعات پایه (BaseInfo) ===
+            new Permission { Id = 30, Name = "BaseInfo", Title = "اطلاعات پایه", IsMenu = true, ParentId = 1 },
+
+            // زیرمجموعه واحد سنجش
+            new Permission { Id = 31, Name = "BaseInfo.Units", Title = "واحد سنجش", IsMenu = true, ParentId = 30, Url = "/base-info/units" },
+            new Permission { Id = 32, Name = "BaseInfo.Units.Create", Title = "تعریف واحد", IsMenu = false, ParentId = 31 },
+            new Permission { Id = 33, Name = "BaseInfo.Units.Edit", Title = "ویرایش واحد", IsMenu = false, ParentId = 31 },
+            new Permission { Id = 34, Name = "BaseInfo.Units.Delete", Title = "حذف واحد", IsMenu = false, ParentId = 31 },
+            // 35: کالاها
+            new Permission { Id = 35, Name = "BaseInfo.Products", Title = "مدیریت کالاها", IsMenu = true, ParentId = 30, Url = "/base-info/products" },
+            new Permission { Id = 36, Name = "BaseInfo.Products.Create", Title = "تعریف کالا", IsMenu = false, ParentId = 35 },
+            new Permission { Id = 37, Name = "BaseInfo.Products.Edit", Title = "ویرایش کالا", IsMenu = false, ParentId = 35 },
+            new Permission { Id = 38, Name = "BaseInfo.Products.Delete", Title = "حذف کالا", IsMenu = false, ParentId = 35 }
+
         );
     }
 }

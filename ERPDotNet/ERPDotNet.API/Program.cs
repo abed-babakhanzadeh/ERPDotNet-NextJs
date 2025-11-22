@@ -14,6 +14,7 @@ using System.Text;
 using ERPDotNet.Application; // برای متد اکستنشن
 using ERPDotNet.Application.Common.Interfaces;
 using ERPDotNet.Infrastructure.Common.Services;
+using StackExchange.Redis;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,6 +24,9 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
+// این خط می‌گوید: هر وقت کسی IApplicationDbContext خواست، همان AppDbContext را به او بده
+builder.Services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<AppDbContext>());
+
 // 2. Identity
 builder.Services.AddIdentity<User, IdentityRole>()
     .AddEntityFrameworkStores<AppDbContext>()
@@ -31,6 +35,10 @@ builder.Services.AddIdentity<User, IdentityRole>()
 // 3. JWT Configuration
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = Encoding.UTF8.GetBytes(jwtSettings["Secret"]!);
+
+// 2. Redis Configuration
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
+
 
 builder.Services.AddAuthentication(options =>
 {
@@ -53,11 +61,14 @@ builder.Services.AddAuthentication(options =>
 
 // 1. سرویس‌های لایه اپلیکیشن (MediatR)
 builder.Services.AddApplicationServices();
-// 2. سرویس‌های کش (Redis)
+// برای استفاده در IDistributedCache
 builder.Services.AddStackExchangeRedisCache(options =>
 {
-    options.Configuration = builder.Configuration.GetConnectionString("Redis");
+    options.Configuration = redisConnectionString;
 });
+// برای استفاده مستقیم (پاکسازی تگ‌ها)
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp => 
+    ConnectionMultiplexer.Connect(redisConnectionString));
 
 // 4. Services
 builder.Services.AddScoped<ITokenService, JwtTokenService>();

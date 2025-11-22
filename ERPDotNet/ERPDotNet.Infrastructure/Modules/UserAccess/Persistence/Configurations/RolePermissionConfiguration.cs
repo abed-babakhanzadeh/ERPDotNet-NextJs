@@ -27,7 +27,16 @@ public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermissi
             new RolePermission { RoleId = "1", PermissionId = 8 },
             new RolePermission { RoleId = "1", PermissionId = 9 },
             new RolePermission { RoleId = "1", PermissionId = 90 },
-            new RolePermission { RoleId = "1", PermissionId = 100 }
+            new RolePermission { RoleId = "1", PermissionId = 100 },
+            new RolePermission { RoleId = "1", PermissionId = 30 },
+            new RolePermission { RoleId = "1", PermissionId = 31 },
+            new RolePermission { RoleId = "1", PermissionId = 32 },
+            new RolePermission { RoleId = "1", PermissionId = 33 },
+            new RolePermission { RoleId = "1", PermissionId = 34 },
+            new RolePermission { RoleId = "1", PermissionId = 35 },
+            new RolePermission { RoleId = "1", PermissionId = 36 },
+            new RolePermission { RoleId = "1", PermissionId = 37 },
+            new RolePermission { RoleId = "1", PermissionId = 38 }
         );
     }
 }
