@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-// ⚠️ مهم: پورت زیر را با پورت پروژه .NET خودتان ست کنید (همانی که در Scalar دیدید)
 const API_BASE_URL = 'http://localhost:5249/api'; 
 
 const apiClient = axios.create({
@@ -10,15 +9,11 @@ const apiClient = axios.create({
   },
 });
 
-// -- Request Interceptor --
-// قبل از اینکه درخواست از مرورگر خارج شود، این تابع اجرا می‌شود
+// Request Interceptor
 apiClient.interceptors.request.use(
   (config) => {
-    // دریافت توکن از حافظه مرورگر
     const token = localStorage.getItem('accessToken');
-    
     if (token) {
-      // چسباندن توکن به هدر Authorization
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -26,15 +21,16 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// -- Response Interceptor --
-// وقتی جواب از سرور می‌آید، این تابع اجرا می‌شود
+// Response Interceptor (حیاتی برای حل مشکل 401)
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    // اگر خطای 401 (Unauthorized) گرفتیم، یعنی توکن منقضی شده
     if (error.response && error.response.status === 401) {
-      // اینجا می‌توانیم کاربر را به صفحه لاگین پرت کنیم
-      // window.location.href = '/login';
+      if (typeof window !== 'undefined') {
+        // توکن را پاک کن و برو به لاگین
+        localStorage.removeItem('accessToken');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

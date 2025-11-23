@@ -1,108 +1,79 @@
 "use client";
 
-import { useState } from "react";
-import { usePathname } from "next/navigation";
-import { ChevronDown, ChevronLeft } from "lucide-react";
-import { MenuItem } from "@/config/menuItems";
-import { usePermissions } from "@/providers/PermissionProvider";
-import { useTabs } from "@/providers/TabsProvider"; // <--- ایمپورت حیاتی
+import { X, ChevronRight, ChevronLeft } from "lucide-react";
 import { clsx } from "clsx";
+import { MENU_ITEMS } from "@/config/menuItems";
+import SidebarItem from "./SidebarItem";
+import { usePermissions } from "@/providers/PermissionProvider";
 
-interface Props {
-  item: MenuItem;
+// این اینترفیس باید export شود تا در جاهای دیگر شناخته شود
+export interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
   isCollapsed: boolean;
+  toggleCollapse: () => void;
 }
 
-export default function SidebarItem({ item, isCollapsed }: Props) {
-  const pathname = usePathname();
-  const { hasPermission } = usePermissions();
-  const { addTab } = useTabs(); // <--- استفاده از سیستم تب
-  const [isOpen, setIsOpen] = useState(false);
+export default function Sidebar({ isOpen, onClose, isCollapsed, toggleCollapse }: SidebarProps) {
+  const { loading } = usePermissions();
 
-  // 1. چک کردن دسترسی
-  // اگر پرمیشن تعریف شده باشد و کاربر نداشته باشد، رندر نمی‌شود
-  if (item.permission && !hasPermission(item.permission)) return null;
-
-  // 2. بررسی وضعیت فعال بودن (برای رنگ آبی)
-  const isActive =
-    item.href === pathname ||
-    item.submenu?.some((sub) => sub.href === pathname);
-
-  // هندلر کلیک (جلوگیری از رفرش و باز کردن تب)
-  const handleClick = (e: React.MouseEvent) => {
-    if (item.href) {
-      e.preventDefault(); // <--- جلوی رفرش صفحه را می‌گیرد
-      addTab(item.title, item.href); // <--- تب جدید باز می‌کند
-    }
-  };
-
-  // === حالت اول: آیتم ساده (بدون زیرمنو) ===
-  if (!item.submenu) {
-    return (
-      <a
-        href={item.href!}
-        onClick={handleClick}
-        className={clsx(
-          "flex items-center rounded-lg p-3 my-1 transition-colors hover:bg-gray-100 cursor-pointer select-none",
-          isActive ? "bg-blue-50 text-blue-700" : "text-gray-700",
-          isCollapsed && "justify-center"
-        )}
-        title={isCollapsed ? item.title : ""}
-      >
-        <item.icon size={20} className="shrink-0" />
-        {!isCollapsed && (
-          <span className="mr-3 text-sm font-medium">{item.title}</span>
-        )}
-      </a>
-    );
-  }
-
-  // === حالت دوم: منوی کشویی (آکاردئون) ===
+  // اگر هنوز پرمیشن‌ها لود نشده‌اند، می‌توانیم اسکلتون نشان دهیم یا نال
+  // اما نال برگرداندن ممکن است باعث پرش شود، پس بهتر است ساختار را رندر کنیم ولی منوها را نه
+  
   return (
-    <div className="my-1 select-none">
-      <button
-        onClick={() => !isCollapsed && setIsOpen(!isOpen)}
-        className={clsx(
-          "flex w-full items-center justify-between rounded-lg p-3 transition-colors hover:bg-gray-100",
-          isActive ? "text-blue-700" : "text-gray-700",
-          isCollapsed && "justify-center"
-        )}
-        title={isCollapsed ? item.title : ""}
-      >
-        <div className="flex items-center">
-          <item.icon size={20} className="shrink-0" />
-          {!isCollapsed && (
-            <span className="mr-3 text-sm font-medium">{item.title}</span>
-          )}
-        </div>
-
-        {/* فلش چرخان */}
-        {!isCollapsed && (
-          <ChevronLeft
-            size={16}
-            className={clsx(
-              "transition-transform duration-200",
-              isOpen && "-rotate-90"
-            )}
-          />
-        )}
-      </button>
-
-      {/* محتوای زیرمنو */}
-      {!isCollapsed && (
-        <div
-          className={clsx(
-            "overflow-hidden transition-all duration-300 ease-in-out",
-            isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
-          )}
-        >
-          <div className="mr-4 border-r border-gray-200 pr-2 mt-1 space-y-1">
-            {item.submenu.map((sub, index) => (
-              <SidebarItem key={index} item={sub} isCollapsed={false} /> // بازگشتی
-            ))}
-          </div>
-        </div>
+    <>
+      {/* Overlay موبایل */}
+      {isOpen && (
+        <div 
+          onClick={onClose}
+          className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm transition-opacity md:hidden"
+        />
       )}
-    </div>
+
+      <aside 
+        className={clsx(
+          "fixed right-0 top-0 z-40 h-screen border-l border-gray-200 bg-white transition-all duration-300 ease-in-out",
+          isOpen ? "translate-x-0" : "translate-x-full md:translate-x-0",
+          isCollapsed ? "md:w-20" : "md:w-64",
+          "w-64" 
+        )}
+      >
+        {/* Header */}
+        <div className={clsx(
+          "flex h-16 items-center border-b border-gray-200 bg-blue-700 px-4 transition-all",
+          isCollapsed ? "justify-center" : "justify-between"
+        )}>
+          {isCollapsed ? (
+             <span className="text-xl font-bold text-white">E</span> 
+          ) : (
+             <h1 className="text-xl font-bold text-white whitespace-nowrap">سامانه ERP</h1>
+          )}
+          <button onClick={onClose} className="text-white md:hidden"><X size={24} /></button>
+        </div>
+
+        {/* دکمه تغییر حالت */}
+        <button 
+          onClick={toggleCollapse}
+          className="absolute -left-3 top-20 z-50 hidden h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-md hover:bg-gray-100 md:flex"
+        >
+          {isCollapsed ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+        </button>
+
+        {/* لیست منو */}
+        <div className="h-[calc(100vh-4rem)] overflow-y-auto py-4 px-3 custom-scrollbar">
+          {!loading && (
+            <nav className="space-y-1">
+              {MENU_ITEMS.map((item, index) => (
+                <SidebarItem 
+                  key={index} 
+                  item={item} 
+                  isCollapsed={isCollapsed} 
+                />
+              ))}
+            </nav>
+          )}
+        </div>
+      </aside>
+    </>
   );
 }

@@ -32,11 +32,11 @@ export default function DashboardLayout({
     <PermissionProvider>
       <TabsProvider>
         <div className="min-h-screen bg-gray-50 flex">
-          {/* سایدبار هوشمند */}
-          <Sidebar
-            isOpen={isSidebarOpen}
+        {/* سایدبار هوشمند */}
+          <Sidebar 
+            isOpen={isSidebarOpen} 
             onClose={() => setIsSidebarOpen(false)}
-            isCollapsed={isCollapsed}
+            isCollapsed={isCollapsed} 
             toggleCollapse={() => setIsCollapsed(!isCollapsed)}
           />
 
