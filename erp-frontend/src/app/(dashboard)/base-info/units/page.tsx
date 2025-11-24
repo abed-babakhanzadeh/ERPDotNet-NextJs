@@ -13,6 +13,8 @@ import { useTabs } from '@/providers/TabsProvider';
 import MasterDetailLayout from "@/components/ui/MasterDetailLayout";
 import ERPGrid from "@/components/ui/ERPGrid";
 import { toast } from "sonner";
+import EditUnitForm from "./EditUnitForm";
+
 
 export default function UnitsPage() {
   const [data, setData] = useState<Unit[]>([]);
@@ -30,6 +32,11 @@ export default function UnitsPage() {
     pageIndex: 0,
     pageSize: 10,
   });
+
+  // استیت برای مدیریت مودال‌ها
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editingUnit, setEditingUnit] = useState<Unit | null>(null); // اگر پر باشد یعنی در حالت ویرایش هستیم
+
 
   const { addTab } = useTabs(); 
 
@@ -107,29 +114,34 @@ export default function UnitsPage() {
   );
 
   // هندلر حذف
-  const handleDelete = (row: Unit) => {
+const handleDelete = async (row: Unit) => {
       if(!confirm(`آیا از حذف واحد "${row.title}" اطمینان دارید؟`)) return;
-      // فعلا توست نمایش می‌دهیم تا API حذف تکمیل شود
-      toast.info("قابلیت حذف به زودی...");
+      
+      try {
+          await apiClient.delete(`/Units/${row.id}`);
+          toast.success("واحد با موفقیت حذف شد");
+          fetchData(); // رفرش گرید
+      } catch (error: any) {
+          toast.error("خطا در حذف واحد. ممکن است در کالاها استفاده شده باشد.");
+      }
   };
 
   return (
-    <ProtectedPage permission="BaseInfo.Units">
+      <ProtectedPage permission="BaseInfo.Units">
       <MasterDetailLayout
         title="مدیریت واحدهای سنجش"
         icon={Ruler}
-        // دکمه افزودن در هدر صفحه (سمت چپ)
         actions={
             <PermissionGuard permission="BaseInfo.Units.Create">
                 <button 
-                onClick={() => setIsModalOpen(true)}
+                onClick={() => setCreateModalOpen(true)} // تغییر نام استیت
                 className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm shadow-sm"
                 >
                 <Plus size={16} />
                 واحد جدید
                 </button>
             </PermissionGuard>
-        } 
+        }
       >
          <div className="p-2 h-full">
             {/* استفاده از گرید استاندارد پروژه */}
@@ -139,13 +151,7 @@ export default function UnitsPage() {
                 rowCount={rowCount}
                 // اتصال State ها به ERPGrid
                 state={{
-                    columnFilters,
-                    globalFilter,
-                    isLoading,
-                    pagination,
-                    showAlertBanner: isError,
-                    showProgressBars: isRefetching,
-                    sorting,
+                    columnFilters, globalFilter, isLoading, pagination, showAlertBanner: isError, showProgressBars: isRefetching, sorting,
                 }}
                 // اتصال هندلرها
                 onColumnFiltersChange={setColumnFilters}
@@ -153,16 +159,23 @@ export default function UnitsPage() {
                 onPaginationChange={setPagination}
                 onSortingChange={setSorting}
                 
-                // دکمه‌های عملیات (ویرایش/حذف)
-                renderRowActions={({ row }: { row: MRT_Row<Unit> }) => (
+                renderRowActions={({ row }) => (
                     <div className="flex gap-2 justify-center">
                         <PermissionGuard permission="BaseInfo.Units.Edit">
-                            <button onClick={() => alert(`Edit ${row.original.title}`)} className="text-blue-600 hover:bg-blue-50 p-1 rounded" title="ویرایش">
+                            <button 
+                                onClick={() => setEditingUnit(row.original)} // ست کردن آیتم برای ویرایش
+                                className="text-blue-600 hover:bg-blue-50 p-1 rounded transition" 
+                                title="ویرایش"
+                            >
                                 <Edit size={18}/>
                             </button>
                         </PermissionGuard>
                         <PermissionGuard permission="BaseInfo.Units.Delete">
-                            <button onClick={() => handleDelete(row.original)} className="text-red-600 hover:bg-red-50 p-1 rounded" title="حذف">
+                            <button 
+                                onClick={() => handleDelete(row.original)} 
+                                className="text-red-600 hover:bg-red-50 p-1 rounded transition" 
+                                title="حذف"
+                            >
                                 <Trash size={18}/>
                             </button>
                         </PermissionGuard>
@@ -171,16 +184,30 @@ export default function UnitsPage() {
             />
          </div>
          
-         {/* مودال تعریف واحد */}
-         <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="تعریف واحد سنجش">
+         {/* مودال ایجاد */}
+         <Modal isOpen={createModalOpen} onClose={() => setCreateModalOpen(false)} title="تعریف واحد سنجش">
             <CreateUnitForm 
-                onCancel={() => setIsModalOpen(false)}
+                onCancel={() => setCreateModalOpen(false)}
                 onSuccess={() => {
-                    setIsModalOpen(false);
-                    fetchData(); // رفرش لیست بعد از ثبت
+                    setCreateModalOpen(false);
+                    fetchData();
                 }}
             />
         </Modal>
+
+        {/* مودال ویرایش (فقط وقتی editingUnit پر باشد رندر می‌شود) */}
+        {editingUnit && (
+            <Modal isOpen={!!editingUnit} onClose={() => setEditingUnit(null)} title={`ویرایش واحد ${editingUnit.title}`}>
+                <EditUnitForm 
+                    unit={editingUnit}
+                    onCancel={() => setEditingUnit(null)}
+                    onSuccess={() => {
+                        setEditingUnit(null);
+                        fetchData();
+                    }}
+                />
+            </Modal>
+        )}
       </MasterDetailLayout>
     </ProtectedPage>
   );

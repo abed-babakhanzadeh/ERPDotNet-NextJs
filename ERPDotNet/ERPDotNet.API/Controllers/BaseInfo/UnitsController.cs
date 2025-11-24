@@ -1,6 +1,8 @@
-using ERPDotNet.API.Attributes; // برای امنیت
+using ERPDotNet.API.Attributes;
 using ERPDotNet.Application.Common.Models;
 using ERPDotNet.Application.Modules.BaseInfo.Commands.CreateUnit;
+using ERPDotNet.Application.Modules.BaseInfo.Commands.UpdateUnit; // اضافه شد
+using ERPDotNet.Application.Modules.BaseInfo.Commands.DeleteUnit; // اضافه شد
 using ERPDotNet.Application.Modules.BaseInfo.Queries.GetAllUnits;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -19,14 +21,42 @@ public class UnitsController : ControllerBase
     }
 
     [HttpPost]
-    [HasPermission("BaseInfo.Units.Create")] // امنیت ریزدانه
+    [HasPermission("BaseInfo.Units.Create")]
     public async Task<IActionResult> Create([FromBody] CreateUnitCommand command)
     {
         var id = await _mediator.Send(command);
         return Ok(new { id });
     }
 
-    // 1. مخصوص جدول (سنگین و صفحه‌بندی شده)
+    // === متد جدید: ویرایش ===
+    [HttpPut("{id}")]
+    [HasPermission("BaseInfo.Units.Edit")]
+    public async Task<IActionResult> Update(int id, [FromBody] UpdateUnitCommand command)
+    {
+        if (id != command.Id)
+        {
+            return BadRequest("ID in url and body must match");
+        }
+
+        var result = await _mediator.Send(command);
+        
+        if (!result) return NotFound();
+
+        return Ok(new { success = true });
+    }
+
+    // === متد جدید: حذف ===
+    [HttpDelete("{id}")]
+    [HasPermission("BaseInfo.Units.Delete")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var result = await _mediator.Send(new DeleteUnitCommand(id));
+        
+        if (!result) return NotFound();
+
+        return Ok(new { success = true });
+    }
+
     [HttpPost("search")]
     [HasPermission("BaseInfo.Units")]
     public async Task<ActionResult<PaginatedResult<UnitDto>>> Search([FromBody] GetAllUnitsQuery query)
@@ -35,10 +65,7 @@ public class UnitsController : ControllerBase
         return Ok(result);
     }
 
-    // 2. مخصوص دراپ‌داون (سبک و سریع)
-    // این همان آدرس قدیمی GET /api/Units است که فرم کالا صدا می‌زند
     [HttpGet]
-    // [HasPermission("BaseInfo.Units")] <--- برای دراپ‌داون معمولاً سخت‌گیری کمتری می‌کنیم یا پرمیشن عمومی می‌گذاریم
     public async Task<ActionResult<List<UnitDto>>> GetLookup()
     {
         var result = await _mediator.Send(new GetUnitsLookupQuery());

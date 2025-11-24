@@ -13,6 +13,8 @@ import { useTabs } from '@/providers/TabsProvider';
 import MasterDetailLayout from "@/components/ui/MasterDetailLayout";
 import ERPGrid from "@/components/ui/ERPGrid";
 import { toast } from "sonner";
+import EditProductForm from "./EditProductForm";
+
 
 export default function ProductsPage() {
   const [data, setData] = useState<Product[]>([]);
@@ -31,6 +33,9 @@ export default function ProductsPage() {
     pageIndex: 0,
     pageSize: 10,
   });
+
+  // استیت برای ویرایش
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   const fetchData = async () => {
     if (!data.length) setIsLoading(true);
@@ -122,12 +127,20 @@ export default function ProductsPage() {
     [],
   );
 
-  const handleDelete = async (id: number) => {
-    if(!confirm("آیا از حذف این کالا اطمینان دارید؟")) return;
-    toast.info("قابلیت حذف به زودی اضافه می‌شود");
+// هندلر حذف
+  const handleDelete = async (row: Product) => {
+    if(!confirm(`آیا از حذف کالای "${row.name}" اطمینان دارید؟`)) return;
+    
+    try {
+        await apiClient.delete(`/Products/${row.id}`);
+        toast.success("کالا حذف شد");
+        fetchData(); // رفرش لیست
+    } catch (error: any) {
+        toast.error("خطا در حذف کالا. ممکن است گردش مالی داشته باشد.");
+    }
   };
 
-  return (
+ return (
     <ProtectedPage permission="BaseInfo.Products">
       <MasterDetailLayout
         title="مدیریت کالاها"
@@ -162,22 +175,33 @@ export default function ProductsPage() {
                 onPaginationChange={setPagination}
                 onSortingChange={setSorting}
                 
-                renderRowActions={({ row }: { row: MRT_Row<Product> }) => (
+               renderRowActions={({ row }) => (
                     <div className="flex gap-2 justify-center">
-                        <button onClick={() => alert('Edit')} className="text-blue-600 hover:bg-blue-50 p-1 rounded"><Edit size={18}/></button>
-                        <button onClick={() => handleDelete(row.original.id)} className="text-red-600 hover:bg-red-50 p-1 rounded"><Trash size={18}/></button>
+                        <PermissionGuard permission="BaseInfo.Products.Edit">
+                            <button 
+                                onClick={() => setEditingProduct(row.original)} // باز کردن مودال ویرایش
+                                className="text-blue-600 hover:bg-blue-50 p-1 rounded transition"
+                                title="ویرایش"
+                            >
+                                <Edit size={18}/>
+                            </button>
+                        </PermissionGuard>
+                        
+                        <PermissionGuard permission="BaseInfo.Products.Delete">
+                            <button 
+                                onClick={() => handleDelete(row.original)} 
+                                className="text-red-600 hover:bg-red-50 p-1 rounded transition"
+                                title="حذف"
+                            >
+                                <Trash size={18}/>
+                            </button>
+                        </PermissionGuard>
                     </div>
                 )}
-
-                mantineTableBodyRowProps={({ row }) => ({
-                    onDoubleClick: () => {
-                        addTab(`کالا: ${row.original.name}`, `/base-info/products/${row.original.id}`);
-                    },
-                    className: "cursor-pointer hover:bg-blue-50 transition-colors"
-                })}
             />
          </div>
          
+         {/* مودال ایجاد */}
          <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="تعریف کالای جدید">
             <CreateProductForm 
                 onCancel={() => setIsModalOpen(false)}
@@ -187,6 +211,20 @@ export default function ProductsPage() {
                 }}
             />
         </Modal>
+
+        {/* مودال ویرایش - فقط وقتی دیتایی انتخاب شده باشد نمایش داده می‌شود */}
+        {editingProduct && (
+            <Modal isOpen={!!editingProduct} onClose={() => setEditingProduct(null)} title={`ویرایش کالا: ${editingProduct.name}`}>
+                <EditProductForm 
+                    product={editingProduct}
+                    onCancel={() => setEditingProduct(null)}
+                    onSuccess={() => {
+                        setEditingProduct(null);
+                        fetchData();
+                    }}
+                />
+            </Modal>
+        )}
       </MasterDetailLayout>
     </ProtectedPage>
   );

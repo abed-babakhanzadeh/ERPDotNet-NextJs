@@ -1,6 +1,8 @@
 using ERPDotNet.API.Attributes;
 using ERPDotNet.Application.Common.Models;
 using ERPDotNet.Application.Modules.BaseInfo.Commands.CreateProduct;
+using ERPDotNet.Application.Modules.BaseInfo.Commands.DeleteProduct;
+using ERPDotNet.Application.Modules.BaseInfo.Commands.UpdateProduct;
 using ERPDotNet.Application.Modules.BaseInfo.Queries.GetAllProducts;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -32,5 +34,32 @@ public class ProductsController : ControllerBase
     {
         var result = await _mediator.Send(query);
         return Ok(result);
+    }
+
+    [HttpPut("{id}")]
+    [HasPermission("BaseInfo.Products.Edit")]
+    public async Task<IActionResult> Update(int id, [FromBody] UpdateProductCommand command)
+    {
+        if (id != command.Id)
+        {
+            return BadRequest("ID در URL با بدنه درخواست همخوانی ندارد.");
+        }
+
+        var result = await _mediator.Send(command);
+        
+        if (!result) return NotFound();
+
+        return Ok(new { success = true });
+    }
+
+    [HttpDelete("{id}")]
+    [HasPermission("BaseInfo.Products.Delete")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var result = await _mediator.Send(new DeleteProductCommand(id));
+
+        if (!result) return NotFound();
+
+        return Ok(new { success = true });
     }
 }

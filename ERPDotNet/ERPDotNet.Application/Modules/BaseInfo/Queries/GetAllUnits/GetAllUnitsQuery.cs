@@ -7,7 +7,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ERPDotNet.Application.Modules.BaseInfo.Queries.GetAllUnits;
 
-public record UnitDto(int Id, string Title, string Symbol, decimal ConversionFactor, string? BaseUnitName);
+public record UnitDto(
+    int Id, 
+    string Title, 
+    string Symbol, 
+    int Precision,        // جدید
+    bool IsActive,        // جدید
+    int? BaseUnitId,      // جدید
+    decimal ConversionFactor, 
+    string? BaseUnitName
+);
 
 // 1. فعال‌سازی کش (Uncomment)
 // چون ما ورودی (Request) را سریالایز می‌کنیم و جزو کلید کش می‌کنیم،
@@ -56,6 +65,9 @@ public class GetAllUnitsHandler : IRequestHandler<GetAllUnitsQuery, PaginatedRes
             x.Id, 
             x.Title, 
             x.Symbol, 
+            x.Precision,          // اضافه شد
+            x.IsActive,           // اضافه شد
+            x.BaseUnitId,         // اضافه شد
             x.ConversionFactor, 
             x.BaseUnit != null ? x.BaseUnit.Title : null
         ));

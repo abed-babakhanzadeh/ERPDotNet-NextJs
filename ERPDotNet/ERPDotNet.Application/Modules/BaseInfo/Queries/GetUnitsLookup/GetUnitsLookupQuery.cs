@@ -30,6 +30,9 @@ public class GetUnitsLookupHandler : IRequestHandler<GetUnitsLookupQuery, List<U
                 x.Id, 
                 x.Title, 
                 x.Symbol, 
+                x.Precision,          // اضافه شد
+                x.IsActive,           // اضافه شد
+                x.BaseUnitId,         // اضافه شد
                 x.ConversionFactor, 
                 x.BaseUnit != null ? x.BaseUnit.Title : null
             ))

@@ -15,14 +15,16 @@ using ERPDotNet.Application; // برای متد اکستنشن
 using ERPDotNet.Application.Common.Interfaces;
 using ERPDotNet.Infrastructure.Common.Services;
 using StackExchange.Redis;
+using ERPDotNet.API.Services;
+using ERPDotNet.Infrastructure;
 
 
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Database
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(connectionString));
+// var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+// builder.Services.AddDbContext<AppDbContext>(options =>
+//     options.UseNpgsql(connectionString));
 
 // این خط می‌گوید: هر وقت کسی IApplicationDbContext خواست، همان AppDbContext را به او بده
 builder.Services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<AppDbContext>());
@@ -58,6 +60,9 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(secretKey)
     };
 });
+// === اضافه کردن سرویس‌های لایه اینفراستراکچر ===
+// این خط باعث می‌شود دیتابیس و اینترسپتورها فعال شوند
+builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // 1. سرویس‌های لایه اپلیکیشن (MediatR)
 builder.Services.AddApplicationServices();
@@ -70,12 +75,16 @@ builder.Services.AddStackExchangeRedisCache(options =>
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp => 
     ConnectionMultiplexer.Connect(redisConnectionString));
 
+
+
 // 4. Services
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddControllers();
 builder.Services.AddScoped<ICacheService, RedisCacheService>();
 
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddHttpContextAccessor(); // این خیلی مهم است
 
 
 

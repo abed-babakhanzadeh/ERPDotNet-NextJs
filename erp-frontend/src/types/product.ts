@@ -1,4 +1,6 @@
 export interface ProductConversionDto {
+  id: number;                // شناسه برای ویرایش
+  alternativeUnitId: number; // شناسه واحد برای دراپ‌داون
   alternativeUnitName: string;
   factor: number;
 }
@@ -7,9 +9,16 @@ export interface Product {
   id: number;
   code: string;
   name: string;
+  
+  // فیلدهای نمایشی (برای گرید)
   unitName: string;
   supplyType: string;
-  conversions: ProductConversionDto[]; // <--- فیلد جدید
+
+  // فیلدهای ویرایشی (برای فرم)
+  unitId: number;        // <--- جدید
+  supplyTypeId: number;  // <--- جدید
+  
+  conversions: ProductConversionDto[];
 }
 
 // این برای فرم ثبت است (ساختار ورودی به API)

@@ -1,6 +1,6 @@
 using ERPDotNet.Application.Common.Attributes;
 using ERPDotNet.Application.Common.Interfaces;
-using ERPDotNet.Domain.Modules.BaseInfo.Entities;
+using ERPDotNet.Domain.Modules.BaseInfo.Entities; // برای دسترسی به Enum
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using ERPDotNet.Application.Common.Extensions;
@@ -13,15 +13,27 @@ public record ProductDto(
     int Id, 
     string Code, 
     string Name, 
-    string UnitName,      // نام واحد اصلی
-    string SupplyType,    // عنوان فارسی نوع تامین
-    List<ProductConversionDto> Conversions   // تعداد واحدهای فرعی (برای اطلاع)
+    
+    // --- تغییرات برای واحد سنجش ---
+    int UnitId,           // <--- جدید: برای ست کردن دراپ‌داون در ویرایش
+    string UnitName,      // نام واحد (برای نمایش در گرید)
+
+    // --- تغییرات برای نوع تامین ---
+    int SupplyTypeId,     // <--- جدید: عدد Enum (1, 2, 3) برای فرم ویرایش
+    string SupplyType,    // عنوان فارسی (برای نمایش در گرید)
+    
+    List<ProductConversionDto> Conversions
 );
 
-// 1. ارث‌بری از PaginatedRequest و فعال‌سازی کش
 [Cached(timeToLiveSeconds: 600, "Products")]
 public record GetAllProductsQuery : PaginatedRequest, IRequest<PaginatedResult<ProductDto>>;
-public record ProductConversionDto(string AlternativeUnitName, decimal Factor);
+
+public record ProductConversionDto(
+    int Id,               
+    int AlternativeUnitId, 
+    string AlternativeUnitName, 
+    decimal Factor
+);
 
 public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, PaginatedResult<ProductDto>>
 {
@@ -42,7 +54,7 @@ public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, Pagina
             .ThenInclude(c => c.AlternativeUnit)
             .AsQueryable();
 
-        // 2. اعمال فیلتر متنی ساده (SearchBox)
+        // 2. فیلتر جستجو
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
         {
             query = query.Where(p => 
@@ -50,35 +62,41 @@ public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, Pagina
                 p.Code.Contains(request.SearchTerm));
         }
 
-        // 3. اعمال فیلترهای پیشرفته (JSON Filters)
+        // 3. فیلترهای داینامیک
         query = query.ApplyDynamicFilters(request.Filters);
 
-        // 4. اعمال سورت داینامیک
+        // 4. سورت
         if (!string.IsNullOrEmpty(request.SortColumn))
         {
             query = query.OrderByDynamic(request.SortColumn, request.SortDescending);
         }
         else
         {
-            query = query.OrderBy(p => p.Code); // سورت پیش‌فرض
+            query = query.OrderBy(p => p.Code);
         }
 
-        // 5. پروجکشن به DTO
+        // 5. پروجکشن (اصلاح شده)
         var dtoQuery = query.Select(p => new ProductDto(
             p.Id,
             p.Code,
             p.Name,
-            p.Unit.Title,
+            
+            p.UnitId,     // <--- مقدار عددی ID واحد
+            p.Unit.Title, // مقدار متنی عنوان واحد
+            
+            (int)p.SupplyType, // <--- کست کردن Enum به int
             p.SupplyType == ProductSupplyType.Purchased ? "خریدنی" : 
             p.SupplyType == ProductSupplyType.Manufactured ? "تولیدی" : "خدمات",
-            // مپ کردن لیست تبدیل‌ها
+            
             p.UnitConversions.Select(c => new ProductConversionDto(
+                c.Id,
+                c.AlternativeUnitId,
                 c.AlternativeUnit.Title, 
                 c.Factor
             )).ToList()
         ));
 
-        // 6. خروجی صفحه‌بندی شده
+        // 6. خروجی
         return await dtoQuery.ToPaginatedListAsync(request.PageNumber, request.PageSize, cancellationToken);
     }
 }
