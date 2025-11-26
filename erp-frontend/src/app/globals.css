@@ -1,1 +1,114 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 100% 97%;
+    --foreground: 222 84% 5%;
+
+    --card: 210 100% 100%;
+    --card-foreground: 222 84% 5%;
+
+    --popover: 210 100% 100%;
+    --popover-foreground: 222 84% 5%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 216 100% 81%;
+    --secondary-foreground: 222 84% 5%;
+
+    --muted: 210 40% 93%;
+    --muted-foreground: 222 84% 25%;
+
+    --accent: 207 70% 70%;
+    --accent-foreground: 222 84% 5%;
+    
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 217 91% 60%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222 84% 5%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 84% 5%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 84% 5%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222 84% 5%;
+    
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 213 90% 50%;
+    
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+  }
+}
+
+@layer components {
+    .react-resizable {
+      position: relative;
+      background-clip: padding-box;
+    }
+
+    .react-resizable-handle {
+      position: absolute;
+      width: 20px;
+      height: 100%;
+      top: 0;
+      right: -10px;
+      cursor: col-resize;
+      z-index: 10;
+    }
+
+    [dir="rtl"] .react-resizable-handle {
+        right: auto;
+        left: -10px;
+    }
+    
+    .react-resizable-handle::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 9px;
+      width: 2px;
+      height: 100%;
+      background-color: hsl(var(--border));
+    }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
