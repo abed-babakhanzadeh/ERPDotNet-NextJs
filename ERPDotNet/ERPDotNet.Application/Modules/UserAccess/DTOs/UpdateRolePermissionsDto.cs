@@ -1,5 +1,5 @@
 public class UpdateRolePermissionsDto
 {
-    public string RoleId { get; set; }
-    public List<int> PermissionIds { get; set; } // لیست آیدی‌هایی که تیک خورده‌اند
+    public required string RoleId { get; set; }
+    public required List<int> PermissionIds { get; set; } // لیست آیدی‌هایی که تیک خورده‌اند
 }

@@ -6,8 +6,8 @@ namespace ERPDotNet.Domain.Modules.UserAccess.Entities;
 public class Permission
 {
     public int Id { get; set; }
-    public string Name { get; set; } // کد سیستمی: Users.Create
-    public string Title { get; set; } // عنوان فارسی: ایجاد کاربر
+    public required string Name { get; set; } // کد سیستمی: Users.Create
+    public required string Title { get; set; } // عنوان فارسی: ایجاد کاربر
     public string? Url { get; set; } // اگر منو باشد، لینک دارد
     public bool IsMenu { get; set; } // آیا در سایدبار نمایش داده شود؟
     

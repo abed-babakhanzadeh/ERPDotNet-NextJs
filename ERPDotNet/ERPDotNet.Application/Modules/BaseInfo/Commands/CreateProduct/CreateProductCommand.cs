@@ -11,10 +11,10 @@ namespace ERPDotNet.Application.Modules.BaseInfo.Commands.CreateProduct;
 [CacheInvalidation("Products")] // پاک کردن کش لیست کالاها بعد از ثبت
 public record CreateProductCommand : IRequest<int>
 {
-    public string Code { get; set; }
-    public string Name { get; set; }
+    public required string Code { get; set; }
+    public required string Name { get; set; }
     public string? TechnicalSpec { get; set; }
-    public int UnitId { get; set; } // واحد اصلی
+    public required int UnitId { get; set; } // واحد اصلی
     public ProductSupplyType SupplyType { get; set; } // 1: خریدنی، 2: تولیدی
     
     // لیست تبدیل واحدها (اختیاری)

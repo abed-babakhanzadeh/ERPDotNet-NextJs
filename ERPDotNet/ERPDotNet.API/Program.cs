@@ -1,47 +1,69 @@
+using ERPDotNet.API.Services;
+using ERPDotNet.Application;
+using ERPDotNet.Application.Common.Interfaces;
 using ERPDotNet.Application.Modules.UserAccess.Interfaces;
 using ERPDotNet.Domain.Modules.UserAccess.Entities;
+using ERPDotNet.Infrastructure;
+using ERPDotNet.Infrastructure.Common.Services;
 using ERPDotNet.Infrastructure.Modules.UserAccess.Services;
 using ERPDotNet.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.OpenApi;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
-using System.Text;
-using ERPDotNet.Application; // برای متد اکستنشن
-using ERPDotNet.Application.Common.Interfaces;
-using ERPDotNet.Infrastructure.Common.Services;
 using StackExchange.Redis;
-using ERPDotNet.API.Services;
-using ERPDotNet.Infrastructure;
-
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Database
-// var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-// builder.Services.AddDbContext<AppDbContext>(options =>
-//     options.UseNpgsql(connectionString));
+#region 1. Configuration & Secrets
+// دریافت تنظیمات ضروری
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var secretKey = Encoding.UTF8.GetBytes(jwtSettings["Secret"] 
+    ?? throw new InvalidOperationException("JWT Secret is missing in appsettings.json"));
 
-// این خط می‌گوید: هر وقت کسی IApplicationDbContext خواست، همان AppDbContext را به او بده
-builder.Services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<AppDbContext>());
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis") 
+    ?? throw new InvalidOperationException("Redis connection string is missing.");
+#endregion
 
-// 2. Identity
+#region 2. Infrastructure Layer (Database, Redis, Identity)
+// ثبت سرویس‌های لایه اینفراستراکچر (شامل DbContext و Interceptors)
+builder.Services.AddInfrastructureServices(builder.Configuration);
+
+// Identity Configuration
 builder.Services.AddIdentity<User, IdentityRole>()
     .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
 
-// 3. JWT Configuration
-var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = Encoding.UTF8.GetBytes(jwtSettings["Secret"]!);
+// Redis (Direct Connection & Cache)
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp => 
+    ConnectionMultiplexer.Connect(redisConnectionString));
 
-// 2. Redis Configuration
-var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = redisConnectionString;
+});
+#endregion
 
+#region 3. Application Layer (MediatR, Services)
+// ثبت سرویس‌های لایه اپلیکیشن (MediatR و Behavior ها)
+builder.Services.AddApplicationServices();
 
+// ثبت سرویس‌های خاص
+builder.Services.AddScoped<ITokenService, JwtTokenService>();
+builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddScoped<ICacheService, RedisCacheService>();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+#endregion
+
+#region 4. Presentation Layer (API, Auth, Swagger)
+builder.Services.AddControllers();
+builder.Services.AddHttpContextAccessor();
+
+// Authentication & JWT
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -60,42 +82,17 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(secretKey)
     };
 });
-// === اضافه کردن سرویس‌های لایه اینفراستراکچر ===
-// این خط باعث می‌شود دیتابیس و اینترسپتورها فعال شوند
-builder.Services.AddInfrastructureServices(builder.Configuration);
 
-// 1. سرویس‌های لایه اپلیکیشن (MediatR)
-builder.Services.AddApplicationServices();
-// برای استفاده در IDistributedCache
-builder.Services.AddStackExchangeRedisCache(options =>
-{
-    options.Configuration = redisConnectionString;
-});
-// برای استفاده مستقیم (پاکسازی تگ‌ها)
-builder.Services.AddSingleton<IConnectionMultiplexer>(sp => 
-    ConnectionMultiplexer.Connect(redisConnectionString));
-
-
-
-// 4. Services
-builder.Services.AddScoped<ITokenService, JwtTokenService>();
-builder.Services.AddScoped<IPermissionService, PermissionService>();
-builder.Services.AddControllers();
-builder.Services.AddScoped<ICacheService, RedisCacheService>();
-
-builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-builder.Services.AddHttpContextAccessor(); // این خیلی مهم است
-
-
-
-// 5. OpenAPI with JWT Support
+// OpenAPI (Swagger/Scalar)
 builder.Services.AddOpenApi("v1", options =>
 {
     options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
 });
+#endregion
 
 var app = builder.Build();
 
+#region 5. Middleware Pipeline
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -118,11 +115,12 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+#endregion
 
 app.Run();
 
 // =========================================================
-// JWT Security Transformer for OpenAPI
+// Helpers
 // =========================================================
 internal sealed class BearerSecuritySchemeTransformer : IOpenApiDocumentTransformer
 {

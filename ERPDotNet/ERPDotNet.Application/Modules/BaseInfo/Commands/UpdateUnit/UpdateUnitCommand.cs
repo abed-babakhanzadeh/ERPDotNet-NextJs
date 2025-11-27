@@ -11,8 +11,8 @@ namespace ERPDotNet.Application.Modules.BaseInfo.Commands.UpdateUnit;
 public record UpdateUnitCommand : IRequest<bool>
 {
     public int Id { get; set; } // شناسه برای پیدا کردن رکورد
-    public string Title { get; set; }
-    public string Symbol { get; set; }
+    public required string Title { get; set; }
+    public required string Symbol { get; set; }
     public int Precision { get; set; }
     public bool IsActive { get; set; } // امکان غیرفعال کردن واحد
 

@@ -18,7 +18,7 @@ public record PaginatedRequest
 
 public class FilterModel
 {
-    public string PropertyName { get; set; } // نام ستون (مثلا "ConversionFactor")
-    public string Operation { get; set; }    // نوع عملیات: "eq", "gt", "lt", "contains"
-    public string Value { get; set; }        // مقدار: "10", "kg"
+    public required string PropertyName { get; set; } // نام ستون (مثلا "ConversionFactor")
+    public required string Operation { get; set; }    // نوع عملیات: "eq", "gt", "lt", "contains"
+    public required string Value { get; set; }        // مقدار: "10", "kg"
 }

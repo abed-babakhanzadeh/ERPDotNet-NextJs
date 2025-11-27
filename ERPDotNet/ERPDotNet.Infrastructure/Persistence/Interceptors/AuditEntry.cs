@@ -1,4 +1,4 @@
-using ERPDotNet.Domain.Common; // برای دسترسی به AuditTrail
+using ERPDotNet.Domain.Common;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using System.Text.Json;
 
@@ -12,13 +12,20 @@ public class AuditEntry
     }
 
     public EntityEntry Entry { get; }
-    public string UserId { get; set; }
-    public string TableName { get; set; }
-    public Dictionary<string, object> KeyValues { get; } = new();
-    public Dictionary<string, object> OldValues { get; } = new();
-    public Dictionary<string, object> NewValues { get; } = new();
+    
+    // حل ارور CS8618: اجباری کردن فیلدها
+    public required string UserId { get; set; }
+    public required string TableName { get; set; }
+    
+    // حل ارور CS8601: تغییر object به object? چون دیتابیس نال هم دارد
+    public Dictionary<string, object?> KeyValues { get; } = new();
+    public Dictionary<string, object?> OldValues { get; } = new();
+    public Dictionary<string, object?> NewValues { get; } = new();
+    
     public List<string> ChangedColumns { get; } = new();
-    public string AuditType { get; set; } // Create, Update, Delete
+    
+    // حل ارور CS8618: اجباری کردن
+    public required string AuditType { get; set; } 
 
     public AuditTrail ToAuditTrail()
     {

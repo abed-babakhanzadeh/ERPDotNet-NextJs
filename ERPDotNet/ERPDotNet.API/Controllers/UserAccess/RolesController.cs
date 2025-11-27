@@ -26,7 +26,7 @@ public class RolesController : ControllerBase
     {
         var roles = await _roleManager.Roles
             .AsNoTracking()
-            .Select(r => new RoleDto { Id = r.Id, Name = r.Name })
+            .Select(r => new RoleDto { Id = r.Id, Name = r.Name ?? string.Empty })
             .ToListAsync();
 
         return Ok(roles);

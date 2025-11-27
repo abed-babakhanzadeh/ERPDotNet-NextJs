@@ -5,17 +5,17 @@ namespace ERPDotNet.Application.Modules.UserAccess.DTOs;
 public class CreateUserDto
 {
     [Required]
-    public string FirstName { get; set; }
+    public required string FirstName { get; set; }
     [Required]
-    public string LastName { get; set; }
+    public required string LastName { get; set; }
     [Required]
-    public string Username { get; set; }
+    public required string Username { get; set; }
     [Required]
     [EmailAddress]
-    public string Email { get; set; }
+    public required string Email { get; set; }
     [Required]
-    public List<string> Roles { get; set; } = new();
+    public List<string>? Roles { get; set; } = new();
     [Required]
-    public string Password { get; set; }
-    public string PersonnelCode { get; set; }
+    public required string Password { get; set; }
+    public string? PersonnelCode { get; set; }
 }

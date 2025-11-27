@@ -38,10 +38,10 @@ public class UsersController : ControllerBase
             userDtos.Add(new UserDto
             {
                 Id = user.Id,
-                Username = user.UserName,
+                Username = user.UserName ?? string.Empty,
                 FirstName = user.FirstName,
                 LastName = user.LastName,
-                Email = user.Email,
+                Email = user.Email ?? string.Empty,
                 PersonnelCode = user.PersonnelCode,
                 IsActive = user.IsActive,
                 CreatedAt = user.CreatedAt.ToShortDateString(),

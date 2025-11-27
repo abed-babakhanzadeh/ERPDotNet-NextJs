@@ -28,7 +28,7 @@ public class HasPermissionFilter : IAuthorizationFilter
     public void OnAuthorization(AuthorizationFilterContext context)
     {
         // 1. آیا کاربر لاگین کرده؟
-        if (!context.HttpContext.User.Identity.IsAuthenticated)
+        if (context.HttpContext?.User?.Identity?.IsAuthenticated != true)
         {
             context.Result = new UnauthorizedResult();
             return;

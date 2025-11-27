@@ -80,13 +80,13 @@ public class PermissionService : IPermissionService
         var distinctPermissions = new HashSet<Permission>();
         
         // 1. افزودن پرمیشن‌های نقش
-        foreach (var p in rolePermissions) distinctPermissions.Add(p);
+        foreach (var p in rolePermissions) distinctPermissions.Add(p!);
 
         // 2. اعمال پرمیشن‌های مستقیم (Override)
         foreach (var up in directUserPermissions)
         {
             if (up.IsGranted) 
-                distinctPermissions.Add(up.Permission);
+                distinctPermissions.Add(up.Permission!);
             else 
                 distinctPermissions.RemoveWhere(p => p.Id == up.PermissionId);
         }

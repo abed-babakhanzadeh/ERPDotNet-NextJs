@@ -11,10 +11,10 @@ namespace ERPDotNet.Application.Modules.BaseInfo.Commands.UpdateProduct;
 public record UpdateProductCommand : IRequest<bool>
 {
     public int Id { get; set; }
-    public string Code { get; set; }
-    public string Name { get; set; }
+    public required string Code { get; set; }
+    public required string Name { get; set; }
     public string? TechnicalSpec { get; set; }
-    public int UnitId { get; set; }
+    public required int UnitId { get; set; }
     public ProductSupplyType SupplyType { get; set; }
     public bool IsActive { get; set; }
 
@@ -93,7 +93,7 @@ public class UpdateProductHandler : IRequestHandler<UpdateProductCommand, bool>
         // تبدیل‌هایی که در دیتابیس هستند اما در لیست ورودی نیستند
         var requestConversionIds = request.Conversions
             .Where(c => c.Id.HasValue && c.Id.Value > 0)
-            .Select(c => c.Id.Value)
+            .Select(c => c.Id!.Value)
             .ToList();
 
         var toDelete = entity.UnitConversions

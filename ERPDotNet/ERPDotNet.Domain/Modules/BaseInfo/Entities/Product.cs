@@ -1,24 +1,32 @@
 using ERPDotNet.Domain.Common;
+using System.ComponentModel.DataAnnotations;
 
 namespace ERPDotNet.Domain.Modules.BaseInfo.Entities;
 
 public class Product : BaseEntity
 {
     public int Id { get; set; }
-    public string Code { get; set; } // کد کالا (مثلاً 101-001)
-    public string Name { get; set; } // نام کالا
-    public string? TechnicalSpec { get; set; } // مشخصات فنی
-    
-    // واحد سنجش اصلی (مبنای انبارداری)
-    // تمام محاسبات موجودی انبار با این واحد انجام می‌شود
-    public int UnitId { get; set; }
-    public Unit Unit { get; set; }
 
-    // لیست واحدهای فرعی و ضرایب تبدیل آن‌ها
+    // 1. رشته‌ها: چون نباید نال باشند، required می‌کنیم
+    public required string Code { get; set; } 
+    public required string Name { get; set; } 
+    public string? TechnicalSpec { get; set; } 
+
+    // 2. کلید خارجی (Foreign Key):
+    // چون کالا بدون واحد معنی ندارد، این را هم required می‌کنیم.
+    // اینجوری اگر توی هندلر یادت بره UnitId رو ست کنی، برنامه بیلد نمیشه (امنیت عالی!)
+    public required int UnitId { get; set; }
+
+    // 3. نویگیشن (Navigation Property):
+    // این حتماً باید Nullable (?) باشد و required نباشد.
+    // چون موقع ثبت کالا، این null است و فقط UnitId مقدار دارد.
+    public Unit? Unit { get; set; }
+
+
     public ICollection<ProductUnitConversion> UnitConversions { get; set; } = new List<ProductUnitConversion>();
 
-    // نوع تامین (تولیدی، خریدنی، ...)
-    public ProductSupplyType SupplyType { get; set; }
+    // اینام‌ها چون Value Type هستند دیفالت دارند (0)، ولی required کردنش خوبه که مطمئن بشی ست شده.
+    public required ProductSupplyType SupplyType { get; set; }
 
     public bool IsActive { get; set; } = true;
 }
@@ -26,7 +34,16 @@ public class Product : BaseEntity
 // اینام (Enum) برای نوع تامین
 public enum ProductSupplyType
 {
-    Purchased = 1, // خریدنی (مواد اولیه)
-    Manufactured = 2, // تولیدی (محصول نهایی/نیمه ساخته)
-    Service = 3 // خدمات (غیر کالایی)
+    [Display(Name = "خریدنی")]
+    Purchased = 1,
+
+    [Display(Name = "تولیدی")]
+    Manufactured = 2,
+
+    [Display(Name = "خدمات")]
+    Service = 3,
+    
+    // فردا هر چیزی اضافه کنی، همینجا اسمش را هم می‌نویسی
+    // [Display(Name = "ضایعات")]
+    // Waste = 4
 }

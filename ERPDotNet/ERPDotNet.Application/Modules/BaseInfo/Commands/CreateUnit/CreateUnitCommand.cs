@@ -10,8 +10,8 @@ namespace ERPDotNet.Application.Modules.BaseInfo.Commands.CreateUnit;
 [CacheInvalidation("Units", "UnitsLookup")]
 public record CreateUnitCommand : IRequest<int>
 {
-    public string Title { get; set; }
-    public string Symbol { get; set; }
+    public required string Title { get; set; }
+    public required string Symbol { get; set; }
     public int Precision { get; set; }
     
     // فیلدهای جدید برای واحد فرعی (اختیاری)

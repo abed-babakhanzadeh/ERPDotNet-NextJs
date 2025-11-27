@@ -75,28 +75,42 @@ public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, Pagina
             query = query.OrderBy(p => p.Code);
         }
 
-        // 5. پروجکشن (اصلاح شده)
-        var dtoQuery = query.Select(p => new ProductDto(
+
+        // 3. پروجکشن اولیه (Fetch Data)
+        // نکته: اینجا هنوز تبدیل فارسی را انجام نمی‌دهیم! فقط Enum را می‌گیریم.
+        // ما اینجا یک DTO موقت یا همان Entity را انتخاب می‌کنیم.
+        // اما برای اینکه تمیز باشد، بیایید مستقیماً روی کوئری Paging بزنیم
+        
+        // تغییر استراتژی: اول IDهای صفحه مورد نظر را پیدا می‌کنیم (سبک‌ترین کوئری ممکن)
+        var count = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToListAsync(cancellationToken); // <--- اینجا دیتا از دیتابیس آمد توی رم (Memory)
+
+        // 4. مپ کردن نهایی (In-Memory Mapping)
+        // حالا که دیتا توی رم هست، می‌تونیم از متد C# (ToDisplay) استفاده کنیم
+        var dtos = items.Select(p => new ProductDto(
             p.Id,
             p.Code,
             p.Name,
+            p.UnitId,
+            p.Unit!.Title,
+            (int)p.SupplyType,
             
-            p.UnitId,     // <--- مقدار عددی ID واحد
-            p.Unit.Title, // مقدار متنی عنوان واحد
-            
-            (int)p.SupplyType, // <--- کست کردن Enum به int
-            p.SupplyType == ProductSupplyType.Purchased ? "خریدنی" : 
-            p.SupplyType == ProductSupplyType.Manufactured ? "تولیدی" : "خدمات",
+            p.SupplyType.ToDisplay(), // <--- استفاده از اکستنشن متد (استاندارد و تمیز!)
             
             p.UnitConversions.Select(c => new ProductConversionDto(
                 c.Id,
                 c.AlternativeUnitId,
-                c.AlternativeUnit.Title, 
+                c.AlternativeUnit!.Title, 
                 c.Factor
             )).ToList()
-        ));
+        )).ToList();
 
-        // 6. خروجی
-        return await dtoQuery.ToPaginatedListAsync(request.PageNumber, request.PageSize, cancellationToken);
+
+        // 5. ساخت خروجی
+        return new PaginatedResult<ProductDto>(dtos, count, request.PageNumber, request.PageSize);
     }
 }

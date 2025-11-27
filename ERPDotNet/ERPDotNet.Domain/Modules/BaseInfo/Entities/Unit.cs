@@ -5,8 +5,8 @@ namespace ERPDotNet.Domain.Modules.BaseInfo.Entities;
 public class Unit : BaseEntity
 {
     public int Id { get; set; }
-    public string Title { get; set; }
-    public string Symbol { get; set; }
+    public required string Title { get; set; }
+    public required string Symbol { get; set; }
     public int Precision { get; set; }
     public bool IsActive { get; set; } = true;
 

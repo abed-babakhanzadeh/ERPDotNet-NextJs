@@ -8,29 +8,30 @@ namespace ERPDotNet.Infrastructure.Persistence.Interceptors;
 public class AuditableEntitySaveChangesInterceptor : SaveChangesInterceptor
 {
     private readonly ICurrentUserService _currentUserService;
+    private static bool _isSavingAudit = false; // جلوگیری از لوپ بی‌نهایت
 
     public AuditableEntitySaveChangesInterceptor(ICurrentUserService currentUserService)
     {
         _currentUserService = currentUserService;
     }
 
-    // یک متغیر برای جلوگیری از لوپ
-    private static bool _isSavingAudit = false;
     public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
     {
-        // اگر در حال ذخیره لاگ‌ها هستیم، دیگر اینترسپت نکن و بگذار رد شود
+        // حل ارور CS8602: چک کردن نال بودن کانتکست
+        if (eventData.Context == null) 
+        {
+            return await base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
+
         if (_isSavingAudit) 
         {
             return await base.SavingChangesAsync(eventData, result, cancellationToken);
         }
 
-        // 1. قبل از ذخیره اصلی
         var auditEntries = OnBeforeSaveChanges(eventData.Context);
 
-        // 2. ذخیره اصلی دیتا
         var resultState = await base.SavingChangesAsync(eventData, result, cancellationToken);
 
-        // 3. ذخیره لاگ‌ها (اگر لاگی وجود داشت)
         if (auditEntries != null && auditEntries.Count > 0)
         {
             await OnAfterSaveChanges(eventData.Context, auditEntries, cancellationToken);
@@ -39,40 +40,35 @@ public class AuditableEntitySaveChangesInterceptor : SaveChangesInterceptor
         return resultState;
     }
 
-    private List<AuditEntry> OnBeforeSaveChanges(DbContext? context)
+    private List<AuditEntry> OnBeforeSaveChanges(DbContext context)
     {
         context.ChangeTracker.DetectChanges();
         var auditEntries = new List<AuditEntry>();
-
-        if (context == null) return auditEntries;
 
         var userId = _currentUserService.UserId;
 
         foreach (var entry in context.ChangeTracker.Entries<BaseEntity>())
         {
-            // اگر خود رکورد AuditTrail بود یا تغییری نداشت، بیخیال شو
-            if (entry.Entity is AuditTrail || entry.State == EntityState.Detached || entry.State == EntityState.Unchanged)
+            // حل ارور CS0184: اگر AuditTrail از BaseEntity ارث نبرده باشد، این چک لازم نیست.
+            // اما محض احتیاط به صورت ایمن چک می‌کنیم که نوعش AuditTrail نباشد
+            if (entry.Entity.GetType() == typeof(AuditTrail) || entry.State == EntityState.Detached || entry.State == EntityState.Unchanged)
                 continue;
 
             var auditEntry = new AuditEntry(entry)
             {
-                TableName = entry.Entity.GetType().Name, // اسم جدول (مثلا Unit)
-                UserId = userId ?? "Anonymous"
+                TableName = entry.Entity.GetType().Name,
+                UserId = userId ?? "Anonymous",
+                AuditType = entry.State.ToString() // مقدار پیش‌فرض موقت برای رفع ارور required
             };
 
             auditEntries.Add(auditEntry);
 
             foreach (var property in entry.Properties)
             {
-                if (property.IsTemporary)
-                {
-                    // مقادیر موقت (مثل ID قبل از اینسرت) را فعلاً ول کن، بعداً پر می‌کنیم
-                    continue;
-                }
+                if (property.IsTemporary) continue;
 
                 string propertyName = property.Metadata.Name;
                 
-                // ما فیلدهای سیستمی را معمولاً لاگ نمی‌کنیم (اختیاری)
                 if (property.Metadata.IsPrimaryKey())
                 {
                     auditEntry.KeyValues[propertyName] = property.CurrentValue;
@@ -84,7 +80,7 @@ public class AuditableEntitySaveChangesInterceptor : SaveChangesInterceptor
                     case EntityState.Added:
                         auditEntry.AuditType = "Create";
                         auditEntry.NewValues[propertyName] = property.CurrentValue;
-                        // ست کردن CreatedBy/At
+                        
                         entry.Entity.CreatedAt = DateTime.UtcNow;
                         entry.Entity.CreatedBy = userId;
                         break;
@@ -97,8 +93,11 @@ public class AuditableEntitySaveChangesInterceptor : SaveChangesInterceptor
                     case EntityState.Modified:
                         if (property.IsModified)
                         {
-                            // هندل کردن Soft Delete
-                            if (propertyName == nameof(BaseEntity.IsDeleted) && (bool)property.CurrentValue == true)
+                            // حل ارور CS8605: آنباکسینگ ایمن (Safe Unboxing)
+                            // چک می‌کنیم آیا مقدار boolean است و آیا مقدارش true است؟
+                            if (propertyName == nameof(BaseEntity.IsDeleted) && 
+                                property.CurrentValue is bool isDeleted && 
+                                isDeleted)
                             {
                                 auditEntry.AuditType = "SoftDelete";
                             }
@@ -111,7 +110,7 @@ public class AuditableEntitySaveChangesInterceptor : SaveChangesInterceptor
                             auditEntry.OldValues[propertyName] = property.OriginalValue;
                             auditEntry.NewValues[propertyName] = property.CurrentValue;
                         }
-                        // ست کردن LastModifiedBy/At
+                        
                         entry.Entity.LastModifiedAt = DateTime.UtcNow;
                         entry.Entity.LastModifiedBy = userId;
                         break;
@@ -119,20 +118,18 @@ public class AuditableEntitySaveChangesInterceptor : SaveChangesInterceptor
             }
         }
         
-        // حذف entries که هیچ تغییری نداشتند (مثلا فقط فیلد CreatedAt عوض شده ولی ما نمیخوایم لاگ کنیم)
-        foreach (var auditEntry in auditEntries.Where(e => !e.KeyValues.Any() && e.AuditType == null))
+        // حذف مواردی که هیچ تغییری نداشتند
+        var emptyEntries = auditEntries.Where(e => !e.KeyValues.Any() && e.NewValues.Count == 0 && e.OldValues.Count == 0).ToList();
+        foreach (var empty in emptyEntries)
         {
-            // منطق تمیزکاری اگر لازم بود
+            auditEntries.Remove(empty);
         }
 
         return auditEntries;
     }
 
-    private async Task OnAfterSaveChanges(DbContext? context, List<AuditEntry> auditEntries, CancellationToken cancellationToken)
+    private async Task OnAfterSaveChanges(DbContext context, List<AuditEntry> auditEntries, CancellationToken cancellationToken)
     {
-        if (context == null) return;
-
-        // پرچم را بالا می‌بریم که یعنی: "من دارم لاگ ذخیره می‌کنم، کاری به کارم نداشته باش"
         _isSavingAudit = true;
 
         try
@@ -143,18 +140,17 @@ public class AuditableEntitySaveChangesInterceptor : SaveChangesInterceptor
                 {
                     if (prop.Metadata.IsPrimaryKey())
                     {
+                        // اینجا مقدار ID تولید شده را می‌گیریم
                         auditEntry.KeyValues[prop.Metadata.Name] = prop.CurrentValue;
                     }
                 }
                 context.Set<AuditTrail>().Add(auditEntry.ToAuditTrail());
             }
 
-            // حالا ذخیره می‌کنیم (چون پرچم بالاست، اینترسپتور دوباره اجرا نمی‌شود)
             await context.SaveChangesAsync(cancellationToken);
         }
         finally
         {
-            // در هر صورت پرچم را پایین می‌آوریم
             _isSavingAudit = false;
         }
     }

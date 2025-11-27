@@ -6,20 +6,15 @@ namespace ERPDotNet.Application.Common.Extensions;
 
 public static class QueryableExtensions
 {
-    public static async Task<PaginatedResult<T>> ToPaginatedListAsync<T>(
+    public static Task<PaginatedResult<T>> ToPaginatedListAsync<T>(
         this IQueryable<T> source, 
         int pageNumber, 
         int pageSize, 
         CancellationToken cancellationToken = default)
     {
-        var count = await source.CountAsync(cancellationToken);
-        
-        var items = await source
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync(cancellationToken);
-
-        return new PaginatedResult<T>(items, count, pageNumber, pageSize);
+        // تغییر مهم: استفاده از متد استاتیک مرکزی
+        // اینطوری مسئولیت محاسبه پیجینگ فقط با کلاس PaginatedResult است
+        return PaginatedResult<T>.CreateAsync(source, pageNumber, pageSize, cancellationToken);
     }
 
     // متد کمکی برای مرتب‌سازی داینامیک (چون نام ستون به صورت رشته می‌آید)

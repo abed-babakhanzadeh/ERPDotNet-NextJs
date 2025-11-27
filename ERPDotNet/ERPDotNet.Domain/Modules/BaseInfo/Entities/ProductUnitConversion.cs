@@ -8,11 +8,11 @@ public class ProductUnitConversion : BaseEntity
 
     // 1. کالای مرتبط
     public int ProductId { get; set; }
-    public Product Product { get; set; }
+    public Product? Product { get; set; }
 
     // 2. واحد فرعی (مثلاً متر مربع)
     public int AlternativeUnitId { get; set; }
-    public Unit AlternativeUnit { get; set; }
+    public Unit? AlternativeUnit { get; set; }
 
     // 3. ضریب تبدیل به واحد اصلی کالا
     // فرمول: 1 واحد فرعی = (Factor) واحد اصلی
