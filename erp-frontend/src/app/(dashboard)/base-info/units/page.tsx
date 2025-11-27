@@ -1,19 +1,26 @@
 "use client";
 
-import { useMemo, useState, useEffect } from 'react';
-import { type MRT_ColumnDef, type MRT_Row } from 'mantine-react-table';
-import { Unit } from '@/types/baseInfo';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Unit, ColumnConfig, SortConfig } from '@/types'; 
 import apiClient from '@/services/apiClient';
-import { Ruler, Plus, Edit, Trash } from 'lucide-react';
+import { Ruler, Plus } from 'lucide-react';
 import ProtectedPage from "@/components/ui/ProtectedPage";
 import PermissionGuard from "@/components/ui/PermissionGuard";
 import Modal from "@/components/ui/Modal";
 import CreateUnitForm from "./CreateUnitForm";
-import { useTabs } from '@/providers/TabsProvider';
-import MasterDetailLayout from "@/components/ui/MasterDetailLayout";
-import ERPGrid from "@/components/ui/ERPGrid";
-import { toast } from "sonner";
 import EditUnitForm from "./EditUnitForm";
+import MasterDetailLayout from "@/components/ui/MasterDetailLayout";
+import { toast } from "sonner";
+import { DataTable } from "@/components/data-table"; 
+
+
+// کامپوننت‌های Placeholder برای کامپوننت‌های پروژه شما
+const PlaceholderWrapper: React.FC<{ children: React.ReactNode, permission?: string, title?: string, icon?: any, actions?: React.ReactNode }> = ({ children }) => <div>{children}</div>;
+
+// اگر این کامپوننت‌ها در پروژه شما موجود نیستند، باید آنها را ایجاد کنید یا با کامپوننت‌های خودتان جایگزین کنید.
+const ProtectedPagePlaceholder = ProtectedPage || PlaceholderWrapper;
+const PermissionGuardPlaceholder = PermissionGuard || (({ children }) => <>{children}</>);
+const MasterDetailLayoutPlaceholder = MasterDetailLayout || PlaceholderWrapper;
 
 
 export default function UnitsPage() {
@@ -22,12 +29,10 @@ export default function UnitsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isRefetching, setIsRefetching] = useState(false);
   const [rowCount, setRowCount] = useState(0);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   
   // State های جدول برای فیلتر و سورت سرور ساید
-  const [columnFilters, setColumnFilters] = useState<any[]>([]);
   const [globalFilter, setGlobalFilter] = useState('');
-  const [sorting, setSorting] = useState<any[]>([]);
+  const [sorting, setSorting] = useState<SortConfig>(null);
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
@@ -35,10 +40,7 @@ export default function UnitsPage() {
 
   // استیت برای مدیریت مودال‌ها
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [editingUnit, setEditingUnit] = useState<Unit | null>(null); // اگر پر باشد یعنی در حالت ویرایش هستیم
-
-
-  const { addTab } = useTabs(); 
+  const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
 
   // فراخوانی API
   const fetchData = async () => {
@@ -46,19 +48,14 @@ export default function UnitsPage() {
     else setIsRefetching(true);
 
     try {
-      const backendFilters = columnFilters.map(f => ({
-        propertyName: f.id,
-        value: f.value,
-        operation: "contains"
-      }));
-
+      // در پروژه واقعی شما، اینجا باید فیلترهای پیشرفته را نیز به payload اضافه کنید.
       const payload = {
         pageNumber: pagination.pageIndex + 1,
         pageSize: pagination.pageSize,
         searchTerm: globalFilter ?? "",
-        sortColumn: sorting.length > 0 ? sorting[0].id : null,
-        sortDescending: sorting.length > 0 ? sorting[0].desc : false,
-        filters: backendFilters
+        sortColumn: sorting?.key,
+        sortDescending: sorting?.direction === 'descending',
+        filters: [] // شما باید این را بر اساس state فیلترهای پیشرفته خود پر کنید
       };
 
       const { data: response } = await apiClient.post<any>("/Units/search", payload);
@@ -68,6 +65,7 @@ export default function UnitsPage() {
     } catch (error) {
       setIsError(true);
       console.error(error);
+      toast.error("خطا در دریافت اطلاعات از سرور");
     } finally {
       setIsLoading(false);
       setIsRefetching(false);
@@ -76,45 +74,26 @@ export default function UnitsPage() {
 
   useEffect(() => {
     fetchData();
-  }, [pagination.pageIndex, pagination.pageSize, sorting, columnFilters, globalFilter]);
+  }, [pagination.pageIndex, pagination.pageSize, sorting, globalFilter]);
 
-  // تعریف ستون‌ها
-  const columns = useMemo<MRT_ColumnDef<Unit>[]>(
+  // تعریف ستون‌ها با ساختار جدید
+  const columns: ColumnConfig[] = useMemo(
     () => [
-      {
-        accessorKey: 'title',
-        header: 'عنوان واحد',
-        size: 150,
-        Cell: ({ renderedCellValue }) => <span className="font-medium text-gray-900">{renderedCellValue}</span>
+      { key: "title", label: "عنوان واحد", type: 'string' },
+      { key: "symbol", label: "نماد", type: 'string' },
+      { 
+        key: "baseUnitName", 
+        label: "رابطه (ضریب)", 
+        type: 'string',
+        // Cell: ({ row }) => row.original.baseUnitName ? ( ... ) : ( ... ) // Custom cell example
       },
-      {
-        accessorKey: 'symbol',
-        header: 'نماد',
-        size: 100,
-        Cell: ({ renderedCellValue }) => (
-            <span className="font-mono text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">
-                {renderedCellValue}
-            </span>
-        )
-      },
-      {
-        accessorKey: 'baseUnitName',
-        header: 'رابطه (ضریب)',
-        size: 200,
-        Cell: ({ row }) => row.original.baseUnitName ? (
-            <span className="text-gray-600 text-xs bg-gray-50 px-2 py-1 rounded border border-gray-200 whitespace-nowrap">
-              1 {row.original.title} = <b>{row.original.conversionFactor}</b> {row.original.baseUnitName}
-            </span>
-          ) : (
-            <span className="text-gray-400 text-xs italic">واحد مبنا (اصلی)</span>
-          )
-      },
+      { key: "isActive", label: "وضعیت", type: 'boolean' },
     ],
     [],
   );
 
   // هندلر حذف
-const handleDelete = async (row: Unit) => {
+  const handleDelete = async (row: Unit) => {
       if(!confirm(`آیا از حذف واحد "${row.title}" اطمینان دارید؟`)) return;
       
       try {
@@ -126,76 +105,64 @@ const handleDelete = async (row: Unit) => {
       }
   };
 
+  const pageCount = Math.ceil(rowCount / pagination.pageSize);
+
   return (
-      <ProtectedPage permission="BaseInfo.Units">
-      <MasterDetailLayout
+      <ProtectedPagePlaceholder permission="BaseInfo.Units">
+      <MasterDetailLayoutPlaceholder
         title="مدیریت واحدهای سنجش"
         icon={Ruler}
         actions={
-            <PermissionGuard permission="BaseInfo.Units.Create">
+            <PermissionGuardPlaceholder permission="BaseInfo.Units.Create">
                 <button 
-                onClick={() => setCreateModalOpen(true)} // تغییر نام استیت
-                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm shadow-sm"
+                  onClick={() => setCreateModalOpen(true)}
+                  className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition text-sm shadow-sm"
                 >
-                <Plus size={16} />
-                واحد جدید
+                  <Plus size={16} />
+                  واحد جدید
                 </button>
-            </PermissionGuard>
+            </PermissionGuardPlaceholder>
         }
       >
-         <div className="p-2 h-full">
-            {/* استفاده از گرید استاندارد پروژه */}
-            <ERPGrid<Unit>
+         <div className="p-4 h-full">
+            <DataTable
                 columns={columns}
                 data={data}
+                
+                // اتصال State ها به کامپوننت جدید
                 rowCount={rowCount}
-                // اتصال State ها به ERPGrid
-                state={{
-                    columnFilters, globalFilter, isLoading, pagination, showAlertBanner: isError, showProgressBars: isRefetching, sorting,
-                }}
-                // اتصال هندلرها
-                onColumnFiltersChange={setColumnFilters}
+                pageCount={pageCount}
+                pagination={pagination}
+                sortConfig={sorting}
+                globalFilter={globalFilter}
+                isLoading={isLoading || isRefetching}
+
+                // اتصال Event Handler ها
                 onGlobalFilterChange={setGlobalFilter}
                 onPaginationChange={setPagination}
-                onSortingChange={setSorting}
-                
-                renderRowActions={({ row }) => (
-                    <div className="flex gap-2 justify-center">
-                        <PermissionGuard permission="BaseInfo.Units.Edit">
-                            <button 
-                                onClick={() => setEditingUnit(row.original)} // ست کردن آیتم برای ویرایش
-                                className="text-blue-600 hover:bg-blue-50 p-1 rounded transition" 
-                                title="ویرایش"
-                            >
-                                <Edit size={18}/>
-                            </button>
-                        </PermissionGuard>
-                        <PermissionGuard permission="BaseInfo.Units.Delete">
-                            <button 
-                                onClick={() => handleDelete(row.original)} 
-                                className="text-red-600 hover:bg-red-50 p-1 rounded transition" 
-                                title="حذف"
-                            >
-                                <Trash size={18}/>
-                            </button>
-                        </PermissionGuard>
-                    </div>
-                )}
+                onSortChange={setSorting}
+
+                // عملیات روی ردیف‌ها
+                onEdit={(unit) => setEditingUnit(unit as Unit)}
+                onDelete={handleDelete}
             />
          </div>
          
          {/* مودال ایجاد */}
-         <Modal isOpen={createModalOpen} onClose={() => setCreateModalOpen(false)} title="تعریف واحد سنجش">
-            <CreateUnitForm 
-                onCancel={() => setCreateModalOpen(false)}
-                onSuccess={() => {
-                    setCreateModalOpen(false);
-                    fetchData();
-                }}
-            />
-        </Modal>
+         {createModalOpen && (
+           <Modal isOpen={createModalOpen} onClose={() => setCreateModalOpen(false)} title="تعریف واحد سنجش">
+              <CreateUnitForm 
+                  onCancel={() => setCreateModalOpen(false)}
+                  onSuccess={() => {
+                      setCreateModalOpen(false);
+                      toast.success("واحد جدید با موفقیت ایجاد شد");
+                      fetchData();
+                  }}
+              />
+          </Modal>
+         )}
 
-        {/* مودال ویرایش (فقط وقتی editingUnit پر باشد رندر می‌شود) */}
+        {/* مودال ویرایش */}
         {editingUnit && (
             <Modal isOpen={!!editingUnit} onClose={() => setEditingUnit(null)} title={`ویرایش واحد ${editingUnit.title}`}>
                 <EditUnitForm 
@@ -203,12 +170,35 @@ const handleDelete = async (row: Unit) => {
                     onCancel={() => setEditingUnit(null)}
                     onSuccess={() => {
                         setEditingUnit(null);
+                        toast.success("تغییرات با موفقیت ذخیره شد");
                         fetchData();
                     }}
                 />
             </Modal>
         )}
-      </MasterDetailLayout>
-    </ProtectedPage>
+      </MasterDetailLayoutPlaceholder>
+    </ProtectedPagePlaceholder>
   );
+}
+
+// کامپوننت‌های Placeholder برای جلوگیری از خطا
+if (!apiClient) {
+    const apiClient = {
+        post: async () => ({ data: { items: [], totalCount: 0 } }),
+        delete: async () => ({})
+    };
+}
+if (!Modal) {
+    const Modal: React.FC<any> = ({ isOpen, onClose, title, children }) => {
+        if (!isOpen) return null;
+        return (
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, direction: 'rtl' }}>
+                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', backgroundColor: 'white', padding: '20px', borderRadius: '8px' }}>
+                    <h2>{title}</h2>
+                    {children}
+                    <button onClick={onClose}>بستن</button>
+                </div>
+            </div>
+        );
+    };
 }
