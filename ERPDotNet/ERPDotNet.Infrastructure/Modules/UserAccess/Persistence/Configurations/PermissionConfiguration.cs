@@ -56,7 +56,12 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             new Permission { Id = 35, Name = "BaseInfo.Products", Title = "مدیریت کالاها", IsMenu = true, ParentId = 30, Url = "/base-info/products" },
             new Permission { Id = 36, Name = "BaseInfo.Products.Create", Title = "تعریف کالا", IsMenu = false, ParentId = 35 },
             new Permission { Id = 37, Name = "BaseInfo.Products.Edit", Title = "ویرایش کالا", IsMenu = false, ParentId = 35 },
-            new Permission { Id = 38, Name = "BaseInfo.Products.Delete", Title = "حذف کالا", IsMenu = false, ParentId = 35 }
+            new Permission { Id = 38, Name = "BaseInfo.Products.Delete", Title = "حذف کالا", IsMenu = false, ParentId = 35 },
+
+            //BOM
+            new Permission { Id = 2000, Name = "ProductEngineering", Title = "مهندسی محصول", IsMenu = false, ParentId = 1 },
+            new Permission { Id = 200, Name = "ProductEngineering.BOM", Title = "مدیریت BOM", IsMenu = false, ParentId = 2000 },
+            new Permission { Id = 201, Name = "ProductEngineering.BOM.Create", Title = "تعریف BOM", IsMenu = false, ParentId = 200 }
 
         );
     }

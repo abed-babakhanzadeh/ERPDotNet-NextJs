@@ -45,7 +45,15 @@ public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermissi
             new RolePermission { RoleId = "1", PermissionId = 35 }, // Products (منو)
             new RolePermission { RoleId = "1", PermissionId = 36 }, // Create
             new RolePermission { RoleId = "1", PermissionId = 37 }, // Edit
-            new RolePermission { RoleId = "1", PermissionId = 38 }  // Delete
+            new RolePermission { RoleId = "1", PermissionId = 38 },  // Delete
+
+            // 3. مهندسی محصول 
+            new RolePermission { RoleId = "1", PermissionId = 2000 },  // View
+            // BOM
+            new RolePermission { RoleId = "1", PermissionId = 200 },  // View
+            new RolePermission { RoleId = "1", PermissionId = 201 }  // Create
+        //     new RolePermission { RoleId = "1", PermissionId = 38 },  // Edit
+        //     new RolePermission { RoleId = "1", PermissionId = 38 }  // Delete
         );
     }
 }

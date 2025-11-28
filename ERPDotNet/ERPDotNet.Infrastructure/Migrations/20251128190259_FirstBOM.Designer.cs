@@ -3,6 +3,7 @@ using System;
 using ERPDotNet.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ERPDotNet.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251128190259_FirstBOM")]
+    partial class FirstBOM
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -578,30 +581,6 @@ namespace ERPDotNet.Infrastructure.Migrations
                             Name = "BaseInfo.Products.Delete",
                             ParentId = 35,
                             Title = "حذف کالا"
-                        },
-                        new
-                        {
-                            Id = 2000,
-                            IsMenu = false,
-                            Name = "ProductEngineering",
-                            ParentId = 1,
-                            Title = "مهندسی محصول"
-                        },
-                        new
-                        {
-                            Id = 200,
-                            IsMenu = false,
-                            Name = "ProductEngineering.BOM",
-                            ParentId = 2000,
-                            Title = "مدیریت BOM"
-                        },
-                        new
-                        {
-                            Id = 201,
-                            IsMenu = false,
-                            Name = "ProductEngineering.BOM.Create",
-                            ParentId = 200,
-                            Title = "تعریف BOM"
                         });
                 });
 
@@ -724,21 +703,6 @@ namespace ERPDotNet.Infrastructure.Migrations
                         {
                             RoleId = "1",
                             PermissionId = 38
-                        },
-                        new
-                        {
-                            RoleId = "1",
-                            PermissionId = 2000
-                        },
-                        new
-                        {
-                            RoleId = "1",
-                            PermissionId = 200
-                        },
-                        new
-                        {
-                            RoleId = "1",
-                            PermissionId = 201
                         });
                 });
 

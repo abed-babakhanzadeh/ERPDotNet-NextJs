@@ -7,13 +7,13 @@ public class BOMDetail : BaseEntity
 {
     public int Id { get; set; }
 
-    // لینک به هدر
-    public int BOMHeaderId { get; set; }
-    public BOMHeader BOMHeader { get; set; }
+    // لینک به هدر - اجباری
+    public required int BOMHeaderId { get; set; }
+    public BOMHeader? BOMHeader { get; set; }
 
-    // ماده اولیه (فرزند)
-    public int ChildProductId { get; set; }
-    public Product ChildProduct { get; set; }
+    // ماده اولیه (فرزند) - اجباری
+    public required int ChildProductId { get; set; }
+    public Product? ChildProduct { get; set; }
 
     // مقدار مصرف
     public decimal Quantity { get; set; }
