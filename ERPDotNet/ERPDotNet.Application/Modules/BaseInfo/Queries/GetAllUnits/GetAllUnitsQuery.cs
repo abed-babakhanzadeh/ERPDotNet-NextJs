@@ -18,10 +18,7 @@ public record UnitDto(
     string? BaseUnitName
 );
 
-// 1. فعال‌سازی کش (Uncomment)
-// چون ما ورودی (Request) را سریالایز می‌کنیم و جزو کلید کش می‌کنیم،
-// اگر کاربر فیلتر متفاوتی بفرستد، کلید کش جدیدی ساخته می‌شود. عالی است!
-[Cached(timeToLiveSeconds: 600, "Units")] 
+// [Cached(timeToLiveSeconds: 600, "Units")] 
 public record GetAllUnitsQuery : PaginatedRequest, IRequest<PaginatedResult<UnitDto>>;
 
 public class GetAllUnitsHandler : IRequestHandler<GetAllUnitsQuery, PaginatedResult<UnitDto>>
@@ -40,17 +37,25 @@ public class GetAllUnitsHandler : IRequestHandler<GetAllUnitsQuery, PaginatedRes
             .Include(u => u.BaseUnit)
             .AsQueryable();
 
-        // 2. اعمال فیلترهای ساده و پیشرفته
-        // (این متد ApplyDynamicFilters را قبلاً نوشتیم)
+        // اعمال جستجوی کلی
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
         {
             query = query.Where(u => u.Title.Contains(request.SearchTerm) || u.Symbol.Contains(request.SearchTerm));
         }
         
-        // اعمال فیلترهای پیشرفته (JSON)
+        // هندل کردن فیلتر خاص BaseUnitName
+        var baseUnitNameFilter = request.Filters?.FirstOrDefault(f => f.PropertyName.Equals("BaseUnitName", StringComparison.OrdinalIgnoreCase));
+        if (baseUnitNameFilter != null && !string.IsNullOrEmpty(baseUnitNameFilter.Value))
+        {
+            query = query.Where(u => u.BaseUnit != null && u.BaseUnit.Title.Contains(baseUnitNameFilter.Value));
+            // حذف فیلتر از لیست تا دوباره پردازش نشود
+            request.Filters?.Remove(baseUnitNameFilter);
+        }
+
+        // اعمال بقیه فیلترهای داینامیک
         query = query.ApplyDynamicFilters(request.Filters);
 
-        // 3. سورت
+        // مرتب‌سازی
         if (!string.IsNullOrEmpty(request.SortColumn))
         {
             query = query.OrderByDynamic(request.SortColumn, request.SortDescending);
@@ -60,19 +65,19 @@ public class GetAllUnitsHandler : IRequestHandler<GetAllUnitsQuery, PaginatedRes
             query = query.OrderBy(u => u.Id);
         }
 
-        // 4. پروجکشن
+        // پروجکشن به DTO
         var dtoQuery = query.Select(x => new UnitDto(
             x.Id, 
             x.Title, 
             x.Symbol, 
-            x.Precision,          // اضافه شد
-            x.IsActive,           // اضافه شد
-            x.BaseUnitId,         // اضافه شد
+            x.Precision,
+            x.IsActive,
+            x.BaseUnitId,
             x.ConversionFactor, 
             x.BaseUnit != null ? x.BaseUnit.Title : null
         ));
 
-        // 5. خروجی صفحه‌بندی شده
+        // خروجی صفحه‌بندی شده
         return await dtoQuery.ToPaginatedListAsync(request.PageNumber, request.PageSize, cancellationToken);
     }
 }

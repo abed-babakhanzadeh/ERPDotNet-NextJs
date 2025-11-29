@@ -17,72 +17,90 @@ public static class FilterExtensions
 
             try
             {
-                // 1. پیدا کردن پراپرتی (ستون)
                 var parameter = Expression.Parameter(typeof(T), "x");
                 var property = Expression.Property(parameter, filter.PropertyName);
                 
-                // 2. تبدیل مقدار رشته‌ای به نوع واقعی ستون (int, decimal, date, ...)
-                var targetType = property.Type;
-                // هندل کردن Nullable
-                if (Nullable.GetUnderlyingType(targetType) != null)
-                    targetType = Nullable.GetUnderlyingType(targetType);
+                var targetType = Nullable.GetUnderlyingType(property.Type) ?? property.Type;
 
-                var convertedValue = Convert.ChangeType(filter.Value, targetType!);
-                var constant = Expression.Constant(convertedValue, property.Type); // Constant باید هم‌تایپ Property باشد (حتی اگر Nullable)
+                object convertedValue;
 
+                // هندل کردن خاص مقادیر بولی
+                if (targetType == typeof(bool))
+                {
+                    if (bool.TryParse(filter.Value, out bool boolValue))
+                    {
+                        convertedValue = boolValue;
+                    }
+                    else
+                    {
+                        continue; // اگر مقدار "true" یا "false" نباشد، فیلتر را رد کن
+                    }
+                }
+                else
+                {
+                    convertedValue = Convert.ChangeType(filter.Value, targetType);
+                }
+
+                var constant = Expression.Constant(convertedValue, property.Type);
                 Expression comparison;
 
-                // 3. ساخت دستور مقایسه بر اساس عملیات درخواستی
                 switch (filter.Operation.ToLower())
                 {
-                    case "eq": // Equal (==)
+                    case "equals":
+                    case "eq":
                         comparison = Expression.Equal(property, constant);
                         break;
                     
-                    case "neq": // Not Equal (!=)
+                    case "neq":
                         comparison = Expression.NotEqual(property, constant);
                         break;
 
-                    case "gt": // Greater Than (>)
+                    case "gt":
                         comparison = Expression.GreaterThan(property, constant);
                         break;
 
-                    case "gte": // Greater Than or Equal (>=)
+                    case "gte":
                         comparison = Expression.GreaterThanOrEqual(property, constant);
                         break;
 
-                    case "lt": // Less Than (<)
+                    case "lt":
                         comparison = Expression.LessThan(property, constant);
                         break;
 
-                    case "lte": // Less Than or Equal (<=)
+                    case "lte":
                         comparison = Expression.LessThanOrEqual(property, constant);
                         break;
 
-                    case "contains": // String Contains
+                    case "contains":
                         if (property.Type == typeof(string))
                         {
+                            var stringConstant = Expression.Constant(filter.Value, typeof(string));
                             var method = typeof(string).GetMethod("Contains", new[] { typeof(string) });
-                            comparison = Expression.Call(property, method!, constant);
+                            if (method != null)
+                            {
+                                comparison = Expression.Call(property, method, stringConstant);
+                            }
+                            else
+                            {
+                                comparison = Expression.Equal(property, constant);
+                            }
                         }
                         else
                         {
-                            // برای اعداد نمیشه Contains زد، پس مساوی میگیریم
+                            // برای انواع دیگر، Contains معادل Equals است
                             comparison = Expression.Equal(property, constant);
                         }
                         break;
 
                     default:
-                        continue; // عملیات ناشناخته
+                        continue;
                 }
 
-                // 4. ترکیب نهایی و اعمال روی کوئری
                 var lambda = Expression.Lambda<Func<T, bool>>(comparison, parameter);
                 query = query.Where(lambda);
             }
             catch
             {
-                // اگر نام ستون اشتباه بود یا مقدار تبدیل نشد، فیلتر را نادیده بگیر (تا سیستم کرش نکند)
                 continue; 
             }
         }
