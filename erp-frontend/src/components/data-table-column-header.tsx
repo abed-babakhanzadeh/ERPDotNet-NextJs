@@ -1,6 +1,6 @@
 "use client";
 
-import type { ColumnFilter, FilterCondition, Unit } from "@/types";
+import type { ColumnFilter, FilterCondition, Unit, ColumnConfig } from "@/types";
 import { ArrowDown, ArrowUp, Filter as FilterIcon, FilterX, PlusCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -12,19 +12,12 @@ import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-type ColumnConfig = {
-  key: keyof Unit;
-  label: string;
-  type: 'string' | 'number' | 'boolean';
-};
-
 interface DataTableColumnHeaderProps {
   column: ColumnConfig;
   sortConfig: { key: keyof Unit; direction: 'ascending' | 'descending'; } | null;
   onSort: (key: keyof Unit) => void;
   filter: ColumnFilter | undefined;
   onFilterChange: (newFilter: ColumnFilter | null) => void;
-  showSortButton?: boolean;
 }
 
 const filterOperators = {
@@ -50,46 +43,26 @@ export function DataTableColumnHeader({
   onSort,
   filter,
   onFilterChange,
-  showSortButton = false,
 }: DataTableColumnHeaderProps) {
   const isSorted = sortConfig?.key === column.key;
-  const isFiltered = filter && filter.conditions.length > 0;
+  const isFiltered = filter && filter.conditions.length > 0 && filter.conditions.some(c => c.value !== '' && c.value !== null);
   
   const [popoverOpen, setPopoverOpen] = useState(false);
-
-  const handleApplyFilter = (newFilterState: ColumnFilter) => {
-    // Only apply if there are conditions with actual values
-    const hasValue = newFilterState.conditions.some(c => c.value !== '' && c.value !== null);
-    if (hasValue) {
-        onFilterChange(newFilterState);
-    } else {
-        onFilterChange(null);
-    }
-    setPopoverOpen(false);
-  };
-  
-  const handleClearFilter = () => {
-    onFilterChange(null);
-    setPopoverOpen(false);
-  };
   
   const FilterIconComponent = isFiltered ? FilterX : FilterIcon;
 
   return (
-    <div className="flex items-center gap-1">
-      {showSortButton && (
-        <Button variant="ghost" onClick={() => onSort(column.key)} className="px-2 py-1 h-auto -mr-2">
-           <span className="flex-grow">{column.label}</span>
+    <div className="flex items-center gap-1 w-full justify-between">
+       <Button variant="ghost" onClick={() => onSort(column.key)} className="px-2 py-1 h-auto -mr-2 flex-grow justify-start">
+           <span className="truncate">{column.label}</span>
           {isSorted ? (
             sortConfig?.direction === "ascending" ? (
-              <ArrowUp className="h-4 w-4" />
+              <ArrowUp className="h-4 w-4 ml-2" />
             ) : (
-              <ArrowDown className="h-4 w-4" />
+              <ArrowDown className="h-4 w-4 ml-2" />
             )
-          ) : <div className="w-4 h-4" />}
+          ) : <div className="w-4 h-4 ml-2" />}
         </Button>
-      )}
-      {!showSortButton && (
         <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="icon" className={cn("h-8 w-8", isFiltered && "text-primary bg-primary/10")}>
@@ -100,12 +73,17 @@ export function DataTableColumnHeader({
               <FilterPopoverContent
                   column={column}
                   initialFilter={filter}
-                  onApply={handleApplyFilter}
-                  onClear={handleClearFilter}
+                  onApply={(newFilterState) => {
+                      onFilterChange(newFilterState);
+                      setPopoverOpen(false);
+                  }}
+                  onClear={() => {
+                      onFilterChange(null);
+                      setPopoverOpen(false);
+                  }}
               />
           </PopoverContent>
         </Popover>
-      )}
     </div>
   );
 }
@@ -134,7 +112,11 @@ function FilterPopoverContent({ column, initialFilter, onApply, onClear }: {
     };
 
     const handleApply = () => {
-        const newFilter: ColumnFilter = { key: column.key, logic, conditions };
+        const newFilter: ColumnFilter = { 
+          key: column.key, 
+          logic, 
+          conditions: conditions.filter(c => c.value !== '' && c.value !== null) 
+        };
         onApply(newFilter);
     }
     
@@ -220,7 +202,7 @@ function FilterPopoverContent({ column, initialFilter, onApply, onClear }: {
             <Separator />
 
             <div className="flex justify-between">
-              <Button variant="outline" size="sm" onClick={onClear}>پاک کردن همه</Button>
+              <Button variant="outline" size="sm" onClick={onClear}>پاک کردن</Button>
               <Button size="sm" onClick={handleApply}>اعمال فیلتر</Button>
             </div>
         </div>
@@ -249,7 +231,7 @@ function FilterInput({ columnType, condition, onChange } : {
     return (
         <Input 
             id={`value-${condition.id}`} 
-            value={condition.value} 
+            value={condition.value || ''} 
             onChange={(e) => onChange(condition.id, { value: e.target.value })} 
             type={columnType === 'number' ? 'number' : 'text'}
         />

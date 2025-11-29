@@ -79,7 +79,6 @@ export function DataTable<TData extends Unit>({
   const [contextMenuOpen, setContextMenuOpen] = React.useState(false);
   const [contextMenuUnit, setContextMenuUnit] = React.useState<TData | null>(null);
   const [contextMenuPosition, setContextMenuPosition] = React.useState({ x: 0, y: 0 });
-  const [selectedRowId, setSelectedRowId] = React.useState<number | null>(null);
   
   const [columnWidths, setColumnWidths] = React.useState<Record<string, number>>(
     columns.reduce((acc, col) => ({ ...acc, [col.key]: 150 }), { actions: 80 })
@@ -98,8 +97,10 @@ export function DataTable<TData extends Unit>({
           if (prev.direction === 'ascending') {
             return { key, direction: 'descending' };
           }
+          // If descending, clear sort
           return null;
         }
+        // If no sort or different column, sort ascending
         return { key, direction: 'ascending' };
     });
   };
@@ -109,13 +110,8 @@ export function DataTable<TData extends Unit>({
     onGlobalFilterChange(value);
   }
 
-  const handleRowClick = (row: TData) => {
-    setSelectedRowId(row.id);
-  };
-
   const handleContextMenu = (e: React.MouseEvent, unit: TData) => {
       e.preventDefault();
-      setSelectedRowId(unit.id);
       setContextMenuUnit(unit);
       setContextMenuPosition({ x: e.clientX, y: e.clientY });
       setContextMenuOpen(true);
@@ -123,20 +119,19 @@ export function DataTable<TData extends Unit>({
   
   React.useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-        setContextMenuOpen(false);
-        setContextMenuUnit(null);
-        // Clear selection if not clicking on a row or context menu item
-        if (!(e.target as HTMLElement).closest('[role="row"], [role="menuitem"]')) {
-           setSelectedRowId(null);
+        if (contextMenuOpen) {
+           setContextMenuOpen(false);
+           setContextMenuUnit(null);
         }
     }
     document.addEventListener("click", handleClick);
     return () => {
       document.removeEventListener("click", handleClick);
     };
-  }, []);
+  }, [contextMenuOpen]);
 
   const handleExport = () => {
+    // This should ideally fetch all data from server for a complete export
     console.log("Exporting current page data...");
     const escapeCsvCell = (cell: any) => {
         if (cell == null) return '';
@@ -246,12 +241,8 @@ export function DataTable<TData extends Unit>({
                       data.map((row, index) => (
                       <TableRow 
                           key={(row as any).id || index}
-                          onClick={() => handleRowClick(row)}
                           onContextMenu={(e) => handleContextMenu(e, row)}
-                          className={cn(
-                            "cursor-pointer",
-                            { "bg-orange-100 text-orange-900 dark:bg-orange-900/50 dark:text-orange-100 hover:bg-orange-200/80 dark:hover:bg-orange-800/50": selectedRowId === row.id }
-                          )}
+                           className={cn("cursor-context-menu", { "bg-muted/80 hover:bg-muted/90": contextMenuUnit?.id === row.id })}
                       >
                           {columns.map(column => (
                               <TableCell key={column.key} style={{ width: `${columnWidths[column.key]}px`, maxWidth: `${columnWidths[column.key]}px`}}>

@@ -18,14 +18,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Loader2 } from "lucide-react";
-import type { Unit, SortConfig, ColumnFilter as AdvancedColumnFilter, ColumnConfig } from "@/types";
+import type { Unit, SortConfig, ColumnFilter, ColumnConfig } from "@/types";
 import { DataTablePagination } from "./data-table-pagination";
 import { DataTableToolbar } from "./data-table-toolbar";
 import { DataTableColumnHeader } from "./data-table-column-header";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 import { Button } from "./ui/button";
 import { Resizable } from 'react-resizable';
-import { ColumnFilter } from './column-filter';
 
 type PaginationState = {
     pageIndex: number;
@@ -40,16 +40,11 @@ interface DataTableProps<TData extends Unit> {
   pagination: PaginationState;
   sortConfig: SortConfig;
   globalFilter: string;
-  advancedFilters: AdvancedColumnFilter[];
-  columnFilters: Record<string, string>;
   isLoading: boolean;
 
   onGlobalFilterChange: (value: string) => void;
-  onAdvancedFilterChange: (newFilter: AdvancedColumnFilter | null) => void;
-  onColumnFilterChange: (key: string, value: string) => void;
-  onClearAllFilters: () => void;
   onPaginationChange: (updater: (old: PaginationState) => PaginationState) => void;
-  onSortChange: (updater: ((old: SortConfig) => SortConfig | null) | SortConfig | null) => void;
+  onSortChange: (updater: (old: SortConfig) => SortConfig) => void;
 
   onEdit: (row: TData) => void;
   onDelete: (row: TData) => void;
@@ -63,23 +58,26 @@ export function DataTable<TData extends Unit>({
     pagination,
     sortConfig,
     globalFilter,
-    advancedFilters,
-    columnFilters,
     isLoading,
     onGlobalFilterChange,
-    onAdvancedFilterChange,
-    onColumnFilterChange,
-    onClearAllFilters,
     onPaginationChange,
     onSortChange,
     onEdit, 
     onDelete 
 }: DataTableProps<TData>) {
   
+  const [advancedFilters, setAdvancedFilters] = React.useState<ColumnFilter[]>([]);
+  
+  const initialLiveFilters = React.useMemo(() => columns.reduce((acc, col) => {
+    acc[col.key] = '';
+    return acc;
+  }, {} as Record<keyof TData, string>), [columns]);
+
+  const [liveFilters, setLiveFilters] = React.useState<Record<keyof TData, string>>(initialLiveFilters);
+  
   const [contextMenuOpen, setContextMenuOpen] = React.useState(false);
   const [contextMenuUnit, setContextMenuUnit] = React.useState<TData | null>(null);
   const [contextMenuPosition, setContextMenuPosition] = React.useState({ x: 0, y: 0 });
-  const [selectedRowId, setSelectedRowId] = React.useState<number | null>(null);
   
   const [columnWidths, setColumnWidths] = React.useState<Record<string, number>>(
     columns.reduce((acc, col) => ({ ...acc, [col.key]: 150 }), { actions: 80 })
@@ -94,28 +92,43 @@ export function DataTable<TData extends Unit>({
 
   const handleSort = (key: keyof Unit) => {
     onSortChange(prev => {
-        if (prev?.key === key) {
-          if (prev.direction === 'ascending') {
+        if (prev?.key === key && prev.direction === 'ascending') {
             return { key, direction: 'descending' };
-          }
-          return null;
         }
         return { key, direction: 'ascending' };
     });
   };
   
-  const handleGlobalFilterChange = (value: string) => {
+  const handleAdvancedFilterChange = (newFilter: ColumnFilter | null) => {
+    onPaginationChange(p => ({ ...p, pageIndex: 0 }));
+    setAdvancedFilters(prev => {
+        const otherFilters = prev.filter(f => f.key !== newFilter?.key);
+        if (newFilter && newFilter.conditions.length > 0 && newFilter.conditions.some(c => c.value !== '' && c.value !== null)) {
+            return [...otherFilters, newFilter];
+        }
+        return otherFilters;
+    });
+  };
+
+  const handleLiveFilterChange = (key: keyof TData, value: string) => {
     onPaginationChange(p => ({...p, pageIndex: 0}));
+    setLiveFilters(prev => ({ ...prev, [key]: value }));
+  };
+  
+  const handleGlobalFilterChange = (value: string) => {
     onGlobalFilterChange(value);
+    onPaginationChange(p => ({...p, pageIndex: 0}));
   }
 
-  const handleRowClick = (row: TData) => {
-    setSelectedRowId(row.id);
-  };
+  const handleClearAllFilters = () => {
+    onGlobalFilterChange("");
+    setAdvancedFilters([]);
+    setLiveFilters(initialLiveFilters as Record<keyof TData, string>);
+    onPaginationChange(p => ({...p, pageIndex: 0}));
+  }
 
   const handleContextMenu = (e: React.MouseEvent, unit: TData) => {
       e.preventDefault();
-      setSelectedRowId(unit.id);
       setContextMenuUnit(unit);
       setContextMenuPosition({ x: e.clientX, y: e.clientY });
       setContextMenuOpen(true);
@@ -123,20 +136,19 @@ export function DataTable<TData extends Unit>({
   
   React.useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-        setContextMenuOpen(false);
-        setContextMenuUnit(null);
-        // Clear selection if not clicking on a row or context menu item
-        if (!(e.target as HTMLElement).closest('[role="row"], [role="menuitem"]')) {
-           setSelectedRowId(null);
+        if (contextMenuOpen) {
+           setContextMenuOpen(false);
+           setContextMenuUnit(null);
         }
     }
     document.addEventListener("click", handleClick);
     return () => {
       document.removeEventListener("click", handleClick);
     };
-  }, []);
+  }, [contextMenuOpen]);
 
   const handleExport = () => {
+    // This should ideally fetch all data from server for a complete export
     console.log("Exporting current page data...");
     const escapeCsvCell = (cell: any) => {
         if (cell == null) return '';
@@ -183,7 +195,7 @@ export function DataTable<TData extends Unit>({
       <DataTableToolbar 
         globalFilter={globalFilter}
         onGlobalFilterChange={handleGlobalFilterChange}
-        onClearAllFilters={onClearAllFilters}
+        onClearAllFilters={handleClearAllFilters}
         onExport={handleExport}
         onPrint={handlePrint}
       />
@@ -209,7 +221,8 @@ export function DataTable<TData extends Unit>({
                                       sortConfig={sortConfig}
                                       onSort={handleSort}
                                       filter={advancedFilters.find(f => f.key === column.key)}
-                                      onFilterChange={onAdvancedFilterChange}
+                                      onFilterChange={handleAdvancedFilterChange}
+                                      showSortButton={true}
                                   />
                                 </div>
                               </TableHead>
@@ -217,20 +230,33 @@ export function DataTable<TData extends Unit>({
                         ))}
                         <TableHead className="no-print text-center sticky top-0 z-10 table-header-gradient" style={{ width: `${columnWidths.actions}px` }}>عملیات</TableHead>
                     </TableRow>
-                     <TableRow className="no-print bg-muted/10">
-                        {columns.map((column) => (
-                            <TableCell key={`${column.key}-filter`} className="p-1">
-                                {column.type !== 'boolean' ? (
-                                     <ColumnFilter
-                                        columnKey={column.key}
-                                        value={columnFilters[column.key] || ""}
-                                        onChange={onColumnFilterChange}
-                                    />
-                                ) : null}
-                            </TableCell>
-                        ))}
-                         <TableCell key="actions-filter" className="p-1"></TableCell>
-                    </TableRow>
+                      <TableRow className="no-print">
+                          {columns.map((column) => (
+                              <TableHead key={`${column.key}-filter`} className="p-1 align-middle" style={{ width: `${columnWidths[column.key]}px` }}>
+                                  <div className="flex items-center relative">
+                                      {column.type !== 'boolean' ? (
+                                      <Input
+                                          placeholder={`جستجو...`}
+                                          value={liveFilters[column.key as keyof TData] as string}
+                                          onChange={(e) => handleLiveFilterChange(column.key as keyof TData, e.target.value)}
+                                          className="h-8 text-xs placeholder:text-neutral-400"
+                                      />
+                                      ) : <div className="h-8"></div>}
+                                      <div className="absolute left-0">
+                                      <DataTableColumnHeader 
+                                          column={column}
+                                          sortConfig={sortConfig}
+                                          onSort={handleSort}
+                                          filter={advancedFilters.find(f => f.key === column.key)}
+                                          onFilterChange={handleAdvancedFilterChange}
+                                          showSortButton={false}
+                                      />
+                                      </div>
+                                  </div>
+                              </TableHead>
+                          ))}
+                          <TableHead className="p-1 align-middle" style={{ width: `${columnWidths.actions}px` }}></TableHead>
+                      </TableRow>
                 </TableHeader>
                   <TableBody>
                   {isLoading ? (
@@ -246,12 +272,8 @@ export function DataTable<TData extends Unit>({
                       data.map((row, index) => (
                       <TableRow 
                           key={(row as any).id || index}
-                          onClick={() => handleRowClick(row)}
                           onContextMenu={(e) => handleContextMenu(e, row)}
-                          className={cn(
-                            "cursor-pointer",
-                            { "bg-orange-100 text-orange-900 dark:bg-orange-900/50 dark:text-orange-100 hover:bg-orange-200/80 dark:hover:bg-orange-800/50": selectedRowId === row.id }
-                          )}
+                           className={cn("cursor-context-menu", { "bg-muted/80 hover:bg-muted/90": contextMenuUnit?.id === row.id })}
                       >
                           {columns.map(column => (
                               <TableCell key={column.key} style={{ width: `${columnWidths[column.key]}px`, maxWidth: `${columnWidths[column.key]}px`}}>

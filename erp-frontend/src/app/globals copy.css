@@ -79,14 +79,6 @@
     .react-resizable {
       position: relative;
       background-clip: padding-box;
-      /* اضافه شده برای جابجایی دستگیره گوشه به سمت چپ */
-      .react-resizable-handle-se {
-      right: auto !important;
-      left: 0 !important;
-      bottom: 0 !important;
-    /* اگر آیکون جهت دارد و می‌خواهید بچرخد، خط زیر را فعال کنید */
-    transform: rotate(90deg);
-  }
     }
 
     .react-resizable-handle {

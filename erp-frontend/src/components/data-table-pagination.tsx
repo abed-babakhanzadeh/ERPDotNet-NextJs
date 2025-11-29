@@ -9,7 +9,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { PaginationState } from "@tanstack/react-table";
+
+interface PaginationState {
+  pageIndex: number;
+  pageSize: number;
+}
 
 interface DataTablePaginationProps {
   pagination: PaginationState;
@@ -93,8 +97,8 @@ export function DataTablePagination({
             <Input
                 type="number"
                 min={1}
-                max={pageCount}
-                value={pagination.pageIndex + 1}
+                max={pageCount > 0 ? pageCount : 1}
+                value={pageCount > 0 ? pagination.pageIndex + 1 : 1}
                 onChange={handlePageInputChange}
                 className="h-8 w-16 text-center"
                 disabled={pageCount <= 1}
