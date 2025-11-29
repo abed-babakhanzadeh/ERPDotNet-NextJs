@@ -18,7 +18,7 @@ public record UnitDto(
     string? BaseUnitName
 );
 
-// [Cached(timeToLiveSeconds: 600, "Units")] 
+[Cached(timeToLiveSeconds: 600, "Units")] 
 public record GetAllUnitsQuery : PaginatedRequest, IRequest<PaginatedResult<UnitDto>>;
 
 public class GetAllUnitsHandler : IRequestHandler<GetAllUnitsQuery, PaginatedResult<UnitDto>>

@@ -7,7 +7,7 @@ namespace ERPDotNet.Application.Modules.BaseInfo.Queries.GetAllUnits;
 
 // این کوئری فقط لیست ساده برمی‌گرداند (برای دراپ‌داون)
 // کش طولانی‌مدت (چون واحدها دیر به دیر عوض می‌شوند)
-// [Cached(timeToLiveSeconds: 3600, "UnitsLookup")] 
+[Cached(timeToLiveSeconds: 3600, "UnitsLookup")] 
 public record GetUnitsLookupQuery : IRequest<List<UnitDto>>;
 
 public class GetUnitsLookupHandler : IRequestHandler<GetUnitsLookupQuery, List<UnitDto>>
