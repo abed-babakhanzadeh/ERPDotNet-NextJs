@@ -37,7 +37,13 @@ type PaginationState = {
   pageSize: number;
 };
 
-interface DataTableProps<TData extends Unit> {
+// Base interface برای تمام table rows
+interface TableRow {
+  id: number;
+  [key: string]: any;
+}
+
+interface DataTableProps<TData extends TableRow> {
   columns: ColumnConfig[];
   data: TData[];
   rowCount: number;
@@ -64,7 +70,7 @@ interface DataTableProps<TData extends Unit> {
   onDelete: (row: TData) => void;
 }
 
-export function DataTable<TData extends Unit>({
+export function DataTable<TData extends TableRow>({
   columns,
   data,
   rowCount,
