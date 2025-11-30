@@ -125,7 +125,6 @@ export function DataTable<TData extends Unit>({
     const handleClick = (e: MouseEvent) => {
         setContextMenuOpen(false);
         setContextMenuUnit(null);
-        // Clear selection if not clicking on a row or context menu item
         if (!(e.target as HTMLElement).closest('[role="row"], [role="menuitem"]')) {
            setSelectedRowId(null);
         }
@@ -179,7 +178,7 @@ export function DataTable<TData extends Unit>({
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-4">
       <DataTableToolbar 
         globalFilter={globalFilter}
         onGlobalFilterChange={handleGlobalFilterChange}
@@ -187,11 +186,12 @@ export function DataTable<TData extends Unit>({
         onExport={handleExport}
         onPrint={handlePrint}
       />
-      <div className="rounded-md border printable-area bg-card">
-          <div className="relative max-h-[60vh] overflow-auto">
+      {/* تغییر bg-card و border-border برای کانتینر جدول */}
+      <div className="rounded-md border border-border printable-area bg-card">
+          <div className="relative max-h-[60vh] overflow-auto custom-scrollbar">
             <Table style={{ tableLayout: 'fixed', width: '100%' }}>
                 <TableHeader>
-                    <TableRow>
+                    <TableRow className="hover:bg-transparent border-b border-border">
                         {columns.map((column) => (
                            <Resizable
                               key={column.key}
@@ -202,7 +202,7 @@ export function DataTable<TData extends Unit>({
                               minConstraints={[50, 0]}
                               maxConstraints={[500, Infinity]}
                             >
-                               <TableHead style={{ width: `${columnWidths[column.key]}px` }}>
+                               <TableHead style={{ width: `${columnWidths[column.key]}px` }} className="bg-muted/50 text-muted-foreground">
                                 <div className="flex items-center justify-between h-full overflow-hidden">
                                   <DataTableColumnHeader
                                       column={column}
@@ -215,9 +215,10 @@ export function DataTable<TData extends Unit>({
                               </TableHead>
                             </Resizable>
                         ))}
-                        <TableHead className="no-print text-center sticky top-0 z-10 table-header-gradient" style={{ width: `${columnWidths.actions}px` }}>عملیات</TableHead>
+                        <TableHead className="no-print text-center sticky top-0 z-10 bg-muted/50 text-muted-foreground" style={{ width: `${columnWidths.actions}px` }}>عملیات</TableHead>
                     </TableRow>
-                     <TableRow className="no-print bg-muted/10">
+                     {/* ردیف فیلترها */}
+                     <TableRow className="no-print bg-muted/10 hover:bg-muted/10 border-b border-border">
                         {columns.map((column) => (
                             <TableCell key={`${column.key}-filter`} className="p-1">
                                 {column.type !== 'boolean' ? (
@@ -238,7 +239,7 @@ export function DataTable<TData extends Unit>({
                         <TableCell colSpan={columns.length + 1} className="h-24 text-center">
                            <div className="flex justify-center items-center gap-2">
                                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                                <span>در حال بارگذاری اطلاعات...</span>
+                                <span className="text-muted-foreground">در حال بارگذاری اطلاعات...</span>
                            </div>
                         </TableCell>
                      </TableRow>
@@ -249,15 +250,16 @@ export function DataTable<TData extends Unit>({
                           onClick={() => handleRowClick(row)}
                           onContextMenu={(e) => handleContextMenu(e, row)}
                           className={cn(
-                            "cursor-pointer",
-                            { "bg-orange-100 text-orange-900 dark:bg-orange-900/50 dark:text-orange-100 hover:bg-orange-200/80 dark:hover:bg-orange-800/50": selectedRowId === row.id }
+                            "cursor-pointer border-b border-border transition-colors hover:bg-muted/50",
+                            // بهبود استایل ردیف انتخاب شده برای دارک مود
+                            { "bg-primary/10 text-primary hover:bg-primary/15": selectedRowId === row.id }
                           )}
                       >
                           {columns.map(column => (
                               <TableCell key={column.key} style={{ width: `${columnWidths[column.key]}px`, maxWidth: `${columnWidths[column.key]}px`}}>
-                                  <div className="truncate">
+                                  <div className="truncate text-foreground">
                                     {column.key === 'isActive' ? (
-                                    <Badge variant={row.isActive ? 'default' : 'destructive'} className={cn('text-white', row.isActive ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600')}>
+                                    <Badge variant={row.isActive ? 'default' : 'destructive'} className={cn('text-white', row.isActive ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-red-500 hover:bg-red-600')}>
                                         {row.isActive ? 'فعال' : 'غیرفعال'}
                                     </Badge>
                                     ) : (
@@ -269,16 +271,16 @@ export function DataTable<TData extends Unit>({
                           <TableCell className="no-print text-center" style={{ width: `${columnWidths.actions}px` }}>
                               <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" className="h-8 w-8 p-0 flex justify-center items-center rounded-md hover:bg-muted">
+                                      <Button variant="ghost" className="h-8 w-8 p-0 flex justify-center items-center rounded-md hover:bg-accent text-muted-foreground">
                                           <MoreHorizontal className="h-4 w-4" />
                                           <span className="sr-only">بازکردن منو</span>
                                       </Button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
+                                  <DropdownMenuContent align="end" className="bg-popover border-border">
                                       <DropdownMenuItem onClick={() => onEdit(row)}>
                                           ویرایش
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => onDelete(row)} className="text-red-500 focus:text-red-500 focus:bg-red-100">
+                                      <DropdownMenuItem onClick={() => onDelete(row)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                                           حذف
                                       </DropdownMenuItem>
                                   </DropdownMenuContent>
@@ -288,7 +290,7 @@ export function DataTable<TData extends Unit>({
                       ))
                   ) : (
                       <TableRow>
-                      <TableCell colSpan={columns.length + 1} className="h-24 text-center">
+                      <TableCell colSpan={columns.length + 1} className="h-24 text-center text-muted-foreground">
                           هیچ نتیجه‌ای یافت نشد.
                       </TableCell>
                       </TableRow>
@@ -296,6 +298,8 @@ export function DataTable<TData extends Unit>({
                   </TableBody>
             </Table>
           </div>
+        
+        {/* کانتکست منو */}
         <DropdownMenu open={contextMenuOpen} onOpenChange={setContextMenuOpen}>
             <DropdownMenuTrigger asChild>
                 <div style={{ position: 'fixed', left: contextMenuPosition.x, top: contextMenuPosition.y }} />
@@ -303,11 +307,12 @@ export function DataTable<TData extends Unit>({
             <DropdownMenuContent 
               align="start" 
               onCloseAutoFocus={(e) => e.preventDefault()}
+              className="bg-popover border-border"
             >
                 <DropdownMenuItem onClick={() => handleRowAction('edit')}>
                     ویرایش
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleRowAction('delete')} className="text-red-500 focus:text-red-500 focus:bg-red-100">
+                <DropdownMenuItem onClick={() => handleRowAction('delete')} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                     حذف
                 </DropdownMenuItem>
             </DropdownMenuContent>

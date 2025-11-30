@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Settings, Shield, Layers, Grid, Package } from "lucide-react"; // آیکون Layers یا Grid برای عمومی خوبه
+import { LayoutDashboard, Users, Settings, Shield, Layers, Package, Wrench, ListTree, FilePlus, ClipboardList } from "lucide-react"; 
 import { Database, Ruler } from "lucide-react";
 
 export interface MenuItem {
@@ -16,11 +16,11 @@ export const MENU_ITEMS: MenuItem[] = [
     icon: LayoutDashboard 
   },
   
-  // === گروه عمومی (Accordion) ===
+  // === گروه عمومی ===
   {
     title: "عمومی",
-    icon: Layers, // آیکون پیشنهادی
-    permission: "General", // باید با نامی که در دیتابیس (Id=100) دادیم یکی باشد
+    icon: Layers,
+    permission: "General",
     submenu: [
       { 
         title: "مدیریت کاربران", 
@@ -43,7 +43,7 @@ export const MENU_ITEMS: MenuItem[] = [
     ]
   },
 
-
+  // === گروه اطلاعات پایه ===
   {
       title: "اطلاعات پایه",
       icon: Database,
@@ -55,24 +55,43 @@ export const MENU_ITEMS: MenuItem[] = [
           icon: Ruler, 
           permission: "BaseInfo.Units" 
         },
-            { 
-        title: "مدیریت کالاها", 
-        href: "/base-info/products", 
-        icon: Package, // ایمپورت کنید
-        permission: "BaseInfo.Products" 
-      },
-
+        { 
+          title: "مدیریت کالاها", 
+          href: "/base-info/products", 
+          icon: Package,
+          permission: "BaseInfo.Products" 
+        },
       ]
-    },
+  },
 
-
-  // === بعدا انبار اینجا میاد ===
-  /*
+  // === مهندسی محصول (۳ سطحی) ===
   {
-    title: "انبارداری",
-    icon: Package,
-    permission: "Inventory",
-    submenu: [...]
-  }
-  */
+    title: "مهندسی محصول",
+    icon: Wrench,
+    permission: "ProductEngineering",
+    submenu: [
+      { 
+        // سطح دوم: مدیریت BOM (خودش لینک ندارد، فقط باز می‌شود)
+        title: "مدیریت BOM", 
+        icon: ListTree, 
+        permission: "ProductEngineering.BOM",
+        // href را حذف کردم چون این آیتم پدری برای گزینه‌های زیر است
+        submenu: [
+           // سطح سوم: آیتم‌های داخلی
+          {
+            title: "ایجاد BOM جدید", 
+            href: "/product-engineering/boms", 
+            icon: FilePlus, 
+            permission: "ProductEngineering.BOM.Create",
+          },
+          {
+            title: "گزارشات BOM", 
+            href: "/product-engineering/bom-reports", 
+            icon: ClipboardList, 
+            permission: "ProductEngineering.BOM.Reports",
+          },
+        ]
+      },
+    ]
+  },
 ];

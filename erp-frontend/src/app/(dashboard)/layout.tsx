@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import Sidebar from "@/components/modules/dashboard/Sidebar";
 import Header from "@/components/modules/dashboard/Header";
 import TabsBar from "@/components/modules/dashboard/TabsBar";
-import { PermissionProvider } from "@/providers/PermissionProvider";
-import { TabsProvider } from "@/providers/TabsProvider";
 import { clsx } from "clsx";
 
 export default function DashboardLayout({
@@ -16,11 +14,9 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
 
-  // وضعیت‌های سایدبار
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // موبایل (باز/بسته)
-  const [isCollapsed, setIsCollapsed] = useState(false); // دسکتاپ (جمع/باز)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // چک کردن لاگین (Auth Guard)
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     if (!token) {
@@ -29,43 +25,40 @@ export default function DashboardLayout({
   }, [router]);
 
   return (
-    <PermissionProvider>
-      <TabsProvider>
-        <div className="min-h-screen bg-gray-50 flex">
-        {/* سایدبار هوشمند */}
-          <Sidebar 
-            isOpen={isSidebarOpen} 
-            onClose={() => setIsSidebarOpen(false)}
-            isCollapsed={isCollapsed} 
-            toggleCollapse={() => setIsCollapsed(!isCollapsed)}
-          />
+    // تغییر ۱: حذف bg-gray-50 و استفاده از bg-background text-foreground
+    // استفاده از h-screen و overflow-hidden برای جلوگیری از اسکرول کل صفحه
+    <div className="flex h-screen overflow-hidden bg-background text-foreground transition-colors duration-300">
+      
+      <Sidebar 
+        isOpen={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)}
+        isCollapsed={isCollapsed} 
+        toggleCollapse={() => setIsCollapsed(!isCollapsed)}
+      />
 
-          {/* محتوای اصلی (که عرضش با سایدبار تنظیم می‌شود) */}
-          <div
-            className={clsx(
-              "flex-1 flex flex-col min-h-screen transition-all duration-300",
-              // در دسکتاپ (md): اگر جمع شده margin-right=20, اگر باز است margin-right=64
-              // در موبایل: margin-right=0
-              isCollapsed ? "md:mr-20" : "md:mr-64"
-            )}
-          >
-            {/* هدر ثابت */}
-            <Header
-              onMenuClick={() => setIsSidebarOpen(true)}
-              isCollapsed={isCollapsed}
-            />
+      <div
+        className={clsx(
+          "relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden transition-all duration-300",
+          isCollapsed ? "md:mr-20" : "md:mr-64"
+        )}
+      >
+        <Header
+          onMenuClick={() => setIsSidebarOpen(true)}
+          isCollapsed={isCollapsed}
+        />
 
-            {/* نوار تب‌ها (زیر هدر قرار می‌گیرد) */}
-            <div className="pt-16 sticky top-0 z-20 bg-gray-50">
-              <TabsBar />
-            </div>
-
-            {/* کانتینر محتوای صفحات */}
-            {/* bg-white/50 برای زیبایی بیشتر روی بک‌گراند خاکستری */}
-            <main className="p-4 flex-1 overflow-auto">{children}</main>
+        <main className="flex-1 pt-16 flex flex-col">
+          {/* تغییر ۲: استایل‌دهی کانتینر تب‌ها با رنگ‌های تم */}
+          <div className="sticky top-16 z-20 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <TabsBar />
           </div>
-        </div>
-      </TabsProvider>
-    </PermissionProvider>
+
+          {/* تغییر ۳: حذف هرگونه bg-white اضافی */}
+          <div className="flex-1 p-4">
+            {children}
+          </div>
+        </main>
+      </div>
+    </div>
   );
 }

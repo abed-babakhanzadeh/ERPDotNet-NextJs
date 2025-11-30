@@ -10,40 +10,45 @@ export default function TabsBar() {
   if (tabs.length === 0) return null;
 
   return (
-    <div className="flex items-end gap-1 overflow-x-auto bg-gray-100 px-2 pt-2 border-b border-gray-300 sticky top-0 z-20">
-      {/* تب داشبورد (همیشه هست یا اختیاری) */}
+    // تغییر bg-gray-100 به bg-muted/20 و border-gray-300 به border-border
+    <div className="flex items-end gap-1 overflow-x-auto bg-muted/20 px-2 pt-2 scrollbar-hide">
+      
       <button
         onClick={() => setActiveTab("/")}
         className={clsx(
-          "flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-t-lg border-t border-x transition-all",
+          "flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-t-lg border-t border-x transition-all select-none",
           activeTabId === "/"
-            ? "bg-white border-gray-300 text-blue-700 border-b-white -mb-[1px] z-10"
-            : "bg-gray-200 border-transparent text-gray-500 hover:bg-gray-300"
+            // تب فعال: رنگ پس‌زمینه اصلی (card) و متن اصلی (primary)
+            ? "bg-background border-border text-primary border-b-background -mb-[1px] z-10"
+            // تب غیرفعال: رنگ پس‌زمینه muted
+            : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
         )}
       >
         <Home size={14} />
         پیشخوان
       </button>
 
-      {/* سایر تب‌ها */}
       {tabs.map((tab) => (
         <div
           key={tab.id}
           className={clsx(
-            "group flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-t-lg border-t border-x transition-all cursor-pointer min-w-[120px] justify-between",
+            "group flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-t-lg border-t border-x transition-all cursor-pointer min-w-[120px] justify-between select-none",
             activeTabId === tab.id
-              ? "bg-white border-gray-300 text-gray-800 border-b-white -mb-[1px] z-10 shadow-sm"
-              : "bg-gray-200 border-transparent text-gray-500 hover:bg-gray-300"
+              ? "bg-background border-border text-foreground border-b-background -mb-[1px] z-10 shadow-sm"
+              : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
           )}
           onClick={() => setActiveTab(tab.id)}
         >
-          <span className="truncate">{tab.title}</span>
+          <span className="truncate max-w-[100px]">{tab.title}</span>
           <button
             onClick={(e) => {
               e.stopPropagation();
               closeTab(tab.id);
             }}
-            className="p-0.5 rounded-full hover:bg-red-100 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+            className={clsx(
+                "p-0.5 rounded-full transition-opacity opacity-0 group-hover:opacity-100",
+                "hover:bg-destructive/10 hover:text-destructive"
+            )}
           >
             <X size={12} />
           </button>
