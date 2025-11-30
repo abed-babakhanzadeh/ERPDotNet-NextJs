@@ -41,9 +41,7 @@ export const PermissionProvider = ({
       }
 
       try {
-        const { data } = await apiClient.get<string[]>(
-          "/Permissions/my-permissions"
-        ); // آدرس را چک کن
+        const { data } = await apiClient.get<string[]>("/Permissions/mine"); // آدرس را چک کن
         setPermissions(data);
       } catch (error) {
         // حتی اگر ارور داد، ما لودینگ را فالس میکنیم که صفحه بالا بیاید
