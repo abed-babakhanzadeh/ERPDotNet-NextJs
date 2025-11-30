@@ -1,4 +1,4 @@
-import type { Product as ProductType } from './product';
+import type { Product as ProductType } from "./product";
 
 export type Unit = {
   id: number;
@@ -14,8 +14,8 @@ export type Unit = {
 export type Product = ProductType;
 
 export type SortConfig = {
-  key: keyof Unit | keyof Product;
-  direction: 'ascending' | 'descending';
+  key: string; // Allow any property name for flexibility across different entity types
+  direction: "ascending" | "descending";
 } | null;
 
 export type FilterCondition = {
@@ -26,13 +26,13 @@ export type FilterCondition = {
 };
 
 export type ColumnFilter = {
-  key: keyof Unit | keyof Product;
-  logic: 'and' | 'or';
+  key: string; // Allow any property name for flexibility
+  logic: "and" | "or";
   conditions: FilterCondition[];
 };
 
 export type ColumnConfig = {
-  key: keyof Unit | keyof Product;
+  key: string; // Allow any property name for flexibility
   label: string;
-  type: 'string' | 'number' | 'boolean';
+  type: "string" | "number" | "boolean";
 };
