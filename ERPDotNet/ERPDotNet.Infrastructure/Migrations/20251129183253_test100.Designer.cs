@@ -3,6 +3,7 @@ using System;
 using ERPDotNet.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ERPDotNet.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251129183253_test100")]
+    partial class test100
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -582,7 +585,7 @@ namespace ERPDotNet.Infrastructure.Migrations
                         new
                         {
                             Id = 2000,
-                            IsMenu = true,
+                            IsMenu = false,
                             Name = "ProductEngineering",
                             ParentId = 1,
                             Title = "مهندسی محصول"
@@ -590,7 +593,7 @@ namespace ERPDotNet.Infrastructure.Migrations
                         new
                         {
                             Id = 200,
-                            IsMenu = true,
+                            IsMenu = false,
                             Name = "ProductEngineering.BOM",
                             ParentId = 2000,
                             Title = "مدیریت BOM"
@@ -598,18 +601,10 @@ namespace ERPDotNet.Infrastructure.Migrations
                         new
                         {
                             Id = 201,
-                            IsMenu = true,
+                            IsMenu = false,
                             Name = "ProductEngineering.BOM.Create",
                             ParentId = 200,
                             Title = "تعریف BOM"
-                        },
-                        new
-                        {
-                            Id = 202,
-                            IsMenu = true,
-                            Name = "ProductEngineering.BOM.Reports",
-                            ParentId = 200,
-                            Title = "گزارش BOM"
                         });
                 });
 
@@ -747,11 +742,6 @@ namespace ERPDotNet.Infrastructure.Migrations
                         {
                             RoleId = "1",
                             PermissionId = 201
-                        },
-                        new
-                        {
-                            RoleId = "1",
-                            PermissionId = 202
                         });
                 });
 
