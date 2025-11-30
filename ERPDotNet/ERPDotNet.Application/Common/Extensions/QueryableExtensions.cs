@@ -23,7 +23,23 @@ public static class QueryableExtensions
         var queryElementTypeParam = Expression.Parameter(typeof(T));
         
         // پیدا کردن پراپرتی با نام ارسال شده (مثلا "Code")
-        var memberAccess = Expression.PropertyOrField(queryElementTypeParam, orderByMember);
+        Expression memberAccess;
+        
+        // بررسی فیلد های تو در تو (مثلاً "Product.Code")
+        if (orderByMember.Contains("."))
+        {
+            var parts = orderByMember.Split('.');
+            memberAccess = Expression.PropertyOrField(queryElementTypeParam, parts[0]);
+            
+            foreach (var part in parts.Skip(1))
+            {
+                memberAccess = Expression.PropertyOrField(memberAccess, part);
+            }
+        }
+        else
+        {
+            memberAccess = Expression.PropertyOrField(queryElementTypeParam, orderByMember);
+        }
         
         var keySelector = Expression.Lambda(memberAccess, queryElementTypeParam);
 

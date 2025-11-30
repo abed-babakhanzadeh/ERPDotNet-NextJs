@@ -46,10 +46,42 @@ public class GetBOMsListHandler : IRequestHandler<GetBOMsListQuery, PaginatedRes
                 x.Product.Code.Contains(request.SearchTerm));
         }
 
+        // Map DTO property names to entity property names for filters
+        if (request.Filters != null && request.Filters.Any())
+        {
+            foreach (var filter in request.Filters)
+            {
+                filter.PropertyName = filter.PropertyName switch
+                {
+                    "productCode" => "Product.Code",
+                    "productName" => "Product.Name",
+                    "title" => "Title",
+                    "version" => "Version",
+                    "type" => "Type",
+                    "status" => "Status",
+                    "isActive" => "IsActive",
+                    _ => filter.PropertyName
+                };
+            }
+        }
+
         query = query.ApplyDynamicFilters(request.Filters);
 
-        if (!string.IsNullOrEmpty(request.SortColumn))
-            query = query.OrderByDynamic(request.SortColumn, request.SortDescending);
+        // Map DTO property names to entity property names for sorting
+        string? mappedSortColumn = request.SortColumn switch
+        {
+            "productCode" => "Product.Code",
+            "productName" => "Product.Name",
+            "title" => "Title",
+            "version" => "Version",
+            "type" => "Type",
+            "status" => "Status",
+            "isActive" => "IsActive",
+            _ => request.SortColumn
+        };
+
+        if (!string.IsNullOrEmpty(mappedSortColumn))
+            query = query.OrderByDynamic(mappedSortColumn, request.SortDescending);
         else
             query = query.OrderByDescending(x => x.Id);
 

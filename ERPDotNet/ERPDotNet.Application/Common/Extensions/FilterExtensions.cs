@@ -18,9 +18,25 @@ public static class FilterExtensions
             try
             {
                 var parameter = Expression.Parameter(typeof(T), "x");
-                var property = Expression.Property(parameter, filter.PropertyName);
                 
-                var targetType = Nullable.GetUnderlyingType(property.Type) ?? property.Type;
+                // Handle nested properties (e.g., "Product.Code")
+                Expression propertyAccess;
+                if (filter.PropertyName.Contains("."))
+                {
+                    var parts = filter.PropertyName.Split('.');
+                    propertyAccess = Expression.PropertyOrField(parameter, parts[0]);
+                    
+                    foreach (var part in parts.Skip(1))
+                    {
+                        propertyAccess = Expression.PropertyOrField(propertyAccess, part);
+                    }
+                }
+                else
+                {
+                    propertyAccess = Expression.Property(parameter, filter.PropertyName);
+                }
+                
+                var targetType = Nullable.GetUnderlyingType(propertyAccess.Type) ?? propertyAccess.Type;
 
                 object convertedValue;
 
@@ -41,54 +57,54 @@ public static class FilterExtensions
                     convertedValue = Convert.ChangeType(filter.Value, targetType);
                 }
 
-                var constant = Expression.Constant(convertedValue, property.Type);
+                var constant = Expression.Constant(convertedValue, propertyAccess.Type);
                 Expression comparison;
 
                 switch (filter.Operation.ToLower())
                 {
                     case "equals":
                     case "eq":
-                        comparison = Expression.Equal(property, constant);
+                        comparison = Expression.Equal(propertyAccess, constant);
                         break;
                     
                     case "neq":
-                        comparison = Expression.NotEqual(property, constant);
+                        comparison = Expression.NotEqual(propertyAccess, constant);
                         break;
 
                     case "gt":
-                        comparison = Expression.GreaterThan(property, constant);
+                        comparison = Expression.GreaterThan(propertyAccess, constant);
                         break;
 
                     case "gte":
-                        comparison = Expression.GreaterThanOrEqual(property, constant);
+                        comparison = Expression.GreaterThanOrEqual(propertyAccess, constant);
                         break;
 
                     case "lt":
-                        comparison = Expression.LessThan(property, constant);
+                        comparison = Expression.LessThan(propertyAccess, constant);
                         break;
 
                     case "lte":
-                        comparison = Expression.LessThanOrEqual(property, constant);
+                        comparison = Expression.LessThanOrEqual(propertyAccess, constant);
                         break;
 
                     case "contains":
-                        if (property.Type == typeof(string))
+                        if (propertyAccess.Type == typeof(string))
                         {
                             var stringConstant = Expression.Constant(filter.Value, typeof(string));
                             var method = typeof(string).GetMethod("Contains", new[] { typeof(string) });
                             if (method != null)
                             {
-                                comparison = Expression.Call(property, method, stringConstant);
+                                comparison = Expression.Call(propertyAccess, method, stringConstant);
                             }
                             else
                             {
-                                comparison = Expression.Equal(property, constant);
+                                comparison = Expression.Equal(propertyAccess, constant);
                             }
                         }
                         else
                         {
                             // برای انواع دیگر، Contains معادل Equals است
-                            comparison = Expression.Equal(property, constant);
+                            comparison = Expression.Equal(propertyAccess, constant);
                         }
                         break;
 
