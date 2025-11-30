@@ -51,7 +51,8 @@ public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermissi
             new RolePermission { RoleId = "1", PermissionId = 2000 },  // View
             // BOM
             new RolePermission { RoleId = "1", PermissionId = 200 },  // View
-            new RolePermission { RoleId = "1", PermissionId = 201 }  // Create
+            new RolePermission { RoleId = "1", PermissionId = 201 },  // Create
+            new RolePermission { RoleId = "1", PermissionId = 202 }  // Rports
         //     new RolePermission { RoleId = "1", PermissionId = 38 },  // Edit
         //     new RolePermission { RoleId = "1", PermissionId = 38 }  // Delete
         );
