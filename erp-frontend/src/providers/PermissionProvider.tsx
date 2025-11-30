@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import apiClient from "@/services/apiClient";
 import { Loader2 } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 interface PermissionContextType {
   permissions: string[];
@@ -10,21 +11,43 @@ interface PermissionContextType {
   hasPermission: (permissionName: string) => boolean;
   hasPermissionGroup: (prefix: string) => boolean; // <--- تابع جدید
 }
-const PermissionContext = createContext<PermissionContextType | undefined>(undefined);
+const PermissionContext = createContext<PermissionContextType | undefined>(
+  undefined
+);
 
-export function PermissionProvider({ children }: { children: React.ReactNode }) {
+export const PermissionProvider = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
   const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const pathname = usePathname(); // <--- دریافت آدرس فعلی
 
-  // دانلود مجوزها به محض لود شدن داشبورد
   useEffect(() => {
     const fetchPermissions = async () => {
+      // 1. اگر در صفحه لاگین هستیم، اصلاً درخواست نزن
+      if (pathname === "/login") {
+        setLoading(false);
+        return;
+      }
+
+      // 2. چک کردن وجود توکن
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        setPermissions([]);
+        setLoading(false);
+        return; // <--- حیاتی: ریترن کن تا درخواست ارسال نشود
+      }
+
       try {
-        const { data } = await apiClient.get<string[]>("/Permissions/mine");
+        const { data } = await apiClient.get<string[]>(
+          "/Permissions/my-permissions"
+        ); // آدرس را چک کن
         setPermissions(data);
       } catch (error) {
-        console.error("Error fetching permissions:", error);
-        // اگر خطا داد (مثلا توکن سوخت)، لیست خالی می‌شود
+        // حتی اگر ارور داد، ما لودینگ را فالس میکنیم که صفحه بالا بیاید
+        console.error("خطا در دریافت مجوزها", error);
         setPermissions([]);
       } finally {
         setLoading(false);
@@ -32,9 +55,9 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
     };
 
     fetchPermissions();
-  }, []);
+  }, [pathname]); // <--- وابستگی به pathname اضافه شود
 
-// تابع کمکی برای چک کردن دسترسی
+  // تابع کمکی برای چک کردن دسترسی
   const hasPermission = (permissionName: string) => {
     return permissions.includes(permissionName);
   };
@@ -42,9 +65,8 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
   // === تابع جدید: چک کردن گروهی ===
   // مثال: اگر ورودی "UserAccess" باشد، و کاربر "UserAccess.View" داشته باشد، True برمی‌گرداند.
   const hasPermissionGroup = (prefix: string) => {
-    return permissions.some(p => p === prefix || p.startsWith(prefix + "."));
+    return permissions.some((p) => p === prefix || p.startsWith(prefix + "."));
   };
-
 
   if (loading) {
     return (
@@ -58,11 +80,13 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
   }
 
   return (
-    <PermissionContext.Provider value={{ permissions, loading, hasPermission, hasPermissionGroup }}>
+    <PermissionContext.Provider
+      value={{ permissions, loading, hasPermission, hasPermissionGroup }}
+    >
       {children}
     </PermissionContext.Provider>
-  );  
-} 
+  );
+};
 
 // هوک اختصاصی برای استفاده راحت‌تر
 export const usePermissions = () => {
