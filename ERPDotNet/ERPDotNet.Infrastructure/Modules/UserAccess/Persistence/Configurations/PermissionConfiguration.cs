@@ -58,11 +58,13 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             new Permission { Id = 37, Name = "BaseInfo.Products.Edit", Title = "ویرایش کالا", IsMenu = false, ParentId = 35 },
             new Permission { Id = 38, Name = "BaseInfo.Products.Delete", Title = "حذف کالا", IsMenu = false, ParentId = 35 },
 
-            //BOM
+            // === ماژول مهندسی محصول (ProductEngineering) ===
             new Permission { Id = 2000, Name = "ProductEngineering", Title = "مهندسی محصول", IsMenu = true, ParentId = 1 },
+
+            // Bom
             new Permission { Id = 200, Name = "ProductEngineering.BOM", Title = "مدیریت BOM", IsMenu = true, ParentId = 2000 },
-            new Permission { Id = 201, Name = "ProductEngineering.BOM.Create", Title = "تعریف BOM", IsMenu = true, ParentId = 200 },
-            new Permission { Id = 202, Name = "ProductEngineering.BOM.Reports", Title = "گزارش BOM", IsMenu = true, ParentId = 200 }
+            new Permission { Id = 201, Name = "ProductEngineering.BOM.Create",  Title = "تعریف BOM", IsMenu = true, ParentId = 200 , Url = "/product-engineering/boms" },
+            new Permission { Id = 202, Name = "ProductEngineering.BOM.Reports", Title = "گزارش BOM", IsMenu = true, ParentId = 200 , Url = "/product-engineering/boms" }
 
         );
     }
