@@ -3,7 +3,7 @@
 import { X, Menu, ChevronRight, ChevronLeft } from "lucide-react";
 import { clsx } from "clsx";
 import { MENU_ITEMS } from "@/config/menuItems";
-import SidebarItem from "./SidebarItem";
+import SidebarItemWrapper from "./SidebarItemWrapper";
 import { usePermissions } from "@/providers/PermissionProvider";
 
 export interface SidebarProps {
@@ -91,7 +91,7 @@ export default function Sidebar({
           {!loading && (
             <nav className="space-y-1">
               {MENU_ITEMS.map((item, index) => (
-                <SidebarItem
+                <SidebarItemWrapper
                   key={index}
                   item={item}
                   isCollapsed={isCollapsed}
