@@ -149,6 +149,64 @@
         background: linear-gradient(to bottom, hsl(var(--muted) / 0.5), hsl(var(--muted) / 0.2));
         @apply bg-card;
     }
+
+    /* کلاس‌های custom برای هدر و محتوا */
+    .bom-header {
+      @apply bg-white;
+    }
+
+    .dark .bom-header {
+      @apply bg-slate-800;
+    }
+
+    .custom .bom-header {
+      @apply bg-purple-900;
+    }
+
+    .bom-content {
+      @apply p-4 h-full bg-white;
+    }
+
+    .dark .bom-content {
+      @apply bg-slate-950;
+    }
+
+    .custom .bom-content {
+      @apply bg-purple-950;
+    }
+
+    /* کلاس‌های جدید برای صفحات دیگر (Products, Units, Users, Dashboard) */
+    .page-header {
+      @apply bg-card text-card-foreground p-4 rounded-xl;
+    }
+
+    .dark .page-header {
+      @apply bg-slate-800 text-card-foreground;
+    }
+
+    .custom .page-header {
+      @apply bg-purple-900 text-primary-foreground;
+    }
+
+    .page-content {
+      @apply p-4 h-full bg-gray-50 text-foreground;
+    }
+
+    .dark .page-content {
+      @apply bg-slate-900 text-foreground;
+    }
+
+    .custom .page-content {
+      @apply bg-purple-900 text-primary-foreground;
+    }
+
+    /* headings inside page-header/content to ensure contrast */
+    .page-header h1,
+    .page-content h1,
+    .page-header h2,
+    .page-content h2 {
+      @apply text-foreground;
+    }
 }
 
 @media print {

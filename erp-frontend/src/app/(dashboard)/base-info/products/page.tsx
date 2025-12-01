@@ -166,7 +166,7 @@ export default function ProductsPage() {
           </PermissionGuardPlaceholder>
         }
       >
-        <div className="p-4 h-full">
+        <div className="page-content">
           <DataTable
             columns={columns}
             data={data}

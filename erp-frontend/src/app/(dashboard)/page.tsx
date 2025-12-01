@@ -1,6 +1,6 @@
 export default function DashboardPage() {
   return (
-    <div className="space-y-6">
+    <div className="page-content space-y-6">
       {/* کارت‌های آمار */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <div className="rounded-xl bg-white p-6 shadow-sm border border-gray-100">
