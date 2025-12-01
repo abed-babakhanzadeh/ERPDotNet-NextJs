@@ -219,7 +219,7 @@ return (
           <button 
             onClick={handleSavePermissions} 
             disabled={saveLoading}
-            className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:opacity-50 transition-all duration-200"
           >
             <Save size={18} />
             {saveLoading ? "در حال ذخیره..." : "ذخیره تغییرات دسترسی"}
@@ -231,7 +231,7 @@ return (
         
         {/* ستون لیست نقش‌ها */}
           <div className="md:col-span-1 flex flex-col gap-4">
-          <div className="rounded-xl border border-gray-200 bg-white p-4 h-fit">
+          <div className="rounded-2xl border border-border bg-card p-4 h-fit shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-foreground flex items-center gap-2">
                 <Shield size={18} />
@@ -239,7 +239,7 @@ return (
               </h3>
               <button 
                 onClick={() => setIsModalOpen(true)}
-                className="p-1 text-blue-600 hover:bg-blue-50 rounded-full" 
+                className="p-1 text-primary hover:bg-primary/10 rounded-full transition-colors" 
                 title="افزودن نقش جدید"
               >
                 <Plus size={20} />
@@ -247,15 +247,15 @@ return (
             </div>
 
             {loading ? (
-              <div className="text-center py-4 text-gray-500"><Loader2 className="animate-spin mx-auto"/></div>
+              <div className="text-center py-4 text-muted-foreground"><Loader2 className="animate-spin mx-auto"/></div>
             ) : (
               <ul className="space-y-1 max-h-[400px] overflow-y-auto">
                 {roles.map(role => (
                   <li key={role.id} className="relative group">
                     <button
                       onClick={() => handleRoleSelect(role.id)}
-                      className={`w-full rounded-lg px-3 py-2 text-right text-sm transition-colors flex justify-between items-center ${
-                        selectedRole === role.id ? "bg-blue-50 text-blue-700 font-bold" : "hover:bg-gray-50 text-gray-600"
+                      className={`w-full rounded-lg px-3 py-2 text-right text-sm transition-all flex justify-between items-center ${
+                        selectedRole === role.id ? "bg-primary/10 text-primary font-semibold shadow-sm" : "hover:bg-muted text-muted-foreground"
                       }`}
                     >
                       <span>{role.name}</span>
@@ -265,7 +265,7 @@ return (
                     {role.name !== 'Admin' && role.name !== 'User' && (
                       <button
                         onClick={(e) => handleDeleteRole(e, role)}
-                        className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:bg-red-100 rounded transition-all"
+                        className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 text-destructive hover:bg-destructive/10 rounded transition-all"
                         title="حذف نقش"
                       >
                         <Trash2 size={14} />
@@ -281,14 +281,16 @@ return (
         {/* ستون درخت */}
         <div className="md:col-span-3">
           {selectedRole ? (
-          <PermissionTree 
-            nodes={treeData} 
-            selectedIds={selectedPermIds} 
-            onToggle={handleToggle} 
-            // roleIds را اینجا ننویسید!
-          />
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+            <PermissionTree 
+              nodes={treeData} 
+              selectedIds={selectedPermIds} 
+              onToggle={handleToggle} 
+              // roleIds را اینجا ننویسید!
+            />
+          </div>
           ) : (
-            <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50 text-gray-400">
+            <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 text-muted-foreground">
               یک نقش را انتخاب کنید تا دسترسی‌های آن نمایش داده شود
             </div>
           )}
@@ -299,19 +301,19 @@ return (
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="تعریف نقش جدید">
         <form onSubmit={handleCreateRole} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">عنوان نقش</label>
+            <label className="block text-sm font-medium text-foreground mb-1">عنوان نقش</label>
             <input 
               required
               autoFocus
               value={newRoleName}
               onChange={(e) => setNewRoleName(e.target.value)}
               placeholder="مثال: مدیر فروش"
-              className="w-full rounded-lg border border-gray-300 p-2 outline-none focus:border-blue-500"
+              className="w-full rounded-lg border border-border bg-card text-foreground p-2 outline-none focus:border-primary transition-colors"
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">انصراف</button>
-            <button type="submit" className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">ذخیره</button>
+            <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm text-muted-foreground hover:bg-muted rounded-lg transition-colors">انصراف</button>
+            <button type="submit" className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">ذخیره</button>
           </div>
         </form>
       </Modal>
