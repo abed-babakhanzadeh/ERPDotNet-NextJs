@@ -53,7 +53,7 @@ export default function CreateBOMForm({ onCancel, onSuccess }: Props) {
       const response = await apiClient.post<any>("/Products/search", {
         pageNumber: 1,
         pageSize: 100,
-        searchTerm: searchTerm || "",
+        searchTerm: (searchTerm || "").toLowerCase(),
         sortColumn: "code",
         sortDescending: false,
         Filters: [],
@@ -80,10 +80,14 @@ export default function CreateBOMForm({ onCancel, onSuccess }: Props) {
   }, []);
 
   const productColumns: ColumnDef[] = [
+    // Use a flexible middle column for the product name so the popup
+    // becomes responsive on narrow/mobile viewports. The TableLookupCombobox
+    // treats these width strings as CSS grid track values, so we can use
+    // `minmax(0, 1fr)` to allow the name column to shrink gracefully.
     { key: "code", label: "کد", width: "100px" },
-    { key: "name", label: "نام", width: "500px" },
-    { key: "unitName", label: "واحد", width: "100px" },
-    { key: "supplyType", label: "نوع تامین", width: "120px" },
+    { key: "name", label: "نام", width: "minmax(0, 1fr)" },
+    { key: "unitName", label: "واحد", width: "80px" },
+    { key: "supplyType", label: "نوع تامین", width: "100px" },
   ];
 
   const renderProductCell = (item: ProductOption, column: ColumnDef) => {
