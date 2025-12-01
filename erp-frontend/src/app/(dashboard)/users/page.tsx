@@ -292,7 +292,7 @@ const handleCopyPermissions = async () => {
 
         {/* ... بخش جستجو و جدول (بدون تغییر) ... */}
         {/* ... کدهای قبلی جدول ... */}
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
             {/* کد جدول مثل قبل */}
               <table className="w-full text-right text-sm text-foreground">
                 <thead className="bg-card text-xs uppercase text-card-foreground">
