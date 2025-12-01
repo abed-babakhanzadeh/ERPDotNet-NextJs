@@ -192,7 +192,7 @@ export default function BOMPage() {
           </PermissionGuardPlaceholder>
         }
       >
-        <div className="p-4 h-full">
+        <div className="bom-content">
           <DataTable
             columns={columns}
             data={data}

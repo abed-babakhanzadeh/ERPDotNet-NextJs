@@ -276,9 +276,9 @@ const handleCopyPermissions = async () => {
   return (
     // 👇 کل صفحه داخل این گارد قرار گرفت
     <ProtectedPage permission="UserAccess.View">
-      <div className="space-y-6">
+      <div className="page-content space-y-6">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <h1 className="text-2xl font-bold text-gray-800">مدیریت کاربران</h1>
+          <h1 className="text-2xl font-bold text-foreground">مدیریت کاربران</h1>
           <PermissionGuard permission="UserAccess.Create">
             <button 
               onClick={handleCreate} // <--- باز کردن مدال
@@ -294,8 +294,8 @@ const handleCopyPermissions = async () => {
         {/* ... کدهای قبلی جدول ... */}
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
             {/* کد جدول مثل قبل */}
-              <table className="w-full text-right text-sm text-gray-500">
-                <thead className="bg-gray-50 text-xs uppercase text-gray-700">
+              <table className="w-full text-right text-sm text-foreground">
+                <thead className="bg-card text-xs uppercase text-card-foreground">
                   <tr>
                     <th className="px-6 py-3">نام و نام خانوادگی</th>
                     <th className="px-6 py-3">نام کاربری</th>
@@ -308,7 +308,7 @@ const handleCopyPermissions = async () => {
                 <tbody>
                   {users.map((user) => (
                     <tr key={user.id} className="border-b hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 font-medium text-gray-900">
+                      <td className="px-6 py-4 font-medium text-foreground">
                         {user.firstName} {user.lastName}
                       </td>
                       <td className="px-6 py-4">{user.username}</td>

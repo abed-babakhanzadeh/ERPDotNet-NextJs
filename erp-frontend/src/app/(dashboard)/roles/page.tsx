@@ -212,9 +212,9 @@ export default function RolesPage() {
 
 return (
   <ProtectedPage permission="UserAccess.Roles">
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">مدیریت دسترسی نقش‌ها</h1>
+    <div className="page-content space-y-6">
+      <div className="page-header flex items-center justify-between rounded-xl p-4">
+        <h1 className="text-2xl font-bold text-foreground">مدیریت دسترسی نقش‌ها</h1>
         {selectedRole && (
           <button 
             onClick={handleSavePermissions} 
@@ -230,10 +230,10 @@ return (
       <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
         
         {/* ستون لیست نقش‌ها */}
-        <div className="md:col-span-1 flex flex-col gap-4">
+          <div className="md:col-span-1 flex flex-col gap-4">
           <div className="rounded-xl border border-gray-200 bg-white p-4 h-fit">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-gray-700 flex items-center gap-2">
+              <h3 className="font-bold text-foreground flex items-center gap-2">
                 <Shield size={18} />
                 نقش‌ها
               </h3>

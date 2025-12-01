@@ -12,7 +12,7 @@ export interface MenuItem {
 export const MENU_ITEMS: MenuItem[] = [
   { 
     title: "داشبورد", 
-    href: "/", 
+    // href: "/", 
     icon: LayoutDashboard 
   },
   
@@ -36,7 +36,7 @@ export const MENU_ITEMS: MenuItem[] = [
       },
       { 
         title: "تنظیمات", 
-        href: "/settings", 
+        // href: "/settings", 
         icon: Settings, 
         permission: "General.Settings" 
       },
@@ -86,7 +86,7 @@ export const MENU_ITEMS: MenuItem[] = [
           },
           {
             title: "گزارشات BOM", 
-            href: "/product-engineering/bom-reports", 
+            // href: "/product-engineering/bom-reports", 
             icon: ClipboardList, 
             permission: "ProductEngineering.BOM.Reports",
           },
