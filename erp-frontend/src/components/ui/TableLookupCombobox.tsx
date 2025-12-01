@@ -69,7 +69,7 @@ export function TableLookupCombobox<T extends LookupOption>({
     return columns.slice(0, 2).map((c) => c.key);
   }, [displayFields, columns]);
 
-  // جستجو
+  // جستجو - case insensitive برای فارسی و انگلیسی
   const filteredItems = React.useMemo(() => {
     if (!searchTerm.trim()) return items;
     const searchLower = searchTerm.toLowerCase();
@@ -77,7 +77,8 @@ export function TableLookupCombobox<T extends LookupOption>({
       searchFields.some((field) => {
         const fieldValue = item[field];
         if (fieldValue === null || fieldValue === undefined) return false;
-        return String(fieldValue).toLowerCase().includes(searchLower);
+        const fieldLower = String(fieldValue).toLowerCase();
+        return fieldLower.includes(searchLower);
       })
     );
   }, [items, searchTerm, searchFields]);

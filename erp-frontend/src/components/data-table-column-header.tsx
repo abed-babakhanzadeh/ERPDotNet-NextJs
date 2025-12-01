@@ -72,10 +72,6 @@ export function DataTableColumnHeader({
     filter.conditions.length > 0 &&
     filter.conditions.some((c) => c.value !== "" && c.value !== null);
 
-  const [popoverOpen, setPopoverOpen] = useState(false);
-
-  const FilterIconComponent = isFiltered ? FilterX : FilterIcon;
-
   return (
     <div className="flex items-center gap-1 w-full justify-between">
       <Button
@@ -94,39 +90,13 @@ export function DataTableColumnHeader({
           <div className="w-4 h-4 ml-2" />
         )}
       </Button>
-      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "h-8 w-8",
-              isFiltered && "text-primary bg-primary/10"
-            )}
-          >
-            <FilterIconComponent className="h-4 w-4" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-80" align="start">
-          <FilterPopoverContent
-            column={column}
-            initialFilter={filter}
-            onApply={(newFilterState) => {
-              onFilterChange(newFilterState);
-              setPopoverOpen(false);
-            }}
-            onClear={() => {
-              onFilterChange(null);
-              setPopoverOpen(false);
-            }}
-          />
-        </PopoverContent>
-      </Popover>
+      {/* Filter icon moved to the filter row under the header (ColumnFilter component) */}
+      <div className="w-8" />
     </div>
   );
 }
 
-function FilterPopoverContent({
+export function FilterPopoverContent({
   column,
   initialFilter,
   onApply,

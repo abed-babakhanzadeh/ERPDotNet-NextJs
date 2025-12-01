@@ -260,9 +260,14 @@ export function DataTable<TData extends TableRow>({
                   <TableCell key={`${column.key}-filter`} className="p-1">
                     {column.type !== "boolean" ? (
                       <ColumnFilter
+                        column={column}
                         columnKey={column.key}
                         value={columnFilters[column.key] || ""}
+                        initialAdvancedFilter={advancedFilters.find(
+                          (f) => f.key === column.key
+                        )}
                         onChange={onColumnFilterChange}
+                        onApplyAdvancedFilter={onAdvancedFilterChange}
                       />
                     ) : null}
                   </TableCell>

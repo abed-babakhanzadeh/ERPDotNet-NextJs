@@ -47,13 +47,6 @@ public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, Pagina
             .Include(p => p.Unit)
             .AsQueryable();
 
-        if (!string.IsNullOrWhiteSpace(request.SearchTerm))
-        {
-            query = query.Where(p =>
-                p.Name.Contains(request.SearchTerm) ||
-                p.Code.Contains(request.SearchTerm));
-        }
-
         // --- فیلترهای خاص ---
         var unitNameFilter = request.Filters?.FirstOrDefault(f => f.PropertyName.Equals("unitName", StringComparison.OrdinalIgnoreCase));
         if (unitNameFilter != null && !string.IsNullOrEmpty(unitNameFilter.Value))
@@ -79,6 +72,19 @@ public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, Pagina
         // --- پایان فیلترهای خاص ---
 
         query = query.ApplyDynamicFilters(request.Filters);
+
+        // جستجوی case-insensitive بعد از فیلترهای دیگر
+        if (!string.IsNullOrWhiteSpace(request.SearchTerm))
+        {
+            // تبدیل مقدار جستجو به lower و استفاده از ToLower روی ستون‌ها تا
+            // ترجمه به SQL به صورت LOWER(column) انجام شود و مقایسه case-insensitive شود.
+            // این روش در اکثر پایگاه‌داده‌ها (با ترجمه صحیح توسط EF Core) کار می‌کند
+            // و از بارگذاری کامل جدول (AsEnumerable) جلوگیری می‌کند.
+            var searchLower = request.SearchTerm.ToLower();
+            query = query.Where(p =>
+                (p.Name != null && p.Name.ToLower().Contains(searchLower)) ||
+                (p.Code != null && p.Code.ToLower().Contains(searchLower)));
+        }
 
         if (!string.IsNullOrEmpty(request.SortColumn))
         {
