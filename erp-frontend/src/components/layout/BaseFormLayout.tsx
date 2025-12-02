@@ -1,28 +1,35 @@
 "use client";
 
 import React from "react";
-import { Loader2, ArrowRight } from "lucide-react";
+import { Loader2, ArrowRight, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTabs } from "@/providers/TabsProvider";
 
 interface BaseFormLayoutProps {
   title: string;
+  // این خط باید حتماً وجود داشته باشد تا خطا برطرف شود:
+  isSubmitting?: boolean;
   isLoading?: boolean;
   children: React.ReactNode;
   onSubmit?: (e: React.FormEvent) => void;
   onCancel?: () => void;
+  submitText?: string;
+  showActions?: boolean;
   headerActions?: React.ReactNode;
-  formId?: string; // <--- پراپ جدید برای اتصال دکمه هدر به فرم
+  formId?: string;
 }
 
 export default function BaseFormLayout({
   title,
+  isSubmitting = false, // مقدار پیش‌فرض
   isLoading = false,
   children,
   onSubmit,
   onCancel,
+  submitText = "ثبت تغییرات",
+  showActions = true,
   headerActions,
-  formId = "base-form-id", // مقدار پیش‌فرض
+  formId = "base-form-id",
 }: BaseFormLayoutProps) {
   const { closeTab, activeTabId } = useTabs();
 
@@ -36,10 +43,8 @@ export default function BaseFormLayout({
 
   return (
     <div className="flex flex-col h-full bg-background animate-in fade-in duration-300 relative">
-      {" "}
       {/* Header */}
       <div className="sticky top-0 z-50 flex items-center justify-between border-b px-4 py-3 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shrink-0 gap-4 shadow-sm">
-        {" "}
         <div className="flex items-center gap-3 overflow-hidden">
           <Button
             variant="ghost"
@@ -53,8 +58,11 @@ export default function BaseFormLayout({
             {title}
           </h1>
         </div>
+
+        {/* دکمه‌های هدر */}
         <div className="flex items-center gap-2 shrink-0">{headerActions}</div>
       </div>
+
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto bg-muted/10 custom-scrollbar">
         {isLoading ? (
@@ -65,7 +73,6 @@ export default function BaseFormLayout({
         ) : (
           <div className="p-4 w-full h-full">
             {onSubmit ? (
-              // فرم با ID مشخص که دکمه‌های هدر بتوانند آن را صدا بزنند
               <form
                 id={formId}
                 onSubmit={onSubmit}
@@ -79,7 +86,8 @@ export default function BaseFormLayout({
           </div>
         )}
       </div>
-      {/* Footer حذف شد */}
+
+      {/* Footer حذف شده است چون دکمه‌ها به هدر منتقل شدند */}
     </div>
   );
 }

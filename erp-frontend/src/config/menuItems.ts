@@ -1,4 +1,15 @@
-import { LayoutDashboard, Users, Settings, Shield, Layers, Package, Wrench, ListTree, FilePlus, ClipboardList } from "lucide-react"; 
+import {
+  LayoutDashboard,
+  Users,
+  Settings,
+  Shield,
+  Layers,
+  Package,
+  Wrench,
+  ListTree,
+  FilePlus,
+  ClipboardList,
+} from "lucide-react";
 import { Database, Ruler } from "lucide-react";
 
 export interface MenuItem {
@@ -10,58 +21,58 @@ export interface MenuItem {
 }
 
 export const MENU_ITEMS: MenuItem[] = [
-  { 
-    title: "داشبورد", 
-    // href: "/", 
-    icon: LayoutDashboard 
+  {
+    title: "داشبورد",
+    // href: "/",
+    icon: LayoutDashboard,
   },
-  
+
   // === گروه عمومی ===
   {
     title: "عمومی",
     icon: Layers,
     permission: "General",
     submenu: [
-      { 
-        title: "مدیریت کاربران", 
-        href: "/users", 
-        icon: Users, 
-        permission: "UserAccess" 
+      {
+        title: "مدیریت کاربران",
+        href: "/users",
+        icon: Users,
+        permission: "UserAccess",
       },
-      { 
-        title: "مدیریت نقش‌ها", 
-        href: "/roles", 
-        icon: Shield, 
-        permission: "UserAccess.Roles" 
+      {
+        title: "مدیریت نقش‌ها",
+        href: "/roles",
+        icon: Shield,
+        permission: "UserAccess.Roles",
       },
-      { 
-        title: "تنظیمات", 
-        // href: "/settings", 
-        icon: Settings, 
-        permission: "General.Settings" 
+      {
+        title: "تنظیمات",
+        // href: "/settings",
+        icon: Settings,
+        permission: "General.Settings",
       },
-    ]
+    ],
   },
 
   // === گروه اطلاعات پایه ===
   {
-      title: "اطلاعات پایه",
-      icon: Database,
-      permission: "BaseInfo",
-      submenu: [
-        { 
-          title: "واحد سنجش", 
-          href: "/base-info/units", 
-          icon: Ruler, 
-          permission: "BaseInfo.Units" 
-        },
-        { 
-          title: "مدیریت کالاها", 
-          href: "/base-info/products", 
-          icon: Package,
-          permission: "BaseInfo.Products" 
-        },
-      ]
+    title: "اطلاعات پایه",
+    icon: Database,
+    permission: "BaseInfo",
+    submenu: [
+      {
+        title: "واحد سنجش",
+        href: "/base-info/units",
+        icon: Ruler,
+        permission: "BaseInfo.Units",
+      },
+      {
+        title: "مدیریت کالاها",
+        href: "/base-info/products",
+        icon: Package,
+        permission: "BaseInfo.Products",
+      },
+    ],
   },
 
   // === مهندسی محصول (۳ سطحی) ===
@@ -70,28 +81,28 @@ export const MENU_ITEMS: MenuItem[] = [
     icon: Wrench,
     permission: "ProductEngineering",
     submenu: [
-      { 
+      {
         // سطح دوم: مدیریت BOM (خودش لینک ندارد، فقط باز می‌شود)
-        title: "مدیریت BOM", 
-        icon: ListTree, 
+        title: "مدیریت BOM",
+        icon: ListTree,
         permission: "ProductEngineering.BOM",
         // href را حذف کردم چون این آیتم پدری برای گزینه‌های زیر است
         submenu: [
-           // سطح سوم: آیتم‌های داخلی
+          // سطح سوم: آیتم‌های داخلی
           {
-            title: "ایجاد BOM جدید", 
-            href: "/product-engineering/boms", 
-            icon: FilePlus, 
+            title: "ایجاد BOM جدید",
+            href: "/product-engineering/boms/create",
+            icon: FilePlus,
             permission: "ProductEngineering.BOM.Create",
           },
           {
-            title: "گزارشات BOM", 
-            // href: "/product-engineering/bom-reports", 
-            icon: ClipboardList, 
+            title: "گزارشات BOM",
+            // href: "/product-engineering/bom-reports",
+            icon: ClipboardList,
             permission: "ProductEngineering.BOM.Reports",
           },
-        ]
+        ],
       },
-    ]
+    ],
   },
 ];

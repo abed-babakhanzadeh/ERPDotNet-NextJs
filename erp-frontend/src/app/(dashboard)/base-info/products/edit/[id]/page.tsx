@@ -18,7 +18,7 @@ import {
 import BaseFormLayout from "@/components/layout/BaseFormLayout";
 import { useTabs } from "@/providers/TabsProvider";
 import { useFormPersist } from "@/hooks/useFormPersist";
-import AutoForm, { FieldConfig } from "@/components/layout/AutoForm";
+import AutoForm, { FieldConfig } from "@/components/form/AutoForm";
 import { Button } from "@/components/ui/button"; // دکمه
 import ImageViewerModal from "@/components/ui/ImageViewerModal"; // مودال جدید
 

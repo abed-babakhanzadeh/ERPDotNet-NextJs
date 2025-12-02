@@ -5,24 +5,28 @@ export function useFormPersist(
   formData: any,
   setFormData: (data: any) => void
 ) {
-  // 1. لود کردن اطلاعات هنگام باز شدن صفحه
   useEffect(() => {
     const savedData = localStorage.getItem(key);
     if (savedData) {
       try {
         const parsed = JSON.parse(savedData);
-        // ترکیب دیتای ذخیره شده با دیتای پیش‌فرض (برای جلوگیری از حذف فیلدهای جدید)
-        setFormData((prev: any) => ({ ...prev, ...parsed }));
+
+        setFormData((prev: any) => {
+          // اصلاح: اگر داده‌ی قبلی یا داده‌ی ذخیره شده آرایه باشد، جایگزین کن (Merge نکن)
+          if (Array.isArray(prev) || Array.isArray(parsed)) {
+            return parsed;
+          }
+          // اگر آبجکت بود، مرج کن
+          return { ...prev, ...parsed };
+        });
       } catch (e) {
         console.error("Error parsing saved form data", e);
       }
     }
-  }, [key, setFormData]);
+  }, [key, setFormData]); // وابستگی‌ها
 
-  // 2. ذخیره اطلاعات هر بار که formData تغییر کرد
   useEffect(() => {
     if (formData) {
-      // تاخیر کوچک برای جلوگیری از ذخیره زیاد (Debounce ساده)
       const handler = setTimeout(() => {
         localStorage.setItem(key, JSON.stringify(formData));
       }, 500);
@@ -30,7 +34,6 @@ export function useFormPersist(
     }
   }, [formData, key]);
 
-  // تابع برای پاک کردن حافظه بعد از ثبت موفق
   const clearStorage = () => {
     localStorage.removeItem(key);
   };
