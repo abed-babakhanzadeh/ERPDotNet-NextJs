@@ -80,10 +80,17 @@ public class GetBOMsListHandler : IRequestHandler<GetBOMsListQuery, PaginatedRes
             _ => request.SortColumn
         };
 
+        // --- سورت هوشمند ---
         if (!string.IsNullOrEmpty(mappedSortColumn))
-            query = query.OrderByDynamic(mappedSortColumn, request.SortDescending);
+        {
+            // اکستنشن ما "Product.Code" را می‌فهمد و چون string است، نچرال سورت می‌کند
+            query = query.OrderByNatural(mappedSortColumn, request.SortDescending);
+        }
         else
+        {
             query = query.OrderByDescending(x => x.Id);
+        }
+        // -------------------
 
         // پیجینگ دستی (استاندارد جدید)
         var totalCount = await query.CountAsync(cancellationToken);

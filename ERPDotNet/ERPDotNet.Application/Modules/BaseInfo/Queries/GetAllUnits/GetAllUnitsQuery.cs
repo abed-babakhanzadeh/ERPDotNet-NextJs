@@ -56,13 +56,14 @@ public class GetAllUnitsHandler : IRequestHandler<GetAllUnitsQuery, PaginatedRes
         query = query.ApplyDynamicFilters(request.Filters);
 
         // مرتب‌سازی
+        // مرتب‌سازی هوشمند
         if (!string.IsNullOrEmpty(request.SortColumn))
         {
-            query = query.OrderByDynamic(request.SortColumn, request.SortDescending);
+            query = query.OrderByNatural(request.SortColumn, request.SortDescending);
         }
         else
         {
-            query = query.OrderBy(u => u.Id);
+            query = query.OrderBy(u => u.Id); // یا OrderByNatural("Id", false)
         }
 
         // پروجکشن به DTO

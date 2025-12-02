@@ -1,6 +1,7 @@
 using ERPDotNet.Application.Common.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
+using System.Reflection;
 
 namespace ERPDotNet.Application.Common.Extensions;
 
@@ -12,46 +13,67 @@ public static class QueryableExtensions
         int pageSize, 
         CancellationToken cancellationToken = default)
     {
-        // تغییر مهم: استفاده از متد استاتیک مرکزی
-        // اینطوری مسئولیت محاسبه پیجینگ فقط با کلاس PaginatedResult است
         return PaginatedResult<T>.CreateAsync(source, pageNumber, pageSize, cancellationToken);
     }
 
-    // متد کمکی برای مرتب‌سازی داینامیک (چون نام ستون به صورت رشته می‌آید)
-    public static IQueryable<T> OrderByDynamic<T>(this IQueryable<T> query, string orderByMember, bool descending)
+    public static IQueryable<T> OrderByNatural<T>(this IQueryable<T> query, string orderByMember, bool descending)
     {
-        var queryElementTypeParam = Expression.Parameter(typeof(T));
+        var param = Expression.Parameter(typeof(T), "x");
         
-        // پیدا کردن پراپرتی با نام ارسال شده (مثلا "Code")
-        Expression memberAccess;
-        
-        // بررسی فیلد های تو در تو (مثلاً "Product.Code")
-        if (orderByMember.Contains("."))
+        Expression body = param;
+        foreach (var member in orderByMember.Split('.'))
         {
-            var parts = orderByMember.Split('.');
-            memberAccess = Expression.PropertyOrField(queryElementTypeParam, parts[0]);
+            body = Expression.PropertyOrField(body, member);
+        }
+
+        if (body.Type == typeof(string))
+        {
+            var efFunctions = Expression.Property(null, typeof(EF), nameof(EF.Functions));
             
-            foreach (var part in parts.Skip(1))
-            {
-                memberAccess = Expression.PropertyOrField(memberAccess, part);
-            }
+            // 1. پیدا کردن متد جنریک خام (Generic Definition)
+            var genericCollateMethod = typeof(RelationalDbFunctionsExtensions)
+                .GetMethods(BindingFlags.Static | BindingFlags.Public)
+                .First(m => m.Name == nameof(RelationalDbFunctionsExtensions.Collate)
+                            && m.GetParameters().Length == 3 
+                            && m.GetParameters()[0].ParameterType == typeof(DbFunctions));
+
+            // 2. ساختن متد برای نوع استرینگ (Collate<string>) --- این خط حیاتی است
+            var concreteCollateMethod = genericCollateMethod.MakeGenericMethod(typeof(string));
+
+            // 3. فراخوانی متد ساخته شده
+            var collateCall = Expression.Call(
+                concreteCollateMethod, // استفاده از متد کانکریت شده
+                efFunctions, 
+                body, 
+                Expression.Constant("numeric") 
+            );
+
+            var keySelector = Expression.Lambda(collateCall, param);
+
+            var method = descending ? "OrderByDescending" : "OrderBy";
+            
+            var resultExpression = Expression.Call(
+                typeof(Queryable),
+                method,
+                new Type[] { typeof(T), typeof(string) },
+                query.Expression,
+                Expression.Quote(keySelector));
+
+            return query.Provider.CreateQuery<T>(resultExpression);
         }
         else
         {
-            memberAccess = Expression.PropertyOrField(queryElementTypeParam, orderByMember);
+            var keySelector = Expression.Lambda(body, param);
+            var method = descending ? "OrderByDescending" : "OrderBy";
+            
+            var resultExpression = Expression.Call(
+                typeof(Queryable),
+                method,
+                new Type[] { typeof(T), body.Type },
+                query.Expression,
+                Expression.Quote(keySelector));
+
+            return query.Provider.CreateQuery<T>(resultExpression);
         }
-        
-        var keySelector = Expression.Lambda(memberAccess, queryElementTypeParam);
-
-        var orderBy = descending ? "OrderByDescending" : "OrderBy";
-
-        var result = Expression.Call(
-            typeof(Queryable), 
-            orderBy, 
-            new Type[] { typeof(T), memberAccess.Type }, 
-            query.Expression, 
-            Expression.Quote(keySelector));
-
-        return query.Provider.CreateQuery<T>(result);
     }
 }
