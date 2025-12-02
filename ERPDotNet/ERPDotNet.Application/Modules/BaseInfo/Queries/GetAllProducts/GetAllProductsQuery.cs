@@ -87,35 +87,16 @@ public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, Pagina
         }
 
         // 4. سورت (اصلاح شده برای Natural Sort)
+        // 4. سورت هوشمند (فقط یک خط کد!)
         if (!string.IsNullOrEmpty(request.SortColumn))
         {
-            var sortCol = request.SortColumn.ToLower();
-            
-            // اگر سورت روی کد یا نام بود، از استراتژی Length + Value استفاده کن
-            if (sortCol == "code")
-            {
-                if (request.SortDescending)
-                    query = query.OrderByDescending(p => p.Code.Length).ThenByDescending(p => p.Code);
-                else
-                    query = query.OrderBy(p => p.Code.Length).ThenBy(p => p.Code);
-            }
-            else if (sortCol == "name")
-            {
-                if (request.SortDescending)
-                    query = query.OrderByDescending(p => p.Name.Length).ThenByDescending(p => p.Name);
-                else
-                    query = query.OrderBy(p => p.Name.Length).ThenBy(p => p.Name);
-            }
-            else
-            {
-                // برای بقیه ستون‌ها از همان روش داینامیک قبلی استفاده کن
-                query = query.OrderByDynamic(request.SortColumn, request.SortDescending);
-            }
+            // خودکار تشخیص می‌دهد که اگر Code بود، نچرال سورت کند
+            query = query.OrderByNatural(request.SortColumn, request.SortDescending);
         }
         else
         {
-            // سورت پیش‌فرض: اول طول کد، بعد خود کد
-            query = query.OrderBy(p => p.Code.Length).ThenBy(p => p.Code);
+            // پیش‌فرض هم نچرال سورت روی کد
+            query = query.OrderByNatural("Code", false); 
         }
         
         var dtoQuery = query.Select(p => new ProductDto(

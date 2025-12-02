@@ -73,6 +73,19 @@ public class GetWhereUsedHandler : IRequestHandler<GetWhereUsedQuery, PaginatedR
                 x.Title.Contains(request.SearchTerm));
         }
 
+        // --- سورت هوشمند (جدید) ---
+        if (!string.IsNullOrEmpty(request.SortColumn))
+        {
+            // نکته: SortColumn باید دقیقاً هم‌نام پراپرتی‌هایно Select بالا باشد (مثلا "Code" یا "Name")
+            // اگر فرانت camelCase می‌فرستد، باید در فرانت یا اینجا هندل شود (معمولا MRT دقیق می‌فرستد)
+            combinedQuery = combinedQuery.OrderByNatural(request.SortColumn, request.SortDescending);
+        }
+        else
+        {
+            // پیش‌فرض: سورت نچرال روی نام محصول
+            combinedQuery = combinedQuery.OrderByNatural("Name", false);
+        }
+
         // 5. صفحه بندی دستی
         var totalCount = await combinedQuery.CountAsync(cancellationToken);
         
