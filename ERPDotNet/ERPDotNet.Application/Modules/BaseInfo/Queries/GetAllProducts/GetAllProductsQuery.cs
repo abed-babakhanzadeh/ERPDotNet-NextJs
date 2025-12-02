@@ -17,6 +17,7 @@ public record ProductDto(
     string UnitName,
     int SupplyTypeId,
     string SupplyType,
+    string? ImagePath,
     List<ProductConversionDto> Conversions
 );
 
@@ -107,6 +108,7 @@ public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, Pagina
             p.Unit != null ? p.Unit.Title : "",
             (int)p.SupplyType,
             p.SupplyType.ToDisplay(),
+            p.ImagePath,
             p.UnitConversions.Select(c => new ProductConversionDto(
                 c.Id,
                 c.AlternativeUnitId,

@@ -16,6 +16,7 @@ public record CreateProductCommand : IRequest<int>
     public string? TechnicalSpec { get; set; }
     public required int UnitId { get; set; } // واحد اصلی
     public ProductSupplyType SupplyType { get; set; } // 1: خریدنی، 2: تولیدی
+    public string? ImagePath { get; set; }
     
     // لیست تبدیل واحدها (اختیاری)
     public List<ProductConversionInput> Conversions { get; set; } = new();
@@ -74,6 +75,7 @@ public class CreateProductHandler : IRequestHandler<CreateProductCommand, int>
             TechnicalSpec = request.TechnicalSpec,
             UnitId = request.UnitId, // فقط واحد اصلی را ست می‌کنیم
             SupplyType = request.SupplyType,
+            ImagePath = request.ImagePath,
             IsActive = true
         };
 

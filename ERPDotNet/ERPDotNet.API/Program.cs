@@ -115,6 +115,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.UseStaticFiles();
 #endregion
 
 app.Run();
