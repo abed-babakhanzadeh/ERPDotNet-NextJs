@@ -1,43 +1,51 @@
 using Microsoft.AspNetCore.Mvc;
-using ERPDotNet.API.Attributes;
 
-namespace ERPDotNet.API.Controllers.Common;
+namespace ERPDotNet.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
 public class UploadController : ControllerBase
 {
-    private readonly IWebHostEnvironment _env;
+    private readonly IWebHostEnvironment _environment;
 
-    public UploadController(IWebHostEnvironment env)
+    public UploadController(IWebHostEnvironment environment)
     {
-        _env = env;
+        _environment = environment;
     }
 
     [HttpPost]
-    [HasPermission("BaseInfo.Products.Create")] // یا هر پرمیشن مناسب
     public async Task<IActionResult> Upload(IFormFile file)
     {
         if (file == null || file.Length == 0)
-            return BadRequest("فایلی انتخاب نشده است");
+            return BadRequest("فایلی انتخاب نشده است.");
 
-        // ساخت نام یکتا برای فایل
-        var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+        // --- اصلاحیه مهم برای رفع خطای Null ---
+        // اگر WebRootPath نال بود (یعنی پوشه wwwroot نیست)، مسیر را دستی میسازیم
+        string webRootPath = _environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot");
         
-        // مسیر ذخیره‌سازی: wwwroot/uploads/products
-        var uploadsFolder = Path.Combine(_env.WebRootPath, "uploads", "products");
-        
+        var uploadsFolder = Path.Combine(webRootPath, "uploads");
+
+        // اگر پوشه wwwroot وجود نداشت، آن را بساز
+        if (!Directory.Exists(webRootPath))
+            Directory.CreateDirectory(webRootPath);
+            
+        // اگر پوشه uploads وجود نداشت، آن را بساز
         if (!Directory.Exists(uploadsFolder))
             Directory.CreateDirectory(uploadsFolder);
+        // ---------------------------------------
 
-        var filePath = Path.Combine(uploadsFolder, fileName);
+        // تولید نام منحصر به فرد
+        var uniqueFileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
+        var filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
         using (var stream = new FileStream(filePath, FileMode.Create))
         {
             await file.CopyToAsync(stream);
         }
 
-        // برگرداندن مسیر نسبی
-        return Ok(new { path = $"/uploads/products/{fileName}" });
+        // آدرس نسبی برای ذخیره در دیتابیس
+        var url = $"/uploads/{uniqueFileName}";
+        
+        return Ok(new { path = url });
     }
 }

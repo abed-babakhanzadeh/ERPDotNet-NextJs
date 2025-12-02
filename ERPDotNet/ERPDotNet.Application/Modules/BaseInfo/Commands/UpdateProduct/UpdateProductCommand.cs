@@ -36,9 +36,11 @@ public class UpdateProductValidator : AbstractValidator<UpdateProductCommand>
 {
     private readonly IApplicationDbContext _context;
 
+
     public UpdateProductValidator(IApplicationDbContext context)
     {
         _context = context;
+        
 
         RuleFor(v => v.Id).GreaterThan(0);
 
@@ -65,10 +67,12 @@ public class UpdateProductValidator : AbstractValidator<UpdateProductCommand>
 public class UpdateProductHandler : IRequestHandler<UpdateProductCommand, bool>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IFileService _fileService;
 
-    public UpdateProductHandler(IApplicationDbContext context)
+    public UpdateProductHandler(IApplicationDbContext context, IFileService fileService)
     {
         _context = context;
+        _fileService = fileService;
     }
 
     public async Task<bool> Handle(UpdateProductCommand request, CancellationToken cancellationToken)
@@ -79,6 +83,21 @@ public class UpdateProductHandler : IRequestHandler<UpdateProductCommand, bool>
             .FirstOrDefaultAsync(p => p.Id == request.Id, cancellationToken);
 
         if (entity == null) return false;
+
+        // --- اصلاحیه مدیریت عکس ---
+        // شرط: اگر آدرس عکس تغییر کرده است (چه جدید آمده باشد، چه نال شده باشد)
+        if (request.ImagePath != entity.ImagePath)
+        {
+            // 1. حذف عکس قدیمی از هارد (اگر وجود دارد)
+            if (!string.IsNullOrEmpty(entity.ImagePath))
+            {
+                _fileService.DeleteFile(entity.ImagePath);
+            }
+
+            // 2. ست کردن مقدار جدید (که می‌تواند نال یا آدرس جدید باشد)
+            entity.ImagePath = request.ImagePath;
+        }
+        // -------------------------
 
         // 2. آپدیت فیلدهای ساده
         entity.Code = request.Code;

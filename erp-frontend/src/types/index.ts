@@ -35,4 +35,5 @@ export type ColumnConfig = {
   key: string; // Allow any property name for flexibility
   label: string;
   type: "string" | "number" | "boolean";
+  render?: (value: any, row: any) => React.ReactNode;
 };

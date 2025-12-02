@@ -1,23 +1,22 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
-import {
-  Product,
-  SortConfig,
-  ColumnConfig,
-  ColumnFilter as AdvancedColumnFilter,
-} from "@/types";
+import React, { useMemo } from "react";
+import { Product, ColumnConfig } from "@/types";
 import apiClient from "@/services/apiClient";
 import { Box, Plus } from "lucide-react";
 import ProtectedPage from "@/components/ui/ProtectedPage";
 import PermissionGuard from "@/components/ui/PermissionGuard";
-import Modal from "@/components/ui/Modal";
-import CreateProductForm from "./CreateProductForm";
-import EditProductForm from "./EditProductForm";
 import MasterDetailLayout from "@/components/ui/MasterDetailLayout";
 import { toast } from "sonner";
 import { DataTable } from "@/components/data-table";
+import { useServerDataTable } from "@/hooks/useServerDataTable";
+import { useTabs } from "@/providers/TabsProvider"; // 1. اضافه کردن هوک تب
+import { ImageIcon } from "lucide-react";
 
+// آدرس بک‌اند را از env بخوانید یا هاردکد کنید (فعلا هاردکد برای مثال)
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5249";
+
+// --- تعریف Placeholder ها (بدون تغییر) ---
 const PlaceholderWrapper: React.FC<{
   children: React.ReactNode;
   permission?: string;
@@ -32,151 +31,104 @@ const PermissionGuardPlaceholder =
 const MasterDetailLayoutPlaceholder = MasterDetailLayout || PlaceholderWrapper;
 
 export default function ProductsPage() {
-  const [data, setData] = useState<Product[]>([]);
-  const [isError, setIsError] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [rowCount, setRowCount] = useState(0);
+  // 2. دریافت متد addTab
+  const { addTab } = useTabs();
 
-  const [globalFilter, setGlobalFilter] = useState("");
-  const [sorting, setSorting] = useState<SortConfig>(null);
-  const [advancedFilters, setAdvancedFilters] = useState<
-    AdvancedColumnFilter[]
-  >([]);
-  const [columnFilters, setColumnFilters] = useState<Record<string, string>>(
-    {}
-  );
-
-  const [pagination, setPagination] = useState({
-    pageIndex: 0,
-    pageSize: 10,
+  // استفاده از هوک دیتا تیبل
+  const { tableProps, refresh } = useServerDataTable<Product>({
+    endpoint: "/Products/search",
+    initialPageSize: 10,
   });
 
-  const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  // *نکته: تمام استیت‌های مربوط به مودال (createModalOpen, editingProduct) حذف شدند*
 
-  const fetchData = async () => {
-    setIsLoading(true);
-    setIsError(false);
-
-    try {
-      const advancedFilterPayload = advancedFilters.flatMap((f) =>
-        f.conditions
-          .filter((c) => c.value !== "" && c.value !== null)
-          .map((c) => ({
-            PropertyName: f.key,
-            Operation: c.operator,
-            Value: String(c.value),
-          }))
-      );
-
-      const simpleColumnFiltersPayload = Object.entries(columnFilters)
-        .filter(([, value]) => value)
-        .map(([key, value]) => ({
-          PropertyName: key,
-          Operation: "contains",
-          Value: String(value),
-        }));
-
-      const allFiltersForApi = [
-        ...advancedFilterPayload,
-        ...simpleColumnFiltersPayload,
-      ];
-
-      const payload = {
-        pageNumber: pagination.pageIndex + 1,
-        pageSize: pagination.pageSize,
-        searchTerm: globalFilter ?? "",
-        sortColumn: sorting?.key,
-        sortDescending: sorting?.direction === "descending",
-        Filters: allFiltersForApi,
-      };
-
-      const response = await apiClient.post<any>("/Products/search", payload);
-
-      if (response && response.data && response.data.items) {
-        setData(response.data.items);
-        setRowCount(response.data.totalCount);
-      } else {
-        setData([]);
-        setRowCount(0);
-        toast.error("پاسخ دریافتی از سرور ساختار نامعتبر دارد.");
-      }
-    } catch (error) {
-      setIsError(true);
-      console.error("Fetch data error:", error);
-      toast.error("خطا در ارتباط با سرور هنگام دریافت اطلاعات کالاها.");
-      setData([]);
-      setRowCount(0);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [
-    pagination.pageIndex,
-    pagination.pageSize,
-    sorting,
-    globalFilter,
-    advancedFilters,
-    columnFilters,
-  ]);
-
+  // تعریف ستون‌ها
   const columns: ColumnConfig[] = useMemo(
     () => [
+      // 1. ستون تصویر (با رندر کاستوم)
+      {
+        key: "imagePath",
+        label: "تصویر",
+        type: "string", // تایپ دیتای خام
+        render: (value: any, row: Product) => {
+          if (!value)
+            return (
+              <div className="w-10 h-10 bg-muted rounded flex items-center justify-center">
+                <ImageIcon size={16} className="opacity-50" />
+              </div>
+            );
+          return (
+            <div className="w-10 h-10 rounded overflow-hidden border bg-white hover:scale-150 transition-transform cursor-pointer shadow-sm relative z-0 hover:z-50">
+              <img
+                src={`${BACKEND_URL}${value}`}
+                alt={row.name}
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+            </div>
+          );
+        },
+      },
       { key: "code", label: "کد کالا", type: "string" },
       { key: "name", label: "نام کالا", type: "string" },
       { key: "unitName", label: "واحد", type: "string" },
       { key: "supplyType", label: "نوع تامین", type: "string" },
+      // 2. ستون مشخصات فنی (Truncate شده)
+      {
+        key: "technicalSpec",
+        label: "مشخصات",
+        type: "string",
+        render: (value) => (
+          <span
+            className="truncate max-w-[150px] block text-muted-foreground text-xs"
+            title={value}
+          >
+            {value || "-"}
+          </span>
+        ),
+      },
+      // 3. واحدهای فرعی (فقط نمایش تعداد)
+      {
+        key: "conversions", // فرض بر اینکه در DTO این فیلد وجود دارد
+        label: "فرعی",
+        type: "string", // مهم نیست
+        render: (_: any, row: Product) => {
+          const count = row.conversions?.length || 0;
+          return count > 0 ? (
+            <span className="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full">
+              {count} واحد
+            </span>
+          ) : (
+            <span className="text-muted-foreground text-[10px]">-</span>
+          );
+        },
+      },
     ],
     []
   );
 
+  // 3. هندلر جدید برای دکمه "کالای جدید"
+  const handleCreate = () => {
+    addTab("تعریف کالای جدید", "/base-info/products/create");
+  };
+
+  // 4. هندلر جدید برای دکمه "ویرایش"
+  const handleEdit = (row: Product) => {
+    addTab(`ویرایش ${row.name}`, `/base-info/products/edit/${row.id}`);
+  };
+
+  // هندلر حذف (بدون تغییر)
   const handleDelete = async (row: Product) => {
     if (!confirm(`آیا از حذف کالای "${row.name}" اطمینان دارید؟`)) return;
 
     try {
       await apiClient.delete(`/Products/${row.id}`);
       toast.success("کالا با موفقیت حذف شد");
-      fetchData();
+      refresh();
     } catch (error: any) {
       toast.error("خطا در حذف کالا. ممکن است در اسناد استفاده شده باشد.");
     }
   };
-
-  const handleAdvancedFilterChange = (
-    newFilter: AdvancedColumnFilter | null
-  ) => {
-    setPagination((p) => ({ ...p, pageIndex: 0 }));
-    setAdvancedFilters((prev) => {
-      if (!newFilter) return prev;
-      const otherFilters = prev.filter((f) => f.key !== newFilter.key);
-      if (
-        newFilter.conditions.some((c) => c.value !== "" && c.value !== null)
-      ) {
-        return [...otherFilters, newFilter];
-      }
-      return otherFilters;
-    });
-  };
-
-  const handleColumnFilterChange = (key: string, value: string) => {
-    setPagination((p) => ({ ...p, pageIndex: 0 }));
-    setColumnFilters((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
-  };
-
-  const handleClearAllFilters = () => {
-    setGlobalFilter("");
-    setAdvancedFilters([]);
-    setColumnFilters({});
-    setPagination((p) => ({ ...p, pageIndex: 0 }));
-  };
-
-  const pageCount = Math.ceil(rowCount / pagination.pageSize);
 
   return (
     <ProtectedPagePlaceholder permission="BaseInfo.Products">
@@ -186,7 +138,7 @@ export default function ProductsPage() {
         actions={
           <PermissionGuardPlaceholder permission="BaseInfo.Products.Create">
             <button
-              onClick={() => setCreateModalOpen(true)}
+              onClick={handleCreate} // اتصال به هندلر جدید
               className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition text-sm shadow-sm"
             >
               <Plus size={16} />
@@ -198,60 +150,13 @@ export default function ProductsPage() {
         <div className="page-content">
           <DataTable
             columns={columns}
-            data={data}
-            rowCount={rowCount}
-            pageCount={pageCount}
-            pagination={pagination}
-            sortConfig={sorting}
-            globalFilter={globalFilter}
-            advancedFilters={advancedFilters}
-            columnFilters={columnFilters}
-            isLoading={isLoading}
-            onGlobalFilterChange={setGlobalFilter}
-            onAdvancedFilterChange={handleAdvancedFilterChange}
-            onColumnFilterChange={handleColumnFilterChange}
-            onClearAllFilters={handleClearAllFilters}
-            onPaginationChange={setPagination}
-            onSortChange={setSorting}
-            onEdit={(product) => setEditingProduct(product as Product)}
+            onEdit={(product) => handleEdit(product as Product)} // اتصال به هندلر جدید
             onDelete={handleDelete}
+            {...tableProps}
           />
         </div>
 
-        {createModalOpen && (
-          <Modal
-            isOpen={createModalOpen}
-            onClose={() => setCreateModalOpen(false)}
-            title="تعریف کالای جدید"
-          >
-            <CreateProductForm
-              onCancel={() => setCreateModalOpen(false)}
-              onSuccess={() => {
-                setCreateModalOpen(false);
-                toast.success("کالای جدید با موفقیت ایجاد شد.");
-                fetchData();
-              }}
-            />
-          </Modal>
-        )}
-
-        {editingProduct && (
-          <Modal
-            isOpen={!!editingProduct}
-            onClose={() => setEditingProduct(null)}
-            title={`ویرایش کالا: ${editingProduct.name}`}
-          >
-            <EditProductForm
-              product={editingProduct}
-              onCancel={() => setEditingProduct(null)}
-              onSuccess={() => {
-                setEditingProduct(null);
-                toast.success("تغییرات با موفقیت ذخیره شد.");
-                fetchData();
-              }}
-            />
-          </Modal>
-        )}
+        {/* نکته: کدهای مربوط به Modal کاملاً حذف شدند */}
       </MasterDetailLayoutPlaceholder>
     </ProtectedPagePlaceholder>
   );

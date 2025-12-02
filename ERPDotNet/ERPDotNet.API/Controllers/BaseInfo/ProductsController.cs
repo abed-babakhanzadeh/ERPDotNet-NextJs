@@ -6,6 +6,7 @@ using ERPDotNet.Application.Modules.BaseInfo.Commands.UpdateProduct;
 using ERPDotNet.Application.Modules.BaseInfo.Queries.GetAllProducts;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using ERPDotNet.Application.Modules.BaseInfo.Queries.GetProductById;
 
 namespace ERPDotNet.API.Controllers.BaseInfo;
 
@@ -61,5 +62,19 @@ public class ProductsController : ControllerBase
         if (!result) return NotFound();
 
         return Ok(new { success = true });
+    }
+
+    // 1. اضافه کردن متد GET برای دریافت یک محصول خاص
+    [HttpGet("{id}")]
+    [HasPermission("BaseInfo.Products")] // یا پرمیشن دقیق‌تر مثل BaseInfo.Products.View
+    public async Task<ActionResult<ProductDto>> GetById(int id)
+    {
+        // احتمالا باید کوئری GetProductByIdQuery را بسازید (در گام بعدی توضیح دادم)
+        var query = new GetProductByIdQuery(id);
+        var result = await _mediator.Send(query);
+
+        if (result == null) return NotFound();
+
+        return Ok(result);
     }
 }
