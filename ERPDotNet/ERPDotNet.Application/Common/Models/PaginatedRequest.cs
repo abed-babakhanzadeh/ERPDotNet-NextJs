@@ -21,4 +21,5 @@ public class FilterModel
     public required string PropertyName { get; set; } // نام ستون (مثلا "ConversionFactor")
     public required string Operation { get; set; }    // نوع عملیات: "eq", "gt", "lt", "contains"
     public required string Value { get; set; }        // مقدار: "10", "kg"
+    public string? Logic { get; set; } = "and"; // مقدار پیش‌فرض and
 }

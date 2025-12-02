@@ -50,6 +50,7 @@ export function useServerDataTable<TData>(props: UseServerDataTableProps) {
             PropertyName: f.key,
             Operation: c.operator,
             Value: String(c.value),
+            Logic: f.logic, // <--- این فیلد حیاتی است (and/or)
           }))
       );
 

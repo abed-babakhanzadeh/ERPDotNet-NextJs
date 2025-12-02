@@ -11,113 +11,152 @@ public static class FilterExtensions
         if (filters == null || !filters.Any())
             return query;
 
-        foreach (var filter in filters)
+        // 1. گروه‌بندی فیلترها بر اساس نام ستون
+        // دلیل: معمولا وقتی روی یک ستون چند شرط میگذاریم، میخواهیم بین آنها OR یا AND باشد.
+        // اما بین ستون‌های مختلف (مثلا نام کالا و کد کالا) همیشه AND برقرار است.
+        var groupedFilters = filters.GroupBy(f => f.PropertyName);
+
+        foreach (var group in groupedFilters)
         {
-            if (string.IsNullOrEmpty(filter.Value)) continue;
+            var propertyName = group.Key;
+            
+            // دریافت منطق (AND/OR) از اولین آیتم گروه (چون در UI برای کل ستون یک منطق انتخاب میشود)
+            var logic = group.First().Logic?.ToLower() ?? "and";
 
-            try
+            // پارامتر اکسپرشن (مثلا: x => ...)
+            // نکته حیاتی: باید یک پارامتر برای کل گروه استفاده شود تا بتوانیم ترکیب کنیم
+            var parameter = Expression.Parameter(typeof(T), "x");
+            
+            Expression? combinedExpression = null;
+
+            foreach (var filter in group)
             {
-                var parameter = Expression.Parameter(typeof(T), "x");
-                
-                // Handle nested properties (e.g., "Product.Code")
-                Expression propertyAccess;
-                if (filter.PropertyName.Contains("."))
-                {
-                    var parts = filter.PropertyName.Split('.');
-                    propertyAccess = Expression.PropertyOrField(parameter, parts[0]);
-                    
-                    foreach (var part in parts.Skip(1))
-                    {
-                        propertyAccess = Expression.PropertyOrField(propertyAccess, part);
-                    }
-                }
-                else
-                {
-                    propertyAccess = Expression.Property(parameter, filter.PropertyName);
-                }
-                
-                var targetType = Nullable.GetUnderlyingType(propertyAccess.Type) ?? propertyAccess.Type;
+                if (string.IsNullOrEmpty(filter.Value)) continue;
 
-                object convertedValue;
-
-                // هندل کردن خاص مقادیر بولی
-                if (targetType == typeof(bool))
+                try
                 {
-                    if (bool.TryParse(filter.Value, out bool boolValue))
+                    // --- ساخت اکسپرشن برای دسترسی به پراپرتی (مثل کد قبلی شما) ---
+                    Expression propertyAccess;
+                    if (propertyName.Contains("."))
                     {
-                        convertedValue = boolValue;
+                        var parts = propertyName.Split('.');
+                        propertyAccess = Expression.PropertyOrField(parameter, parts[0]);
+                        foreach (var part in parts.Skip(1))
+                        {
+                            propertyAccess = Expression.PropertyOrField(propertyAccess, part);
+                        }
                     }
                     else
                     {
-                        continue; // اگر مقدار "true" یا "false" نباشد، فیلتر را رد کن
+                        propertyAccess = Expression.Property(parameter, propertyName);
                     }
-                }
-                else
-                {
-                    convertedValue = Convert.ChangeType(filter.Value, targetType);
-                }
 
-                var constant = Expression.Constant(convertedValue, propertyAccess.Type);
-                Expression comparison;
+                    // تبدیل مقدار ورودی به تایپ پراپرتی
+                    var targetType = Nullable.GetUnderlyingType(propertyAccess.Type) ?? propertyAccess.Type;
+                    object convertedValue;
 
-                switch (filter.Operation.ToLower())
-                {
-                    case "equals":
-                    case "eq":
-                        comparison = Expression.Equal(propertyAccess, constant);
-                        break;
-                    
-                    case "neq":
-                        comparison = Expression.NotEqual(propertyAccess, constant);
-                        break;
+                    if (targetType == typeof(bool))
+                    {
+                        if (bool.TryParse(filter.Value, out bool boolValue)) convertedValue = boolValue;
+                        else continue;
+                    }
+                    else if (targetType.IsEnum)
+                    {
+                         // هندل کردن Enum اگر نیاز شد
+                         try { convertedValue = Enum.Parse(targetType, filter.Value); }
+                         catch { continue; }
+                    }
+                    else
+                    {
+                        convertedValue = Convert.ChangeType(filter.Value, targetType);
+                    }
 
-                    case "gt":
-                        comparison = Expression.GreaterThan(propertyAccess, constant);
-                        break;
+                    var constant = Expression.Constant(convertedValue, propertyAccess.Type); // استفاده از propertyAccess.Type برای هندل کردن Nullable
+                    Expression comparison;
 
-                    case "gte":
-                        comparison = Expression.GreaterThanOrEqual(propertyAccess, constant);
-                        break;
-
-                    case "lt":
-                        comparison = Expression.LessThan(propertyAccess, constant);
-                        break;
-
-                    case "lte":
-                        comparison = Expression.LessThanOrEqual(propertyAccess, constant);
-                        break;
-
-                    case "contains":
-                        if (propertyAccess.Type == typeof(string))
-                        {
-                            var stringConstant = Expression.Constant(filter.Value, typeof(string));
-                            var method = typeof(string).GetMethod("Contains", new[] { typeof(string) });
-                            if (method != null)
+                    // --- ساخت مقایسه (مثل کد قبلی) ---
+                    switch (filter.Operation.ToLower())
+                    {
+                        case "equals":
+                        case "eq":
+                            comparison = Expression.Equal(propertyAccess, constant);
+                            break;
+                        case "neq":
+                            comparison = Expression.NotEqual(propertyAccess, constant);
+                            break;
+                        case "gt":
+                            comparison = Expression.GreaterThan(propertyAccess, constant);
+                            break;
+                        case "gte":
+                            comparison = Expression.GreaterThanOrEqual(propertyAccess, constant);
+                            break;
+                        case "lt":
+                            comparison = Expression.LessThan(propertyAccess, constant);
+                            break;
+                        case "lte":
+                            comparison = Expression.LessThanOrEqual(propertyAccess, constant);
+                            break;
+                        case "contains":
+                            if (propertyAccess.Type == typeof(string) || propertyAccess.Type == typeof(string)) // هندل کردن نال‌پذیر
                             {
-                                comparison = Expression.Call(propertyAccess, method, stringConstant);
+                                // هندل کردن Null Check برای Contains
+                                // x.Name != null && x.Name.Contains(...)
+                                var notNull = Expression.NotEqual(propertyAccess, Expression.Constant(null));
+                                
+                                var stringConstant = Expression.Constant(filter.Value, typeof(string));
+                                var method = typeof(string).GetMethod("Contains", new[] { typeof(string) });
+                                
+                                var containsMethod = Expression.Call(propertyAccess, method!, stringConstant);
+                                
+                                comparison = Expression.AndAlso(notNull, containsMethod);
                             }
                             else
                             {
                                 comparison = Expression.Equal(propertyAccess, constant);
                             }
+                            break;
+                        case "startswith": // اضافه کردن StartsWith چون کاربردی است
+                             if (propertyAccess.Type == typeof(string))
+                            {
+                                var notNull = Expression.NotEqual(propertyAccess, Expression.Constant(null));
+                                var method = typeof(string).GetMethod("StartsWith", new[] { typeof(string) });
+                                var methodCall = Expression.Call(propertyAccess, method!, Expression.Constant(filter.Value, typeof(string)));
+                                comparison = Expression.AndAlso(notNull, methodCall);
+                            }
+                            else comparison = Expression.Equal(propertyAccess, constant);
+                            break;
+                        default:
+                            continue;
+                    }
+
+                    // --- ترکیب شرط‌ها (بخش جدید) ---
+                    if (combinedExpression == null)
+                    {
+                        combinedExpression = comparison;
+                    }
+                    else
+                    {
+                        if (logic == "or")
+                        {
+                            combinedExpression = Expression.OrElse(combinedExpression, comparison);
                         }
                         else
                         {
-                            // برای انواع دیگر، Contains معادل Equals است
-                            comparison = Expression.Equal(propertyAccess, constant);
+                            combinedExpression = Expression.AndAlso(combinedExpression, comparison);
                         }
-                        break;
-
-                    default:
-                        continue;
+                    }
                 }
-
-                var lambda = Expression.Lambda<Func<T, bool>>(comparison, parameter);
-                query = query.Where(lambda);
+                catch
+                {
+                    continue;
+                }
             }
-            catch
+
+            // اگر اکسپرشنی ساخته شد، آن را به کوئری اعمال کن
+            if (combinedExpression != null)
             {
-                continue; 
+                var lambda = Expression.Lambda<Func<T, bool>>(combinedExpression, parameter);
+                query = query.Where(lambda);
             }
         }
 
