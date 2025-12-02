@@ -6,6 +6,7 @@ using ERPDotNet.Application.Modules.BaseInfo.Commands.DeleteUnit; // اضافه 
 using ERPDotNet.Application.Modules.BaseInfo.Queries.GetAllUnits;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using ERPDotNet.Application.Modules.BaseInfo.Queries.GetUnitById;
 
 namespace ERPDotNet.API.Controllers.BaseInfo;
 
@@ -69,6 +70,19 @@ public class UnitsController : ControllerBase
     public async Task<ActionResult<List<UnitDto>>> GetLookup()
     {
         var result = await _mediator.Send(new GetUnitsLookupQuery());
+        return Ok(result);
+    }
+
+    // متد جدید برای دریافت تکی واحد
+    [HttpGet("{id}")]
+    [HasPermission("BaseInfo.Units")]
+    public async Task<ActionResult<UnitDto>> GetById(int id)
+    {
+        var query = new GetUnitByIdQuery(id);
+        var result = await _mediator.Send(query);
+
+        if (result == null) return NotFound();
+
         return Ok(result);
     }
 }
