@@ -3,13 +3,20 @@
 import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Filter as FilterIcon, FilterX } from "lucide-react";
-import type { ColumnConfig, ColumnFilter as AdvancedColumnFilter } from "@/types";
+import type {
+  ColumnConfig,
+  ColumnFilter as AdvancedColumnFilter,
+} from "@/types";
 import { FilterPopoverContent } from "./data-table-column-header";
 
 // Debounce hook
-function useDebounce<T>(value: T, delay: number): T {
+export function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
   useEffect(() => {
@@ -34,7 +41,14 @@ interface ColumnFilterProps {
   onApplyAdvancedFilter: (newFilter: AdvancedColumnFilter | null) => void;
 }
 
-export function ColumnFilter({ column, columnKey, value, initialAdvancedFilter, onChange, onApplyAdvancedFilter }: ColumnFilterProps) {
+export function ColumnFilter({
+  column,
+  columnKey,
+  value,
+  initialAdvancedFilter,
+  onChange,
+  onApplyAdvancedFilter,
+}: ColumnFilterProps) {
   const [filterValue, setFilterValue] = useState(value || "");
   const debouncedFilterValue = useDebounce(filterValue, 500); // 500ms delay
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -42,7 +56,9 @@ export function ColumnFilter({ column, columnKey, value, initialAdvancedFilter, 
   const isFiltered =
     initialAdvancedFilter &&
     initialAdvancedFilter.conditions.length > 0 &&
-    initialAdvancedFilter.conditions.some((c) => c.value !== "" && c.value !== null);
+    initialAdvancedFilter.conditions.some(
+      (c) => c.value !== "" && c.value !== null
+    );
 
   useEffect(() => {
     if (debouncedFilterValue !== value) {
@@ -52,18 +68,17 @@ export function ColumnFilter({ column, columnKey, value, initialAdvancedFilter, 
   }, [debouncedFilterValue]);
 
   useEffect(() => {
-    // Sync local state with parent state
+    // تغییر مهم: اگر value از بیرون undefined آمد، رشته خالی ست کن
     if (value !== filterValue) {
-      setFilterValue(value);
+      setFilterValue(value ?? ""); // استفاده از ?? "" به جای پاس دادن مستقیم value
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
   return (
     <div className="flex items-center gap-2">
       <Input
         placeholder={`جستجو...`}
-        value={filterValue}
+        value={filterValue ?? ""}
         onChange={(e) => setFilterValue(e.target.value)}
         className="h-8 py-1 flex-1"
         onClick={(e) => e.stopPropagation()} // Prevent sort from triggering
@@ -74,10 +89,16 @@ export function ColumnFilter({ column, columnKey, value, initialAdvancedFilter, 
           <Button
             variant="ghost"
             size="icon"
-            className={isFiltered ? "h-8 w-8 text-primary bg-primary/10" : "h-8 w-8"}
+            className={
+              isFiltered ? "h-8 w-8 text-primary bg-primary/10" : "h-8 w-8"
+            }
             onClick={(e) => e.stopPropagation()}
           >
-            {isFiltered ? <FilterX className="h-4 w-4" /> : <FilterIcon className="h-4 w-4" />}
+            {isFiltered ? (
+              <FilterX className="h-4 w-4" />
+            ) : (
+              <FilterIcon className="h-4 w-4" />
+            )}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-80" align="start">

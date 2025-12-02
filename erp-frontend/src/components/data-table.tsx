@@ -255,21 +255,28 @@ export function DataTable<TData extends TableRow>({
                 </TableHead>
               </TableRow>
               {/* ردیف فیلترها */}
+              {/* در فایل data-table.tsx - داخل TableHeader - ردیف دوم */}
               <TableRow className="no-print bg-muted/10 hover:bg-muted/10 border-b border-border">
                 {columns.map((column) => (
-                  <TableCell key={`${column.key}-filter`} className="p-1">
-                    {column.type !== "boolean" ? (
-                      <ColumnFilter
-                        column={column}
-                        columnKey={column.key}
-                        value={columnFilters[column.key] || ""}
-                        initialAdvancedFilter={advancedFilters.find(
-                          (f) => f.key === column.key
-                        )}
-                        onChange={onColumnFilterChange}
-                        onApplyAdvancedFilter={onAdvancedFilterChange}
-                      />
-                    ) : null}
+                  <TableCell
+                    key={column.key}
+                    style={{
+                      width: `${columnWidths[column.key]}px`,
+                      maxWidth: `${columnWidths[column.key]}px`,
+                    }}
+                  >
+                    {/* ↓↓↓ کد اشتباه (استفاده از render و row) را پاک کنید و این را بگذارید ↓↓↓ */}
+                    <ColumnFilter
+                      column={column}
+                      columnKey={column.key}
+                      value={columnFilters[column.key]}
+                      initialAdvancedFilter={advancedFilters.find(
+                        (f) => f.key === column.key
+                      )}
+                      onChange={onColumnFilterChange}
+                      onApplyAdvancedFilter={onAdvancedFilterChange}
+                    />
+                    {/* ↑↑↑ پایان اصلاح ↑↑↑ */}
                   </TableCell>
                 ))}
                 <TableCell key="actions-filter" className="p-1"></TableCell>
@@ -313,8 +320,13 @@ export function DataTable<TData extends TableRow>({
                           maxWidth: `${columnWidths[column.key]}px`,
                         }}
                       >
-                        <div className="truncate text-foreground">
-                          {column.key === "isActive" ? (
+                        {/* ↓↓↓ اینجا باید از render استفاده کنید چون متغیر row اینجا تعریف شده است ↓↓↓ */}
+                        <div className="truncate text-foreground flex items-center">
+                          {column.render ? (
+                            // 1. استفاده از رندر سفارشی (برای عکس و ...)
+                            column.render(row[column.key as keyof TData], row)
+                          ) : column.key === "isActive" ? (
+                            // 2. کد قبلی برای بج وضعیت
                             <Badge
                               variant={row.isActive ? "default" : "destructive"}
                               className={cn(
@@ -327,9 +339,11 @@ export function DataTable<TData extends TableRow>({
                               {row.isActive ? "فعال" : "غیرفعال"}
                             </Badge>
                           ) : (
+                            // 3. متن ساده
                             String(row[column.key as keyof TData] ?? "—")
                           )}
                         </div>
+                        {/* ↑↑↑ پایان اصلاح ↑↑↑ */}
                       </TableCell>
                     ))}
                     <TableCell

@@ -57,6 +57,7 @@ builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<ICacheService, RedisCacheService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<IFileService, FileService>();
 #endregion
 
 #region 4. Presentation Layer (API, Auth, Swagger)
@@ -112,10 +113,12 @@ app.UseCors(policy =>
           .AllowAnyMethod());
 
 app.UseAuthentication();
+
+app.UseStaticFiles();
 app.UseAuthorization();
 
 app.MapControllers();
-app.UseStaticFiles();
+
 #endregion
 
 app.Run();

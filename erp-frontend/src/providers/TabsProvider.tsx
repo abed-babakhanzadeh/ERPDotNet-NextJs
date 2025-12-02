@@ -87,7 +87,7 @@ function TabsProviderContent({ children }: { children: ReactNode }) {
 
     // گوش دادن به تغییرات storage (logout از تب دیگر)
     window.addEventListener("storage", handleStorageChange);
-    
+
     // بررسی دوره‌ای برای logout (حذف token)
     const interval = setInterval(() => {
       const currentToken = localStorage.getItem("accessToken");
@@ -112,7 +112,8 @@ function TabsProviderContent({ children }: { children: ReactNode }) {
         const savedState = localStorage.getItem(STORAGE_KEY);
         if (savedState) {
           try {
-            const { tabs: savedTabs, activeTabId: savedActiveTabId } = JSON.parse(savedState);
+            const { tabs: savedTabs, activeTabId: savedActiveTabId } =
+              JSON.parse(savedState);
             setTabs(savedTabs || []);
             setActiveTabId(savedActiveTabId || "");
           } catch (error) {
@@ -130,10 +131,7 @@ function TabsProviderContent({ children }: { children: ReactNode }) {
   // ذخیره تب‌ها در localStorage هر بار که تغییر کنند
   useEffect(() => {
     if (isHydrated && typeof window !== "undefined") {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ tabs, activeTabId })
-      );
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ tabs, activeTabId }));
     }
   }, [tabs, activeTabId, isHydrated]);
 
@@ -144,41 +142,50 @@ function TabsProviderContent({ children }: { children: ReactNode }) {
     }
   }, [pathname, isHydrated]);
 
-  const addTab = useCallback((title: string, url: string) => {
-    setTabs((prevTabs) => {
-      const exists = prevTabs.find((t) => t.id === url);
-      if (!exists) {
-        return [...prevTabs, { id: url, title, url }];
-      }
-      return prevTabs;
-    });
-    router.push(url);
-    setActiveTabId(url);
-  }, [router]);
-
-  const closeTab = useCallback((id: string) => {
-    setTabs((prevTabs) => {
-      const newTabs = prevTabs.filter((t) => t.id !== id);
-      
-      if (id === activeTabId) {
-        if (newTabs.length > 0) {
-          const lastTab = newTabs[newTabs.length - 1];
-          router.push(lastTab.url);
-          setActiveTabId(lastTab.id);
-        } else {
-          router.push("/");
-          setActiveTabId("/");
+  const addTab = useCallback(
+    (title: string, url: string) => {
+      setTabs((prevTabs) => {
+        const exists = prevTabs.find((t) => t.id === url);
+        if (!exists) {
+          return [...prevTabs, { id: url, title, url }];
         }
-      }
-      
-      return newTabs;
-    });
-  }, [activeTabId, router]);
+        return prevTabs;
+      });
+      router.push(url);
+      setActiveTabId(url);
+    },
+    [router]
+  );
 
-  const setActiveTabHandler = useCallback((id: string) => {
-    setActiveTabId(id);
-    router.push(id);
-  }, [router]);
+  const closeTab = useCallback(
+    (id: string) => {
+      setTabs((prevTabs) => {
+        const newTabs = prevTabs.filter((t) => t.id !== id);
+
+        if (id === activeTabId) {
+          if (newTabs.length > 0) {
+            const lastTab = newTabs[newTabs.length - 1];
+            router.push(lastTab.url);
+            setActiveTabId(lastTab.id);
+          } else {
+            router.push("/");
+            setActiveTabId("/");
+          }
+        }
+
+        return newTabs;
+      });
+    },
+    [activeTabId, router]
+  );
+
+  const setActiveTabHandler = useCallback(
+    (id: string) => {
+      setActiveTabId(id);
+      router.push(id);
+    },
+    [router]
+  );
 
   // اگر در حال loading هست، loading skeleton نمایش بده
   if (isLoading) {
@@ -192,19 +199,17 @@ function TabsProviderContent({ children }: { children: ReactNode }) {
 
   // فقط پس از hydration، context value را بفرستیم
   const contextValue = isHydrated
-    ? { 
-        tabs, 
-        activeTabId, 
-        addTab, 
-        closeTab, 
-        setActiveTab: setActiveTabHandler 
+    ? {
+        tabs,
+        activeTabId,
+        addTab,
+        closeTab,
+        setActiveTab: setActiveTabHandler,
       }
     : defaultContextValue;
 
   return (
-    <TabsContext.Provider value={contextValue}>
-      {children}
-    </TabsContext.Provider>
+    <TabsContext.Provider value={contextValue}>{children}</TabsContext.Provider>
   );
 }
 
