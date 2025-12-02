@@ -86,13 +86,36 @@ public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, Pagina
                 (p.Code != null && p.Code.ToLower().Contains(searchLower)));
         }
 
+        // 4. سورت (اصلاح شده برای Natural Sort)
         if (!string.IsNullOrEmpty(request.SortColumn))
         {
-            query = query.OrderByDynamic(request.SortColumn, request.SortDescending);
+            var sortCol = request.SortColumn.ToLower();
+            
+            // اگر سورت روی کد یا نام بود، از استراتژی Length + Value استفاده کن
+            if (sortCol == "code")
+            {
+                if (request.SortDescending)
+                    query = query.OrderByDescending(p => p.Code.Length).ThenByDescending(p => p.Code);
+                else
+                    query = query.OrderBy(p => p.Code.Length).ThenBy(p => p.Code);
+            }
+            else if (sortCol == "name")
+            {
+                if (request.SortDescending)
+                    query = query.OrderByDescending(p => p.Name.Length).ThenByDescending(p => p.Name);
+                else
+                    query = query.OrderBy(p => p.Name.Length).ThenBy(p => p.Name);
+            }
+            else
+            {
+                // برای بقیه ستون‌ها از همان روش داینامیک قبلی استفاده کن
+                query = query.OrderByDynamic(request.SortColumn, request.SortDescending);
+            }
         }
         else
         {
-            query = query.OrderBy(p => p.Code);
+            // سورت پیش‌فرض: اول طول کد، بعد خود کد
+            query = query.OrderBy(p => p.Code.Length).ThenBy(p => p.Code);
         }
         
         var dtoQuery = query.Select(p => new ProductDto(
