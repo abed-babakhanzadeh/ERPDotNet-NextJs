@@ -1,6 +1,10 @@
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:5249/api";
+// خواندن از متغیر محیطی با مقدار پیش‌فرض
+// ما /api را اینجا اضافه می‌کنیم تا در فایل env فقط آدرس سرور باشد
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
+  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
+  : "http://localhost:5249/api";
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,

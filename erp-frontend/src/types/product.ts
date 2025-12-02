@@ -1,4 +1,6 @@
 export interface Product {
+  technicalSpec: string;
+  isActive: boolean;
   id: number;
   code: string;
   name: string;
@@ -6,6 +8,7 @@ export interface Product {
   unitName: string;
   supplyTypeId: number;
   supplyType: string;
+  imagePath?: string;
   conversions: ProductConversion[];
 }
 

@@ -1,9 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Product, SortConfig, ColumnConfig, ColumnFilter as AdvancedColumnFilter } from '@/types';
-import apiClient from '@/services/apiClient';
-import { Box, Plus } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  Product,
+  SortConfig,
+  ColumnConfig,
+  ColumnFilter as AdvancedColumnFilter,
+} from "@/types";
+import apiClient from "@/services/apiClient";
+import { Box, Plus } from "lucide-react";
 import ProtectedPage from "@/components/ui/ProtectedPage";
 import PermissionGuard from "@/components/ui/PermissionGuard";
 import Modal from "@/components/ui/Modal";
@@ -13,12 +18,18 @@ import MasterDetailLayout from "@/components/ui/MasterDetailLayout";
 import { toast } from "sonner";
 import { DataTable } from "@/components/data-table";
 
-const PlaceholderWrapper: React.FC<{ children: React.ReactNode, permission?: string, title?: string, icon?: any, actions?: React.ReactNode }> = ({ children }) => <div>{children}</div>;
+const PlaceholderWrapper: React.FC<{
+  children: React.ReactNode;
+  permission?: string;
+  title?: string;
+  icon?: any;
+  actions?: React.ReactNode;
+}> = ({ children }) => <div>{children}</div>;
 
 const ProtectedPagePlaceholder = ProtectedPage || PlaceholderWrapper;
-const PermissionGuardPlaceholder = PermissionGuard || (({ children }) => <>{children}</>);
+const PermissionGuardPlaceholder =
+  PermissionGuard || (({ children }) => <>{children}</>);
 const MasterDetailLayoutPlaceholder = MasterDetailLayout || PlaceholderWrapper;
-
 
 export default function ProductsPage() {
   const [data, setData] = useState<Product[]>([]);
@@ -26,10 +37,14 @@ export default function ProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [rowCount, setRowCount] = useState(0);
 
-  const [globalFilter, setGlobalFilter] = useState('');
+  const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortConfig>(null);
-  const [advancedFilters, setAdvancedFilters] = useState<AdvancedColumnFilter[]>([]);
-  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+  const [advancedFilters, setAdvancedFilters] = useState<
+    AdvancedColumnFilter[]
+  >([]);
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>(
+    {}
+  );
 
   const [pagination, setPagination] = useState({
     pageIndex: 0,
@@ -44,13 +59,13 @@ export default function ProductsPage() {
     setIsError(false);
 
     try {
-      const advancedFilterPayload = advancedFilters.flatMap(f =>
+      const advancedFilterPayload = advancedFilters.flatMap((f) =>
         f.conditions
-          .filter(c => c.value !== '' && c.value !== null)
-          .map(c => ({
+          .filter((c) => c.value !== "" && c.value !== null)
+          .map((c) => ({
             PropertyName: f.key,
             Operation: c.operator,
-            Value: String(c.value)
+            Value: String(c.value),
           }))
       );
 
@@ -58,23 +73,26 @@ export default function ProductsPage() {
         .filter(([, value]) => value)
         .map(([key, value]) => ({
           PropertyName: key,
-          Operation: 'contains',
-          Value: String(value)
+          Operation: "contains",
+          Value: String(value),
         }));
 
-      const allFiltersForApi = [...advancedFilterPayload, ...simpleColumnFiltersPayload];
+      const allFiltersForApi = [
+        ...advancedFilterPayload,
+        ...simpleColumnFiltersPayload,
+      ];
 
       const payload = {
         pageNumber: pagination.pageIndex + 1,
         pageSize: pagination.pageSize,
         searchTerm: globalFilter ?? "",
         sortColumn: sorting?.key,
-        sortDescending: sorting?.direction === 'descending',
-        Filters: allFiltersForApi
+        sortDescending: sorting?.direction === "descending",
+        Filters: allFiltersForApi,
       };
 
       const response = await apiClient.post<any>("/Products/search", payload);
-      
+
       if (response && response.data && response.data.items) {
         setData(response.data.items);
         setRowCount(response.data.totalCount);
@@ -96,16 +114,23 @@ export default function ProductsPage() {
 
   useEffect(() => {
     fetchData();
-  }, [pagination.pageIndex, pagination.pageSize, sorting, globalFilter, advancedFilters, columnFilters]);
+  }, [
+    pagination.pageIndex,
+    pagination.pageSize,
+    sorting,
+    globalFilter,
+    advancedFilters,
+    columnFilters,
+  ]);
 
   const columns: ColumnConfig[] = useMemo(
     () => [
-      { key: "code", label: "کد کالا", type: 'string' },
-      { key: "name", label: "نام کالا", type: 'string' },
-      { key: "unitName", label: "واحد", type: 'string' },
-      { key: "supplyType", label: "نوع تامین", type: 'string' },
+      { key: "code", label: "کد کالا", type: "string" },
+      { key: "name", label: "نام کالا", type: "string" },
+      { key: "unitName", label: "واحد", type: "string" },
+      { key: "supplyType", label: "نوع تامین", type: "string" },
     ],
-    [],
+    []
   );
 
   const handleDelete = async (row: Product) => {
@@ -120,23 +145,27 @@ export default function ProductsPage() {
     }
   };
 
-  const handleAdvancedFilterChange = (newFilter: AdvancedColumnFilter | null) => {
-    setPagination(p => ({ ...p, pageIndex: 0 }));
-    setAdvancedFilters(prev => {
-        if (!newFilter) return prev; 
-        const otherFilters = prev.filter(f => f.key !== newFilter.key);
-        if (newFilter.conditions.some(c => c.value !== '' && c.value !== null)) {
-            return [...otherFilters, newFilter];
-        }
-        return otherFilters;
+  const handleAdvancedFilterChange = (
+    newFilter: AdvancedColumnFilter | null
+  ) => {
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
+    setAdvancedFilters((prev) => {
+      if (!newFilter) return prev;
+      const otherFilters = prev.filter((f) => f.key !== newFilter.key);
+      if (
+        newFilter.conditions.some((c) => c.value !== "" && c.value !== null)
+      ) {
+        return [...otherFilters, newFilter];
+      }
+      return otherFilters;
     });
   };
 
   const handleColumnFilterChange = (key: string, value: string) => {
-    setPagination(p => ({ ...p, pageIndex: 0 }));
-    setColumnFilters(prev => ({
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
+    setColumnFilters((prev) => ({
       ...prev,
-      [key]: value
+      [key]: value,
     }));
   };
 
@@ -144,7 +173,7 @@ export default function ProductsPage() {
     setGlobalFilter("");
     setAdvancedFilters([]);
     setColumnFilters({});
-    setPagination(p => ({ ...p, pageIndex: 0 }));
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
   };
 
   const pageCount = Math.ceil(rowCount / pagination.pageSize);
@@ -190,7 +219,11 @@ export default function ProductsPage() {
         </div>
 
         {createModalOpen && (
-          <Modal isOpen={createModalOpen} onClose={() => setCreateModalOpen(false)} title="تعریف کالای جدید">
+          <Modal
+            isOpen={createModalOpen}
+            onClose={() => setCreateModalOpen(false)}
+            title="تعریف کالای جدید"
+          >
             <CreateProductForm
               onCancel={() => setCreateModalOpen(false)}
               onSuccess={() => {
@@ -203,7 +236,11 @@ export default function ProductsPage() {
         )}
 
         {editingProduct && (
-          <Modal isOpen={!!editingProduct} onClose={() => setEditingProduct(null)} title={`ویرایش کالا: ${editingProduct.name}`}>
+          <Modal
+            isOpen={!!editingProduct}
+            onClose={() => setEditingProduct(null)}
+            title={`ویرایش کالا: ${editingProduct.name}`}
+          >
             <EditProductForm
               product={editingProduct}
               onCancel={() => setEditingProduct(null)}

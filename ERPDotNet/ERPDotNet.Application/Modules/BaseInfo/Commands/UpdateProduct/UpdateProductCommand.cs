@@ -16,6 +16,7 @@ public record UpdateProductCommand : IRequest<bool>
     public string? TechnicalSpec { get; set; }
     public required int UnitId { get; set; }
     public ProductSupplyType SupplyType { get; set; }
+    public string? ImagePath { get; set; }
     public bool IsActive { get; set; }
 
     // لیست تبدیل‌ها برای ویرایش
@@ -85,6 +86,7 @@ public class UpdateProductHandler : IRequestHandler<UpdateProductCommand, bool>
         entity.TechnicalSpec = request.TechnicalSpec;
         entity.UnitId = request.UnitId;
         entity.SupplyType = request.SupplyType;
+        entity.ImagePath = request.ImagePath;
         entity.IsActive = request.IsActive;
 
         // 3. مدیریت هوشمند لیست فرزندان (Smart Sync)

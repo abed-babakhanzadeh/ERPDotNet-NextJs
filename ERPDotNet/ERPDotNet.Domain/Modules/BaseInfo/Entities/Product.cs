@@ -28,6 +28,10 @@ public class Product : BaseEntity
     // اینام‌ها چون Value Type هستند دیفالت دارند (0)، ولی required کردنش خوبه که مطمئن بشی ست شده.
     public required ProductSupplyType SupplyType { get; set; }
 
+    // فقط نام فایل یا مسیر نسبی را ذخیره می‌کنیم
+    // مثال: "prod-1024-v1.jpg"
+    public string? ImagePath { get; set; }
+
     public bool IsActive { get; set; } = true;
 }
 
