@@ -65,8 +65,10 @@ function TabsProviderContent({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // بررسی logout (حذف token)
+  // بررسی logout (حذف token) - بهینه‌شده بدون polling
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
     const handleStorageChange = () => {
       const token = localStorage.getItem("accessToken");
       if (!token) {
@@ -88,50 +90,40 @@ function TabsProviderContent({ children }: { children: ReactNode }) {
     // گوش دادن به تغییرات storage (logout از تب دیگر)
     window.addEventListener("storage", handleStorageChange);
 
-    // بررسی دوره‌ای برای logout (حذف token)
-    const interval = setInterval(() => {
-      const currentToken = localStorage.getItem("accessToken");
-      if (!currentToken && tabs.length > 0) {
-        localStorage.removeItem(STORAGE_KEY);
-        setTabs([]);
-        setActiveTabId("");
-      }
-    }, 1000);
-
     return () => {
       window.removeEventListener("storage", handleStorageChange);
-      clearInterval(interval);
     };
-  }, [tabs.length]);
+  }, []);
 
   // بارگذاری تب‌ها از localStorage هنگام mount
   useEffect(() => {
     if (typeof window !== "undefined") {
-      // شبیه‌سازی loading برای نمایش skeleton خوشگل
-      const timer = setTimeout(() => {
-        const savedState = localStorage.getItem(STORAGE_KEY);
-        if (savedState) {
-          try {
-            const { tabs: savedTabs, activeTabId: savedActiveTabId } =
-              JSON.parse(savedState);
-            setTabs(savedTabs || []);
-            setActiveTabId(savedActiveTabId || "");
-          } catch (error) {
-            console.error("خطا در بارگذاری تب‌های ذخیره‌شده:", error);
-          }
+      // بارگذاری فوری بدون delay برای بهتری بافی
+      const savedState = localStorage.getItem(STORAGE_KEY);
+      if (savedState) {
+        try {
+          const { tabs: savedTabs, activeTabId: savedActiveTabId } =
+            JSON.parse(savedState);
+          setTabs(savedTabs || []);
+          setActiveTabId(savedActiveTabId || "");
+        } catch (error) {
+          console.error("خطا در بارگذاری تب‌های ذخیره‌شده:", error);
         }
-        setIsHydrated(true);
-        setIsLoading(false);
-      }, 300); // 300ms برای نمایش skeleton
-
-      return () => clearTimeout(timer);
+      }
+      setIsHydrated(true);
+      setIsLoading(false);
     }
   }, []);
 
-  // ذخیره تب‌ها در localStorage هر بار که تغییر کنند
+  // ذخیره تب‌ها در localStorage فقط هنگام تغییر واقعی
   useEffect(() => {
     if (isHydrated && typeof window !== "undefined") {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ tabs, activeTabId }));
+      const state = JSON.stringify({ tabs, activeTabId });
+      // تنها ذخیره کنید اگر واقعاً تغییر کرده باشد
+      const savedState = localStorage.getItem(STORAGE_KEY);
+      if (savedState !== state) {
+        localStorage.setItem(STORAGE_KEY, state);
+      }
     }
   }, [tabs, activeTabId, isHydrated]);
 
@@ -187,16 +179,6 @@ function TabsProviderContent({ children }: { children: ReactNode }) {
     [router]
   );
 
-  // اگر در حال loading هست، loading skeleton نمایش بده
-  if (isLoading) {
-    return (
-      <>
-        <LoadingSkeleton />
-        {children}
-      </>
-    );
-  }
-
   // فقط پس از hydration، context value را بفرستیم
   const contextValue = isHydrated
     ? {
@@ -207,6 +189,16 @@ function TabsProviderContent({ children }: { children: ReactNode }) {
         setActiveTab: setActiveTabHandler,
       }
     : defaultContextValue;
+
+  // اگر در حال loading هست، loading skeleton نمایش بده
+  if (isLoading) {
+    return (
+      <>
+        <LoadingSkeleton />
+        {children}
+      </>
+    );
+  }
 
   return (
     <TabsContext.Provider value={contextValue}>{children}</TabsContext.Provider>
