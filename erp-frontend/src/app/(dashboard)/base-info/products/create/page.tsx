@@ -9,7 +9,7 @@ import BaseFormLayout from "@/components/layout/BaseFormLayout";
 import { useTabs } from "@/providers/TabsProvider";
 import { useFormPersist } from "@/hooks/useFormPersist";
 import AutoForm, { FieldConfig } from "@/components/form/AutoForm";
-import { Button } from "react-day-picker";
+import { Button } from "@/components/ui/button";
 
 export default function CreateProductPage() {
   const { closeTab, activeTabId } = useTabs();

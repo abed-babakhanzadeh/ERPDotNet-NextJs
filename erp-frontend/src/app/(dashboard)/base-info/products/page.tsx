@@ -12,6 +12,7 @@ import { DataTable } from "@/components/data-table";
 import { useServerDataTable } from "@/hooks/useServerDataTable";
 import { useTabs } from "@/providers/TabsProvider"; // 1. اضافه کردن هوک تب
 import { ImageIcon } from "lucide-react";
+import { useTabPrefetch } from "@/hooks/useTabPrefetch";
 
 // آدرس بک‌اند را از env بخوانید یا هاردکد کنید (فعلا هاردکد برای مثال)
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5249";
@@ -33,6 +34,9 @@ const MasterDetailLayoutPlaceholder = MasterDetailLayout || PlaceholderWrapper;
 export default function ProductsPage() {
   // 2. دریافت متد addTab
   const { addTab } = useTabs();
+
+  // prefetch عمومی برای فرم ایجاد کالا
+  useTabPrefetch(["/base-info/products/create"]);
 
   // استفاده از هوک دیتا تیبل
   const { tableProps, refresh } = useServerDataTable<Product>({

@@ -12,6 +12,7 @@ import { DataTable } from "@/components/data-table";
 import { useServerDataTable } from "@/hooks/useServerDataTable";
 import { useTabs } from "@/providers/TabsProvider";
 import { Badge } from "@/components/ui/badge";
+import { useTabPrefetch } from "@/hooks/useTabPrefetch";
 
 // --- تعریف Placeholder ها ---
 const PlaceholderWrapper: React.FC<{
@@ -28,6 +29,9 @@ const MasterDetailLayoutPlaceholder = MasterDetailLayout || PlaceholderWrapper;
 
 export default function UnitsPage() {
   const { addTab } = useTabs();
+
+  // prefetch عمومی برای فرم ایجاد واحد
+  useTabPrefetch(["/base-info/units/create"]);
 
   const { tableProps, refresh } = useServerDataTable<Unit>({
     endpoint: "/Units/search",
