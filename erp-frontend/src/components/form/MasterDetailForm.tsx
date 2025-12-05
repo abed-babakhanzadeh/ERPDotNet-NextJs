@@ -13,8 +13,8 @@ export interface MasterDetailTab {
 
 interface MasterDetailFormProps {
   title: string;
-  headerContent: ReactNode; // فیلدهای بالای صفحه (هدر)
-  tabs: MasterDetailTab[]; // تب‌های پایین (اقلام، عملیات و...)
+  headerContent: ReactNode;
+  tabs: MasterDetailTab[];
   isLoading?: boolean;
   onSubmit: (e: React.FormEvent) => void;
   onCancel?: () => void;
@@ -46,15 +46,22 @@ export default function MasterDetailForm({
     >
       <div className="flex flex-col gap-6 h-full">
         {/* 1. Header Section */}
-        <div className="bg-card border rounded-lg p-5 shadow-sm">
+        {/* جهت هدر را هم صراحتا راست‌چین میکنیم */}
+        <div className="bg-card border rounded-lg p-5 shadow-sm" dir="rtl">
           {headerContent}
         </div>
 
         {/* 2. Details Section (Tabs) */}
         <div className="flex-1 bg-card border rounded-lg shadow-sm overflow-hidden flex flex-col">
-          <Tabs defaultValue={tabs[0]?.key} className="flex flex-col h-full">
+          {/* تغییر ۱: اضافه کردن dir="rtl" به کامپوننت Tabs */}
+          <Tabs
+            defaultValue={tabs[0]?.key}
+            className="flex flex-col h-full"
+            dir="rtl"
+          >
             <div className="border-b px-4 bg-muted/20">
-              <TabsList className="bg-transparent h-12 p-0 gap-6">
+              {/* تغییر ۲: استفاده از justify-start که در حالت RTL یعنی شروع از راست */}
+              <TabsList className="bg-transparent h-12 p-0 gap-6 w-full justify-start">
                 {tabs.map((tab) => (
                   <TabsTrigger
                     key={tab.key}
