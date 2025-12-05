@@ -5,7 +5,7 @@ import { Plus, Trash2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-// ... (تعاریف تایپ‌ها GridColumnType و GridColumn بدون تغییر) ...
+// ... (تایپ‌ها بدون تغییر) ...
 export type GridColumnType = "text" | "number" | "select" | "readonly";
 
 export interface GridColumn<T> {
@@ -37,9 +37,7 @@ export default function EditableGrid<T extends { id?: number | string }>({
   loading,
   readOnly = false,
 }: EditableGridProps<T>) {
-  // --- اصلاح مهم: اطمینان از اینکه data حتما آرایه است ---
   const safeData = Array.isArray(data) ? data : [];
-  // -------------------------------------------------------
 
   const handleCellChange = (index: number, key: keyof T, value: any) => {
     const newData = [...safeData];
@@ -60,7 +58,8 @@ export default function EditableGrid<T extends { id?: number | string }>({
   };
 
   return (
-    <div className="flex flex-col h-full">
+    // تغییر ۱: اضافه کردن dir="rtl" به کانتینر اصلی
+    <div className="flex flex-col h-full" dir="rtl">
       <div className="border rounded-md overflow-hidden flex-1 relative bg-card">
         <div className="overflow-auto max-h-[500px]">
           <table className="w-full text-sm">
@@ -72,6 +71,7 @@ export default function EditableGrid<T extends { id?: number | string }>({
                 {columns.map((col) => (
                   <th
                     key={String(col.key)}
+                    // تغییر ۲: اطمینان از text-right برای هدرها
                     className="p-3 text-right font-medium text-muted-foreground"
                     style={{ width: col.width }}
                   >
@@ -83,86 +83,84 @@ export default function EditableGrid<T extends { id?: number | string }>({
               </tr>
             </thead>
             <tbody className="divide-y">
-              {safeData.map(
-                (
-                  row,
-                  index // استفاده از safeData
-                ) => (
-                  <tr
-                    key={index}
-                    className="group hover:bg-muted/20 transition-colors"
-                  >
-                    <td className="p-2 text-center text-muted-foreground text-xs">
-                      {index + 1}
-                    </td>
+              {safeData.map((row, index) => (
+                <tr
+                  key={row.id || index} // استفاده از id برای key
+                  className="group hover:bg-muted/20 transition-colors"
+                >
+                  <td className="p-2 text-center text-muted-foreground text-xs">
+                    {index + 1}
+                  </td>
 
-                    {columns.map((col) => (
-                      <td key={String(col.key)} className="p-2">
-                        {col.render ? (
-                          col.render(row, index)
-                        ) : col.type === "select" ? (
-                          <select
-                            disabled={readOnly || loading || col.disabled}
-                            value={String(row[col.key] || "")}
-                            onChange={(e) =>
-                              handleCellChange(index, col.key, e.target.value)
-                            }
-                            className={cn(
-                              "w-full h-8 rounded border border-input bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary disabled:opacity-50",
-                              !row[col.key] &&
-                                col.required &&
-                                "border-red-200 bg-red-50"
-                            )}
-                          >
-                            <option value="">انتخاب...</option>
-                            {col.options?.map((opt) => (
-                              <option key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </option>
-                            ))}
-                          </select>
-                        ) : col.type === "readonly" ? (
-                          <div className="px-2 py-1 bg-muted/20 rounded text-muted-foreground border border-transparent">
-                            {String(row[col.key] || "-")}
-                          </div>
-                        ) : (
-                          <input
-                            type={col.type}
-                            disabled={readOnly || loading || col.disabled}
-                            value={String(row[col.key] || "")}
-                            placeholder={col.placeholder}
-                            onChange={(e) =>
-                              handleCellChange(index, col.key, e.target.value)
-                            }
-                            className={cn(
-                              "w-full h-8 rounded border border-input bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary disabled:opacity-50",
-                              col.type === "number" &&
-                                "text-left dir-ltr font-mono",
-                              !row[col.key] &&
-                                col.required &&
-                                "border-red-200 bg-red-50"
-                            )}
-                          />
-                        )}
-                      </td>
-                    ))}
-
-                    {!readOnly && (
-                      <td className="p-2 text-center">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => handleRemove(index)}
+                  {columns.map((col) => (
+                    <td key={String(col.key)} className="p-2">
+                      {col.render ? (
+                        col.render(row, index)
+                      ) : col.type === "select" ? (
+                        <select
+                          disabled={readOnly || loading || col.disabled}
+                          value={String(row[col.key] || "")}
+                          onChange={(e) =>
+                            handleCellChange(index, col.key, e.target.value)
+                          }
+                          // تغییر ۳: اضافه کردن text-right به سلکت
+                          className={cn(
+                            "w-full h-8 rounded border border-input bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary disabled:opacity-50 text-right",
+                            !row[col.key] &&
+                              col.required &&
+                              "border-red-200 bg-red-50"
+                          )}
                         >
-                          <Trash2 size={16} />
-                        </Button>
-                      </td>
-                    )}
-                  </tr>
-                )
-              )}
+                          <option value="">انتخاب...</option>
+                          {col.options?.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      ) : col.type === "readonly" ? (
+                        <div className="px-2 py-1 bg-muted/20 rounded text-muted-foreground border border-transparent text-right">
+                          {String(row[col.key] || "-")}
+                        </div>
+                      ) : (
+                        <input
+                          type={col.type}
+                          disabled={readOnly || loading || col.disabled}
+                          value={String(row[col.key] || "")}
+                          placeholder={col.placeholder}
+                          onChange={(e) =>
+                            handleCellChange(index, col.key, e.target.value)
+                          }
+                          className={cn(
+                            "w-full h-8 rounded border border-input bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary disabled:opacity-50",
+                            // اعداد انگلیسی و چپ‌چین بمانند بهتر است، اما متن‌ها راست‌چین شوند
+                            col.type === "number"
+                              ? "text-left dir-ltr font-mono"
+                              : "text-right",
+                            !row[col.key] &&
+                              col.required &&
+                              "border-red-200 bg-red-50"
+                          )}
+                        />
+                      )}
+                    </td>
+                  ))}
+
+                  {!readOnly && (
+                    <td className="p-2 text-center">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => handleRemove(index)}
+                      >
+                        <Trash2 size={16} />
+                      </Button>
+                    </td>
+                  )}
+                </tr>
+              ))}
 
               {safeData.length === 0 && (
                 <tr>
