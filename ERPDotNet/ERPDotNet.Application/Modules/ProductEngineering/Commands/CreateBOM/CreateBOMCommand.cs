@@ -16,6 +16,7 @@ public record CreateBOMCommand : IRequest<int>
     public string Version { get; set; } = "1.0"; // پیش‌فرض
     public BOMType Type { get; set; } = BOMType.Manufacturing;
     public DateTime FromDate { get; set; } = DateTime.UtcNow;
+    public DateTime? ToDate { get; set; }
 
     // لیست مواد اولیه (دیتیل)
     public List<BOMDetailInputDto> Details { get; set; } = new();
@@ -45,6 +46,11 @@ public class CreateBOMValidator : AbstractValidator<CreateBOMCommand>
     public CreateBOMValidator(IApplicationDbContext context)
     {
         _context = context;
+
+        RuleFor(v => v.ToDate)
+            .GreaterThan(v => v.FromDate)
+            .When(v => v.ToDate.HasValue)
+            .WithMessage("تاریخ پایان باید بعد از تاریخ شروع باشد.");
 
         RuleFor(v => v.ProductId).GreaterThan(0);
         RuleFor(v => v.Title).NotEmpty().MaximumLength(100);
@@ -83,17 +89,34 @@ public class CreateBOMHandler : IRequestHandler<CreateBOMCommand, int>
 
     public async Task<int> Handle(CreateBOMCommand request, CancellationToken cancellationToken)
     {
-        // 1. ساخت هدر
+
+        // --- رفع خطای تاریخ PostgreSQL (UTC Conversion) ---
+        
+        // 1. تبدیل تاریخ شروع به UTC
+        var utcFromDate = request.FromDate.Kind == DateTimeKind.Utc 
+            ? request.FromDate 
+            : DateTime.SpecifyKind(request.FromDate, DateTimeKind.Utc);
+
+        // 2. تبدیل تاریخ پایان به UTC (اگر مقدار داشت)
+        DateTime? utcToDate = null;
+        if (request.ToDate.HasValue)
+        {
+            utcToDate = request.ToDate.Value.Kind == DateTimeKind.Utc
+                ? request.ToDate.Value
+                : DateTime.SpecifyKind(request.ToDate.Value, DateTimeKind.Utc);
+        }
+
+        // ساخت هدر با تاریخ‌های اصلاح شده
         var bom = new BOMHeader
         {
             ProductId = request.ProductId,
             Title = request.Title,
             Version = request.Version,
             Type = request.Type,
-            FromDate = request.FromDate,
             
-            // --- نکته حیاتی برای کارفرما ---
-            // فعلاً اتوماتیک Active می‌کنیم تا درگیر پروسه تایید نشوند
+            FromDate = utcFromDate, // استفاده از متغیر UTC شده
+            ToDate = utcToDate,     // استفاده از متغیر UTC شده (فیلد جدید)
+            
             Status = BOMStatus.Active, 
             IsActive = true
         };
