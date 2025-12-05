@@ -1,7 +1,7 @@
 using ERPDotNet.Application.Common.Attributes;
 using ERPDotNet.Application.Common.Models;
 using ERPDotNet.Application.Common.Interfaces;
-using ERPDotNet.Application.Common.Extensions; // برای ToPaginatedListAsync
+using ERPDotNet.Application.Common.Extensions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,9 +11,9 @@ public record UnitDto(
     int Id, 
     string Title, 
     string Symbol, 
-    int Precision,        // جدید
-    bool IsActive,        // جدید
-    int? BaseUnitId,      // جدید
+    int Precision,
+    bool IsActive,
+    int? BaseUnitId,
     decimal ConversionFactor, 
     string? BaseUnitName
 );
@@ -34,39 +34,48 @@ public class GetAllUnitsHandler : IRequestHandler<GetAllUnitsQuery, PaginatedRes
     {
         var query = _context.Units
             .AsNoTracking()
-            .Include(u => u.BaseUnit)
+            .Include(u => u.BaseUnit) // برای دسترسی به BaseUnit.Title ضروری است
             .AsQueryable();
 
-        // اعمال جستجوی کلی
+        // 1. اعمال جستجوی کلی
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
         {
             query = query.Where(u => u.Title.Contains(request.SearchTerm) || u.Symbol.Contains(request.SearchTerm));
         }
         
-        // هندل کردن فیلتر خاص BaseUnitName
+        // 2. هندل کردن فیلتر خاص BaseUnitName (همچنان لازم است چون نام پراپرتی متفاوت است)
         var baseUnitNameFilter = request.Filters?.FirstOrDefault(f => f.PropertyName.Equals("BaseUnitName", StringComparison.OrdinalIgnoreCase));
         if (baseUnitNameFilter != null && !string.IsNullOrEmpty(baseUnitNameFilter.Value))
         {
             query = query.Where(u => u.BaseUnit != null && u.BaseUnit.Title.Contains(baseUnitNameFilter.Value));
-            // حذف فیلتر از لیست تا دوباره پردازش نشود
             request.Filters?.Remove(baseUnitNameFilter);
         }
 
-        // اعمال بقیه فیلترهای داینامیک
+        // 3. اعمال بقیه فیلترهای داینامیک
         query = query.ApplyDynamicFilters(request.Filters);
 
-        // مرتب‌سازی
-        // مرتب‌سازی هوشمند
-        if (!string.IsNullOrEmpty(request.SortColumn))
+        // 4. مرتب‌سازی (بخش اصلاح شده)
+        var sortColumn = request.SortColumn;
+
+        // مپ کردن نام ستون DTO به مسیر Entity
+        // چون OrderByNatural روی Entity کار می‌کند، باید نام دقیق مسیر را بداند
+        if (string.Equals(sortColumn, "BaseUnitName", StringComparison.OrdinalIgnoreCase))
         {
-            query = query.OrderByNatural(request.SortColumn, request.SortDescending);
+            sortColumn = "BaseUnit.Title";
+        }
+
+        if (!string.IsNullOrEmpty(sortColumn))
+        {
+            // حالا OrderByNatural خودش تشخیص می‌دهد که این مسیر Nullable است و نال‌ها را به انتها می‌فرستد
+            query = query.OrderByNatural(sortColumn, request.SortDescending);
         }
         else
         {
-            query = query.OrderBy(u => u.Id); // یا OrderByNatural("Id", false)
+            // سورت پیش‌فرض
+            query = query.OrderByNatural("Id", false);
         }
 
-        // پروجکشن به DTO
+        // 5. پروجکشن به DTO
         var dtoQuery = query.Select(x => new UnitDto(
             x.Id, 
             x.Title, 
@@ -78,7 +87,7 @@ public class GetAllUnitsHandler : IRequestHandler<GetAllUnitsQuery, PaginatedRes
             x.BaseUnit != null ? x.BaseUnit.Title : null
         ));
 
-        // خروجی صفحه‌بندی شده
+        // 6. خروجی صفحه‌بندی شده
         return await dtoQuery.ToPaginatedListAsync(request.PageNumber, request.PageSize, cancellationToken);
     }
 }
