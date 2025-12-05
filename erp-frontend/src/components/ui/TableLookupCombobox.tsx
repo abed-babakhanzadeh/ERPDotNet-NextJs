@@ -201,14 +201,12 @@ export function TableLookupCombobox<T extends LookupOption>({
         {/* Table Body */}
         <ScrollArea className="h-[400px]">
           {loading ? (
+            // حالت ۱: در حال بارگذاری
             <div className="flex justify-center items-center p-4 h-[400px]">
-              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
-          ) : filteredItems.length === 0 ? (
-            <div className="flex justify-center items-center p-4 text-muted-foreground text-sm h-[400px]">
-              {items.length === 0 ? "لطفاً جستجو کنید" : "هیچ رکوردی یافت نشد"}
-            </div>
-          ) : (
+          ) : filteredItems.length > 0 ? (
+            // حالت ۲: نمایش لیست (اگر رکوردی وجود دارد)
             <div className="divide-y divide-border">
               {filteredItems.map((item) => (
                 <button
@@ -242,6 +240,17 @@ export function TableLookupCombobox<T extends LookupOption>({
                   ))}
                 </button>
               ))}
+            </div>
+          ) : (
+            // حالت ۳: هیچ رکوردی نیست
+            <div className="flex flex-col justify-center items-center p-4 text-muted-foreground text-sm h-[400px] gap-2">
+              {/* اگر سرچ خالی است اما آیتمی هم نداریم (هنوز سرچ نشده) */}
+              {!searchTerm && items.length === 0 ? (
+                <span>برای مشاهده نتایج تایپ کنید...</span>
+              ) : (
+                // اگر سرچ شده و نتیجه‌ای نیست
+                <span>هیچ رکوردی با این مشخصات یافت نشد</span>
+              )}
             </div>
           )}
         </ScrollArea>

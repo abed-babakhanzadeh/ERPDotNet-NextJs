@@ -1,69 +1,138 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import apiClient from "@/services/apiClient";
 import { toast } from "sonner";
-import { Product } from "@/types";
-import { useTabs } from "@/providers/TabsProvider";
-import { useFormPersist } from "@/hooks/useFormPersist";
-import { Layers, Settings, FileText } from "lucide-react";
+import { Layers, Settings, FileText, Save, X, Loader2 } from "lucide-react";
 
-// ایمپورت کامپوننت‌های ماژولار جدید
+// Components
 import MasterDetailForm from "@/components/form/MasterDetailForm";
 import AutoForm, { FieldConfig } from "@/components/form/AutoForm";
 import EditableGrid, { GridColumn } from "@/components/form/EditableGrid";
+import {
+  TableLookupCombobox,
+  ColumnDef,
+} from "@/components/ui/TableLookupCombobox";
+import { Button } from "@/components/ui/button";
 
-// تایپ برای اقلام BOM (فقط برای فرانت)
+// Hooks
+import { usePermissions } from "@/providers/PermissionProvider"; // <--- ایمپورت پرمیشن
+import { useTabs } from "@/providers/TabsProvider";
+
+// Types
+interface ProductLookupDto {
+  id: number;
+  code: string;
+  name: string;
+  unitName: string;
+  supplyType: string;
+}
+
+interface BOMHeaderState {
+  productId: number | null;
+  productName?: string;
+  title: string;
+  version: string;
+  type: number;
+  fromDate: string;
+}
+
 interface BOMRow {
-  childProductId: string | number;
+  id: string;
+  childProductId: number | null;
+  childProductCode?: string;
+  childProductName?: string;
+  unitName?: string;
   quantity: number;
   wastePercentage: number;
-  unitName?: string; // فقط برای نمایش
 }
 
 export default function CreateBOMPage() {
+  const router = useRouter();
   const { closeTab, activeTabId } = useTabs();
+  const { hasPermission } = usePermissions(); // <--- هوک پرمیشن
   const [submitting, setSubmitting] = useState(false);
-  const [products, setProducts] = useState<Product[]>([]);
 
-  // استیت کلی فرم
-  const [headerData, setHeaderData] = useState<any>({
-    productId: "",
+  // --- مدیریت دسترسی ---
+  const canCreate = hasPermission("ProductEngineering.BOM.Create");
+
+  // --- State مدیریت فرم ---
+  const [headerData, setHeaderData] = useState<BOMHeaderState>({
+    productId: null,
     title: "",
     version: "1.0",
-    type: 1, // 1: Manufacturing
-    fromDate: new Date().toISOString().split("T")[0], // امروز
+    type: 1,
+    fromDate: new Date().toISOString().split("T")[0],
   });
 
   const [details, setDetails] = useState<BOMRow[]>([]);
 
-  // ذخیره خودکار پیش‌نویس
-  useFormPersist("create-bom-header", headerData, setHeaderData);
-  useFormPersist("create-bom-details", details, setDetails);
+  // --- تفکیک استیت جستجو برای جلوگیری از تداخل هدر و گرید ---
+  const [headerProductOptions, setHeaderProductOptions] = useState<
+    ProductLookupDto[]
+  >([]);
+  const [headerLoading, setHeaderLoading] = useState(false);
 
-  // دریافت لیست کالاها
-  useEffect(() => {
-    apiClient.get("/Products").then((res: any) => setProducts(res.data));
-  }, []);
+  const [gridProductOptions, setGridProductOptions] = useState<
+    ProductLookupDto[]
+  >([]);
+  const [gridLoading, setGridLoading] = useState(false);
 
-  // --- تنظیمات هدر (AutoForm) ---
+  // --- تابع مرکزی جستجو (Logic) ---
+  const searchProductsApi = async (term: string) => {
+    // اگر متن خالی بود، لیست خالی برگردان (یا ۱۰ تای اول، بسته به سلیقه)
+    // اینجا خالی برمی‌گردانیم تا کاربر مجبور به تایپ باشد (پرفورمنس بهتر برای ۶۰ هزار کالا)
+    if (!term) return [];
+
+    const res = await apiClient.post("/Products/search", {
+      pageNumber: 1,
+      pageSize: 20,
+      searchTerm: term,
+      sortColumn: "name",
+      filters: [],
+    });
+    return res.data.items || [];
+  };
+
+  // هندلر جستجو برای هدر
+  const onSearchHeader = async (term: string) => {
+    setHeaderLoading(true);
+    try {
+      const items = await searchProductsApi(term);
+      setHeaderProductOptions(items);
+    } finally {
+      setHeaderLoading(false);
+    }
+  };
+
+  // هندلر جستجو برای گرید
+  const onSearchGrid = async (term: string) => {
+    setGridLoading(true);
+    try {
+      const items = await searchProductsApi(term);
+      setGridProductOptions(items);
+    } finally {
+      setGridLoading(false);
+    }
+  };
+
+  // --- تنظیمات ستون‌های Lookup ---
+  const productLookupColumns: ColumnDef[] = useMemo(
+    () => [
+      { key: "code", label: "کد کالا", width: "30%" },
+      { key: "name", label: "نام کالا", width: "50%" },
+      { key: "unitName", label: "واحد", width: "20%" },
+    ],
+    []
+  );
+
+  // --- تنظیمات فیلدهای هدر (AutoForm) ---
   const headerFields: FieldConfig[] = useMemo(
     () => [
       {
-        name: "productId",
-        label: "محصول نهایی",
-        type: "select",
-        required: true,
-        options: products.map((p) => ({
-          label: `${p.name} (${p.code})`,
-          value: p.id,
-        })),
-        placeholder: "انتخاب محصولی که تولید می‌شود...",
-        colSpan: 1,
-      },
-      {
         name: "version",
-        label: "نسخه فرمول",
+        label: "نسخه",
         type: "text",
         required: true,
         placeholder: "1.0",
@@ -74,7 +143,6 @@ export default function CreateBOMPage() {
         label: "عنوان فرمول",
         type: "text",
         required: true,
-        placeholder: "مثال: فرمول استاندارد ۱۴۰۳",
         colSpan: 1,
       },
       {
@@ -83,136 +151,230 @@ export default function CreateBOMPage() {
         type: "select",
         required: true,
         options: [
-          { label: "تولیدی (Manufacturing)", value: 1 },
+          { label: "ساخت (Manufacturing)", value: 1 },
           { label: "مهندسی (Engineering)", value: 2 },
+          { label: "کیت فروش (Sales)", value: 3 },
         ],
+        colSpan: 1,
       },
-      { name: "fromDate", label: "تاریخ اجرا", type: "date", required: true },
+      {
+        name: "fromDate",
+        label: "تاریخ اجرا",
+        type: "date",
+        required: true,
+        colSpan: 1,
+      },
     ],
-    [products]
+    []
   );
 
-  // --- تنظیمات گرید اقلام (EditableGrid) ---
+  // --- تنظیمات ستون‌های گرید ---
   const detailColumns: GridColumn<BOMRow>[] = useMemo(
     () => [
       {
         key: "childProductId",
         title: "ماده اولیه / قطعه",
         type: "select",
-        required: true,
         width: "40%",
-        options: products
-          // فیلتر: محصول نهایی نباید در لیست مواد اولیه خودش باشد
-          .filter((p) => p.id != headerData.productId)
-          .map((p) => ({ label: `${p.name} (${p.code})`, value: p.id })),
+        required: true,
+        render: (row, index) => (
+          <TableLookupCombobox<ProductLookupDto>
+            value={row.childProductId}
+            items={gridProductOptions} // <--- استفاده از استیت مخصوص گرید
+            loading={gridLoading} // <--- لودینگ مخصوص گرید
+            columns={productLookupColumns}
+            searchableFields={["code", "name"]}
+            displayFields={["code", "name"]}
+            placeholder="جستجوی کالا..."
+            onSearch={onSearchGrid} // <--- تابع سرچ مخصوص گرید
+            onOpenChange={(isOpen) => {
+              // وقتی باز شد، اگر خالی بود، سرچ خالی بزن (یا لیست قبلی را پاک کن)
+              if (isOpen && gridProductOptions.length === 0) onSearchGrid("");
+            }}
+            onValueChange={(newId, item) => {
+              const newDetails = [...details];
+              newDetails[index] = {
+                ...newDetails[index],
+                childProductId: newId as number,
+                childProductName: item?.name,
+                childProductCode: item?.code,
+                unitName: item?.unitName || "-",
+              };
+              setDetails(newDetails);
+            }}
+          />
+        ),
       },
-      {
-        key: "unitName",
-        title: "واحد سنجش",
-        type: "readonly",
-        width: "15%",
-        // وقتی کالا انتخاب شد، واحدش را پیدا کن و نمایش بده
-        render: (row) => {
-          const prod = products.find((p) => p.id == row.childProductId);
-          return (
-            <span className="text-xs text-muted-foreground">
-              {prod?.unitName || "-"}
-            </span>
-          );
-        },
-      },
+      { key: "unitName", title: "واحد", type: "readonly", width: "15%" },
       {
         key: "quantity",
-        title: "مقدار مصرف",
+        title: "مقدار",
         type: "number",
         required: true,
-        placeholder: "0",
         width: "20%",
+        placeholder: "0.00",
       },
       {
         key: "wastePercentage",
-        title: "درصد ضایعات",
+        title: "ضایعات %",
         type: "number",
-        placeholder: "0",
         width: "15%",
+        placeholder: "0",
       },
     ],
-    [products, headerData.productId]
+    [details, gridProductOptions, gridLoading]
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault(); // جلوگیری از رفرش
+
+    // چک کردن دسترسی هنگام سابمیت (لایه امنیتی دوم در فرانت)
+    if (!canCreate) {
+      toast.error("شما دسترسی ایجاد BOM را ندارید.");
+      return;
+    }
+
     setSubmitting(true);
 
-    // ولیدیشن ساده فرانت
+    if (!headerData.productId) {
+      toast.error("لطفا محصول نهایی را انتخاب کنید");
+      setSubmitting(false);
+      return;
+    }
     if (details.length === 0) {
-      toast.error("لطفا حداقل یک ماده اولیه اضافه کنید.");
+      toast.error("لطفا اقلام فرمول را وارد کنید");
       setSubmitting(false);
       return;
     }
 
+    const payload = {
+      productId: headerData.productId,
+      title: headerData.title,
+      version: headerData.version,
+      type: Number(headerData.type),
+      fromDate: headerData.fromDate,
+      details: details.map((d) => ({
+        childProductId: d.childProductId,
+        quantity: Number(d.quantity),
+        wastePercentage: Number(d.wastePercentage || 0),
+        substitutes: [],
+      })),
+    };
+
     try {
-      const payload = {
-        ...headerData,
-        productId: Number(headerData.productId),
-        type: Number(headerData.type),
-
-        // تبدیل فرمت گرید به فرمت API
-        details: details.map((d) => ({
-          childProductId: Number(d.childProductId),
-          quantity: Number(d.quantity),
-          wastePercentage: Number(d.wastePercentage),
-          substitutes: [], // فعلا خالی
-        })),
-      };
-
       await apiClient.post("/BOMs", payload);
-      toast.success("فرمول ساخت با موفقیت ایجاد شد");
-
-      // پاک کردن استیت
-      setHeaderData({
-        productId: "",
-        title: "",
-        version: "1.0",
-        type: 1,
-        fromDate: "",
-      });
-      setDetails([]);
-      localStorage.removeItem("create-bom-header");
-      localStorage.removeItem("create-bom-details");
-
-      closeTab(activeTabId);
+      toast.success("BOM با موفقیت ثبت شد");
+      setTimeout(() => {
+        closeTab(activeTabId);
+      }, 0);
     } catch (error: any) {
-      const msg = error.response?.data?.errors
-        ? Object.values(error.response.data.errors).flat().join(" - ")
-        : "خطا در ثبت اطلاعات";
+      const msg = error.response?.data?.title || "خطا در ثبت اطلاعات";
       toast.error(msg);
     } finally {
       setSubmitting(false);
     }
   };
 
+  // --- رندر هدر فرم (شامل Lookup جداگانه) ---
+  const headerContent = (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="space-y-2 col-span-1 md:col-span-2">
+          <label className="text-sm font-medium flex gap-1">
+            محصول نهایی (Parent) <span className="text-red-500">*</span>
+          </label>
+          <TableLookupCombobox<ProductLookupDto>
+            value={headerData.productId}
+            items={headerProductOptions} // <--- استیت مخصوص هدر
+            loading={headerLoading} // <--- لودینگ مخصوص هدر
+            columns={productLookupColumns}
+            onSearch={onSearchHeader} // <--- تابع سرچ مخصوص هدر
+            displayFields={["code", "name"]}
+            placeholder="جستجو بر اساس نام یا کد کالا..."
+            onValueChange={(val, item) => {
+              setHeaderData((prev) => ({
+                ...prev,
+                productId: val as number,
+                productName: item?.name,
+              }));
+            }}
+          />
+        </div>
+
+        {headerData.productId && (
+          <div className="flex items-end pb-2">
+            <span className="text-sm text-muted-foreground bg-muted/50 px-3 py-1 rounded-md border">
+              محصول انتخاب شده: {headerData.productName}
+            </span>
+          </div>
+        )}
+      </div>
+
+      <AutoForm
+        fields={headerFields}
+        data={headerData}
+        onChange={(name, val) =>
+          setHeaderData((prev) => ({ ...prev, [name]: val }))
+        }
+        className="grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
+      />
+    </div>
+  );
+
   return (
     <MasterDetailForm
-      title="ایجاد BOM جدید"
-      onSubmit={handleSubmit}
+      title="ایجاد فرمول ساخت (BOM)"
+      onSubmit={handleSubmit} // این تابع وقتی دکمه سابمیت هدر فشرده شود هم کار می‌کند
+      formId="create-bom-form" // ID برای اتصال دکمه هدر به فرم
       submitting={submitting}
-      onCancel={() => closeTab(activeTabId)}
-      // 1. محتوای هدر
-      headerContent={
-        <AutoForm
-          fields={headerFields}
-          data={headerData}
-          onChange={(name, val) =>
-            setHeaderData((prev: any) => ({ ...prev, [name]: val }))
-          }
-          className="grid-cols-1 md:grid-cols-3 xl:grid-cols-5" // کاستومایز کردن گرید برای هدر فشرده
-        />
+      headerContent={headerContent}
+      // دکمه‌های هدر (Action Buttons)
+      headerActions={
+        <>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setTimeout(() => closeTab(activeTabId), 0);
+            }}
+            disabled={submitting}
+            className="h-9 gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <X size={16} />
+            انصراف
+          </Button>
+
+          {/* دکمه ثبت با چک کردن پرمیشن */}
+          {canCreate ? (
+            <Button
+              type="submit"
+              form="create-bom-form" // باید با formId یکی باشد
+              disabled={submitting}
+              className="h-9 gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {submitting ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Save size={16} />
+              )}
+              {submitting ? "در حال ثبت..." : "ثبت فرمول"}
+            </Button>
+          ) : (
+            // اگر دسترسی نداشت، یا مخفی کن یا دکمه غیرفعال با پیام مناسب نشان بده
+            <Button
+              disabled
+              variant="secondary"
+              className="h-9 gap-2 opacity-50 cursor-not-allowed"
+            >
+              <Save size={16} />
+              عدم دسترسی
+            </Button>
+          )}
+        </>
       }
-      // 2. محتوای تب‌ها
       tabs={[
         {
-          key: "components",
+          key: "materials",
           label: "مواد اولیه و قطعات",
           icon: Layers,
           content: (
@@ -220,36 +382,29 @@ export default function CreateBOMPage() {
               columns={detailColumns}
               data={details}
               onChange={setDetails}
+              // اصلاح تولید سطر جدید:
               onAddRow={() => ({
-                childProductId: "",
+                id: Math.random().toString(36).substr(2, 9), // تولید یک ID تصادفی موقت
+                childProductId: null,
                 quantity: 1,
                 wastePercentage: 0,
+                unitName: "-",
               })}
             />
           ),
         },
         {
-          key: "operations",
-          label: "عملیات تولید",
-          icon: Settings,
-          content: (
-            <div className="flex items-center justify-center h-40 text-muted-foreground border-2 border-dashed rounded-lg">
-              این بخش در فاز بعدی پیاده‌سازی می‌شود (مسیر تولید)
-            </div>
-          ),
-        },
-        {
           key: "notes",
-          label: "یادداشت‌ها",
+          label: "توضیحات",
           icon: FileText,
           content: (
-            <div className="max-w-2xl">
-              <label className="text-sm font-medium mb-2 block">
-                توضیحات تکمیلی
+            <div className="p-4">
+              <label className="block text-sm font-medium mb-2">
+                یادداشت فنی
               </label>
               <textarea
-                className="w-full border rounded p-2 text-sm min-h-[100px]"
-                placeholder="توضیحات فنی..."
+                className="w-full border rounded-md p-2 min-h-[100px]"
+                placeholder="توضیحات مهندسی..."
               />
             </div>
           ),
