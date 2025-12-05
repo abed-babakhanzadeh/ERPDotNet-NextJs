@@ -1,6 +1,6 @@
 using ERPDotNet.Application.Common.Attributes;
 using ERPDotNet.Application.Common.Interfaces;
-using ERPDotNet.Domain.Modules.BaseInfo.Entities; // برای دسترسی به Enum
+using ERPDotNet.Domain.Modules.BaseInfo.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using ERPDotNet.Application.Common.Extensions;
@@ -45,7 +45,7 @@ public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, Pagina
     {
         var query = _context.Products
             .AsNoTracking()
-            .Include(p => p.Unit)
+            .Include(p => p.Unit) // حتما باید اینکلود باشد تا Unit.Title کار کند
             .AsQueryable();
 
         // --- فیلترهای خاص ---
@@ -74,49 +74,78 @@ public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, Pagina
 
         query = query.ApplyDynamicFilters(request.Filters);
 
-        // جستجوی case-insensitive بعد از فیلترهای دیگر
+        // جستجوی case-insensitive
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
         {
-            // تبدیل مقدار جستجو به lower و استفاده از ToLower روی ستون‌ها تا
-            // ترجمه به SQL به صورت LOWER(column) انجام شود و مقایسه case-insensitive شود.
-            // این روش در اکثر پایگاه‌داده‌ها (با ترجمه صحیح توسط EF Core) کار می‌کند
-            // و از بارگذاری کامل جدول (AsEnumerable) جلوگیری می‌کند.
             var searchLower = request.SearchTerm.ToLower();
             query = query.Where(p =>
                 (p.Name != null && p.Name.ToLower().Contains(searchLower)) ||
                 (p.Code != null && p.Code.ToLower().Contains(searchLower)));
         }
 
-        // 4. سورت (اصلاح شده برای Natural Sort)
-        // 4. سورت هوشمند (فقط یک خط کد!)
-        if (!string.IsNullOrEmpty(request.SortColumn))
+        // 4. سورت (بخش اصلاح شده)
+     var sortColumn = request.SortColumn;
+
+    if (!string.IsNullOrEmpty(sortColumn))
+    {
+        // مپینگ نام‌های DTO به نام‌های واقعی در Entity
+        if (sortColumn.Equals("UnitName", StringComparison.OrdinalIgnoreCase))
         {
-            // خودکار تشخیص می‌دهد که اگر Code بود، نچرال سورت کند
-            query = query.OrderByNatural(request.SortColumn, request.SortDescending);
+            sortColumn = "Unit.Title";
         }
-        else
+        else if (sortColumn.Equals("SupplyTypeId", StringComparison.OrdinalIgnoreCase) 
+              || sortColumn.Equals("SupplyType", StringComparison.OrdinalIgnoreCase))
         {
-            // پیش‌فرض هم نچرال سورت روی کد
-            query = query.OrderByNatural("Code", false); 
+            // در DTO ممکن است SupplyTypeId یا SupplyType باشد، اما در Entity فقط SupplyType (Enum) داریم
+            sortColumn = "SupplyType";
         }
         
-        var dtoQuery = query.Select(p => new ProductDto(
-            p.Id,
-            p.Code,
-            p.Name,
-            p.UnitId,
-            p.Unit != null ? p.Unit.Title : "",
-            (int)p.SupplyType,
-            p.SupplyType.ToDisplay(),
-            p.ImagePath,
-            p.UnitConversions.Select(c => new ProductConversionDto(
-                c.Id,
-                c.AlternativeUnitId,
-                c.AlternativeUnit != null ? c.AlternativeUnit.Title : "",
-                c.Factor
-            )).ToList()
-        ));
-
-        return await dtoQuery.ToPaginatedListAsync(request.PageNumber, request.PageSize, cancellationToken);
+        // نکته مهم درباره "ستون فرعی" (Alternative Unit)
+        // اگر منظور شما از ستون فرعی، نام واحد جایگزین است، چون این یک لیست است (1 به چند)،
+        // سورت کردن روی آن پیچیده است. اما اگر بخواهید بر اساس "اولین واحد فرعی" سورت کنید:
+        if (sortColumn.Equals("Conversions", StringComparison.OrdinalIgnoreCase) || 
+            sortColumn.Equals("AlternativeUnitName", StringComparison.OrdinalIgnoreCase))
+        {
+            // روش اصلاح شده: ابتدا Select سپس FirstOrDefault
+            // این روش از خطای نال جلوگیری می‌کند و SQL بهینه‌تری تولید می‌کند
+            if (request.SortDescending)
+            {
+                query = query.OrderByDescending(p => p.UnitConversions
+                                                      .Select(c => c.AlternativeUnit!.Title)
+                                                      .FirstOrDefault());
+            }
+            else
+            {
+                query = query.OrderBy(p => p.UnitConversions
+                                            .Select(c => c.AlternativeUnit!.Title)
+                                            .FirstOrDefault());
+            }
+  
+        }
+    else
+    {
+        query = query.OrderByNatural("Code", false); 
     }
+    }
+
+    // --- ادامه کد (Projection) ---
+    var dtoQuery = query.Select(p => new ProductDto(
+        p.Id,
+        p.Code,
+        p.Name,
+        p.UnitId,
+        p.Unit != null ? p.Unit.Title : "",
+        (int)p.SupplyType,
+        p.SupplyType.ToDisplay(),
+        p.ImagePath,
+        p.UnitConversions.Select(c => new ProductConversionDto(
+            c.Id,
+            c.AlternativeUnitId,
+            c.AlternativeUnit != null ? c.AlternativeUnit.Title : "",
+            c.Factor
+        )).ToList()
+    ));
+
+    return await dtoQuery.ToPaginatedListAsync(request.PageNumber, request.PageSize, cancellationToken);
+}
 }
