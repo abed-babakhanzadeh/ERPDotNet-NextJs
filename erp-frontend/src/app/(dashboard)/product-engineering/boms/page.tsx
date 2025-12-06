@@ -31,6 +31,7 @@ import NewVersionDialog from "./NewVersionDialog";
 import { useServerDataTable } from "@/hooks/useServerDataTable";
 import { useTabs } from "@/providers/TabsProvider";
 import { useTabPrefetch } from "@/hooks/useTabPrefetch";
+import { Network } from "lucide-react";
 
 // رابط داده‌ای که از GetBOMsListQuery میاد
 interface BOMListDto {
@@ -150,6 +151,13 @@ export default function BOMsListPage() {
     setCopyModalOpen(true);
   };
 
+  const handleViewTree = (row: BOMListDto) => {
+    addTab(
+      `درخت ${row.productName}`,
+      `/product-engineering/boms/tree/${row.id}`
+    );
+  };
+
   const handleDelete = async (row: BOMListDto) => {
     if (
       !confirm(
@@ -222,6 +230,21 @@ export default function BOMsListPage() {
             </Tooltip>
           </PermissionGuard>
 
+          {/* دکمه درخت - بنفش */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                onClick={() => handleViewTree(row)}
+              >
+                <Network size={16} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>ساختار درختی</TooltipContent>
+          </Tooltip>
+
           {/* حذف */}
           <PermissionGuard permission="ProductEngineering.BOM.Create">
             <Tooltip>
@@ -282,6 +305,17 @@ export default function BOMsListPage() {
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
+
+          <DropdownMenuItem
+            onClick={() => {
+              handleViewTree(row);
+              closeMenu();
+            }}
+            className="gap-2 cursor-pointer"
+          >
+            <Network className="w-4 h-4 text-purple-600" />
+            <span>نمایش درختی (Explosion)</span>
+          </DropdownMenuItem>
 
           <DropdownMenuItem
             onClick={() => {
