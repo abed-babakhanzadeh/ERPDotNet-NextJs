@@ -37,6 +37,10 @@ public record BOMSubstituteInputDto
     public required int SubstituteProductId { get; set; }
     public int Priority { get; set; }
     public decimal Factor { get; set; }
+    // فیلدهای جدید
+    public bool IsMixAllowed { get; set; }
+    public decimal MaxMixPercentage { get; set; }
+    public string? Note { get; set; }
 }
 
 public class CreateBOMValidator : AbstractValidator<CreateBOMCommand>
@@ -147,7 +151,10 @@ public class CreateBOMHandler : IRequestHandler<CreateBOMCommand, int>
                     BOMDetailId = 0, // موقت
                     SubstituteProductId = subInput.SubstituteProductId,
                     Priority = subInput.Priority,
-                    Factor = subInput.Factor
+                    Factor = subInput.Factor,
+                    IsMixAllowed = subInput.IsMixAllowed,
+                    MaxMixPercentage = subInput.MaxMixPercentage,
+                    Note = subInput.Note
                 });
             }
 

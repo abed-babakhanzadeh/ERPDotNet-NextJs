@@ -19,6 +19,9 @@ import { Button } from "@/components/ui/button";
 // Hooks
 import { usePermissions } from "@/providers/PermissionProvider"; // <--- ایمپورت پرمیشن
 import { useTabs } from "@/providers/TabsProvider";
+// ایمپورت SubstituteRow از فایل مودال
+import SubstitutesDialog, { SubstituteRow } from "./SubstitutesDialog";
+import { cn } from "@/lib/utils";
 
 // Types
 interface ProductLookupDto {
@@ -46,6 +49,8 @@ interface BOMRow {
   unitName?: string;
   quantity: number;
   wastePercentage: number;
+  // فیلد جدید: لیست جایگزین‌ها
+  substitutes: SubstituteRow[];
 }
 
 export default function CreateBOMPage() {
@@ -53,6 +58,10 @@ export default function CreateBOMPage() {
   const { closeTab, activeTabId } = useTabs();
   const { hasPermission } = usePermissions(); // <--- هوک پرمیشن
   const [submitting, setSubmitting] = useState(false);
+
+  // استیت‌های کنترل مودال
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [activeRowIndex, setActiveRowIndex] = useState<number | null>(null);
 
   // --- مدیریت دسترسی ---
   const canCreate = hasPermission("ProductEngineering.BOM.Create");
@@ -221,9 +230,53 @@ export default function CreateBOMPage() {
         width: "15%",
         placeholder: "0",
       },
+
+      // ستون جدید: عملیات جایگزینی
+      {
+        key: "substitutes",
+        title: "جایگزین",
+        type: "readonly",
+        width: "10%",
+        render: (row, index) => {
+          const subCount = row.substitutes?.length || 0;
+          return (
+            <Button
+              // --- اصلاح مهم: جلوگیری از سابمیت فرم ---
+              type="button"
+              // ----------------------------------------
+              variant={subCount > 0 ? "default" : "outline"}
+              size="sm"
+              className={cn(
+                "h-7 text-xs gap-1",
+                subCount > 0
+                  ? "bg-emerald-600 hover:bg-emerald-700"
+                  : "text-muted-foreground border-dashed"
+              )}
+              onClick={(e) => {
+                e.preventDefault(); // محض اطمینان بیشتر
+                e.stopPropagation(); // جلوگیری از انتشار کلیک به سطر جدول (اگر کلیک روی سطر ایونت دارد)
+                setActiveRowIndex(index);
+                setDialogOpen(true);
+              }}
+            >
+              <Settings className="w-3 h-3" />
+              {subCount > 0 ? `(${subCount})` : "تعریف"}
+            </Button>
+          );
+        },
+      },
     ],
     [details, gridProductOptions, gridLoading]
   );
+
+  // هندلر ذخیره مودال
+  const handleSaveSubstitutes = (newSubs: SubstituteRow[]) => {
+    if (activeRowIndex === null) return;
+
+    const newDetails = [...details];
+    newDetails[activeRowIndex].substitutes = newSubs;
+    setDetails(newDetails);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); // جلوگیری از رفرش
@@ -257,7 +310,15 @@ export default function CreateBOMPage() {
         childProductId: d.childProductId,
         quantity: Number(d.quantity),
         wastePercentage: Number(d.wastePercentage || 0),
-        substitutes: [],
+        // مپ کردن جایگزین‌ها
+        substitutes: d.substitutes.map((s) => ({
+          substituteProductId: s.substituteProductId,
+          priority: Number(s.priority),
+          factor: Number(s.factor),
+          isMixAllowed: s.isMixAllowed,
+          maxMixPercentage: Number(s.maxMixPercentage),
+          note: s.note,
+        })),
       })),
     };
 
@@ -322,94 +383,110 @@ export default function CreateBOMPage() {
   );
 
   return (
-    <MasterDetailForm
-      title="ایجاد فرمول ساخت (BOM)"
-      onSubmit={handleSubmit} // این تابع وقتی دکمه سابمیت هدر فشرده شود هم کار می‌کند
-      formId="create-bom-form" // ID برای اتصال دکمه هدر به فرم
-      submitting={submitting}
-      headerContent={headerContent}
-      // دکمه‌های هدر (Action Buttons)
-      headerActions={
-        <>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => {
-              setTimeout(() => closeTab(activeTabId), 0);
-            }}
-            disabled={submitting}
-            className="h-9 gap-2 text-muted-foreground hover:text-foreground"
-          >
-            <X size={16} />
-            انصراف
-          </Button>
-
-          {/* دکمه ثبت با چک کردن پرمیشن */}
-          {canCreate ? (
+    <>
+      <MasterDetailForm
+        title="ایجاد فرمول ساخت (BOM)"
+        onSubmit={handleSubmit} // این تابع وقتی دکمه سابمیت هدر فشرده شود هم کار می‌کند
+        formId="create-bom-form" // ID برای اتصال دکمه هدر به فرم
+        submitting={submitting}
+        headerContent={headerContent}
+        // دکمه‌های هدر (Action Buttons)
+        headerActions={
+          <>
             <Button
-              type="submit"
-              form="create-bom-form" // باید با formId یکی باشد
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setTimeout(() => closeTab(activeTabId), 0);
+              }}
               disabled={submitting}
-              className="h-9 gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+              className="h-9 gap-2 text-muted-foreground hover:text-foreground"
             >
-              {submitting ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
+              <X size={16} />
+              انصراف
+            </Button>
+
+            {/* دکمه ثبت با چک کردن پرمیشن */}
+            {canCreate ? (
+              <Button
+                type="submit"
+                form="create-bom-form" // باید با formId یکی باشد
+                disabled={submitting}
+                className="h-9 gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                {submitting ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Save size={16} />
+                )}
+                {submitting ? "در حال ثبت..." : "ثبت فرمول"}
+              </Button>
+            ) : (
+              // اگر دسترسی نداشت، یا مخفی کن یا دکمه غیرفعال با پیام مناسب نشان بده
+              <Button
+                disabled
+                variant="secondary"
+                className="h-9 gap-2 opacity-50 cursor-not-allowed"
+              >
                 <Save size={16} />
-              )}
-              {submitting ? "در حال ثبت..." : "ثبت فرمول"}
-            </Button>
-          ) : (
-            // اگر دسترسی نداشت، یا مخفی کن یا دکمه غیرفعال با پیام مناسب نشان بده
-            <Button
-              disabled
-              variant="secondary"
-              className="h-9 gap-2 opacity-50 cursor-not-allowed"
-            >
-              <Save size={16} />
-              عدم دسترسی
-            </Button>
-          )}
-        </>
-      }
-      tabs={[
-        {
-          key: "materials",
-          label: "مواد اولیه و قطعات",
-          icon: Layers,
-          content: (
-            <EditableGrid<BOMRow>
-              columns={detailColumns}
-              data={details}
-              onChange={setDetails}
-              // اصلاح تولید سطر جدید:
-              onAddRow={() => ({
-                id: Math.random().toString(36).substr(2, 9), // تولید یک ID تصادفی موقت
-                childProductId: null,
-                quantity: 1,
-                wastePercentage: 0,
-                unitName: "-",
-              })}
-            />
-          ),
-        },
-        {
-          key: "notes",
-          label: "توضیحات",
-          icon: FileText,
-          content: (
-            <div className="p-4">
-              <label className="block text-sm font-medium mb-2">
-                یادداشت فنی
-              </label>
-              <textarea
-                className="w-full border rounded-md p-2 min-h-[100px]"
-                placeholder="توضیحات مهندسی..."
+                عدم دسترسی
+              </Button>
+            )}
+          </>
+        }
+        tabs={[
+          {
+            key: "materials",
+            label: "مواد اولیه و قطعات",
+            icon: Layers,
+            content: (
+              <EditableGrid<BOMRow>
+                columns={detailColumns}
+                data={details}
+                onChange={setDetails}
+                // اصلاح تولید سطر جدید:
+                onAddRow={() => ({
+                  id: Math.random().toString(36).substr(2, 9), // تولید یک ID تصادفی موقت
+                  childProductId: null,
+                  quantity: 1,
+                  wastePercentage: 0,
+                  unitName: "-",
+                  substitutes: [],
+                })}
               />
-            </div>
-          ),
-        },
-      ]}
-    />
+            ),
+          },
+          {
+            key: "notes",
+            label: "توضیحات",
+            icon: FileText,
+            content: (
+              <div className="p-4">
+                <label className="block text-sm font-medium mb-2">
+                  یادداشت فنی
+                </label>
+                <textarea
+                  className="w-full border rounded-md p-2 min-h-[100px]"
+                  placeholder="توضیحات مهندسی..."
+                />
+              </div>
+            ),
+          },
+        ]}
+      />
+
+      {/* مودال جایگزین‌ها */}
+      {activeRowIndex !== null && (
+        <SubstitutesDialog
+          open={dialogOpen}
+          onClose={() => setDialogOpen(false)}
+          parentProductName={
+            details[activeRowIndex]?.childProductName || "نامشخص"
+          }
+          initialData={details[activeRowIndex]?.substitutes || []}
+          onSave={handleSaveSubstitutes}
+        />
+      )}
+    </>
   );
 }
