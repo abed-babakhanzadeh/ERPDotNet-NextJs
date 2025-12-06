@@ -4,7 +4,7 @@ import React from "react";
 import DatePicker, { DateObject } from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
-import { CalendarIcon, X } from "lucide-react";
+import { CalendarIcon, X, CalendarCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -29,7 +29,9 @@ export default function PersianDatePicker({
   className,
   hasError,
 }: PersianDatePickerProps) {
-  // تبدیل مقدار ورودی (میلادی) به فرمت مناسب برای تقویم
+  // رفرنس برای کنترل تقویم (بستن بعد از انتخاب امروز)
+  const datePickerRef = React.useRef<any>(null);
+
   const dateValue = React.useMemo(() => {
     if (!value) return null;
     return new Date(value.toString());
@@ -40,27 +42,52 @@ export default function PersianDatePicker({
       onChange(null);
       return;
     }
-
-    // تبدیل تاریخ انتخاب شده (که آبجکت است) به رشته استاندارد میلادی
-    // اگر تک انتخاب باشد، date یک DateObject است
     if (date instanceof DateObject) {
-      // تنظیم ساعت روی 12 ظهر برای جلوگیری از جابجایی روز به خاطر تایم‌زون
-      // یا استفاده از toDate() ساده. اینجا ساده‌ترین حالت ISO را می‌فرستیم.
+      // تبدیل به ISO String (تایم روی 12 ظهر برای جلوگیری از شیفت زمانی)
+      date.setHour(12);
       onChange(date.toDate().toISOString());
     }
+  };
+
+  // --- پلاگین دکمه "امروز" ---
+  const TodayPlugin: React.FC<{ position?: string }> = () => {
+    return (
+      <div className="flex justify-center p-2 border-t mt-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-full text-xs h-8 gap-2 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary"
+          onClick={() => {
+            const today = new DateObject({
+              calendar: persian,
+              locale: persian_fa,
+            });
+            handleChange(today); // ست کردن مقدار
+            datePickerRef.current?.closeCalendar(); // بستن تقویم
+          }}
+        >
+          <CalendarCheck className="w-3 h-3" />
+          برو به امروز
+        </Button>
+      </div>
+    );
   };
 
   return (
     <div className={cn("relative w-full", className)}>
       <DatePicker
+        ref={datePickerRef}
         value={dateValue}
         onChange={handleChange}
         calendar={persian}
         locale={persian_fa}
         calendarPosition="bottom-right"
         disabled={disabled}
-        editable={false} // جلوگیری از تایپ دستی برای کاهش خطا
+        editable={false}
         containerClassName="w-full"
+        // اضافه کردن پلاگین دکمه امروز
+        plugins={[<TodayPlugin key="today-plugin" position="bottom" />]}
         render={(value: any, openCalendar: any) => {
           return (
             <div
@@ -74,10 +101,11 @@ export default function PersianDatePicker({
             >
               <div className="flex items-center gap-2 flex-1 overflow-hidden">
                 <CalendarIcon className="h-4 w-4 opacity-50 shrink-0" />
-                <span className="truncate pt-1">{value || placeholder}</span>
+                <span className="truncate pt-1 font-medium">
+                  {value || placeholder}
+                </span>
               </div>
 
-              {/* دکمه پاک کردن تاریخ */}
               {!disabled && value && (
                 <div
                   role="button"
