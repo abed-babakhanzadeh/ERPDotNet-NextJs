@@ -4,9 +4,10 @@ import React from "react";
 import { Plus, Trash2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import PersianDatePicker from "@/components/ui/PersianDatePicker";
 
 // ... (تایپ‌ها بدون تغییر) ...
-export type GridColumnType = "text" | "number" | "select" | "readonly";
+export type GridColumnType = "text" | "number" | "select" | "readonly" | "date";
 
 export interface GridColumn<T> {
   key: keyof T;
@@ -122,6 +123,18 @@ export default function EditableGrid<T extends { id?: number | string }>({
                         <div className="px-2 py-1 bg-muted/20 rounded text-muted-foreground border border-transparent text-right">
                           {String(row[col.key] || "-")}
                         </div>
+                      ) : col.type === "date" ? (
+                        // --- اضافه کردن پشتیبانی از Date ---
+                        <PersianDatePicker
+                          value={String(row[col.key] || "")}
+                          onChange={(newVal) =>
+                            handleCellChange(index, col.key, newVal)
+                          }
+                          disabled={readOnly || loading || col.disabled}
+                          required={col.required}
+                          // برای گرید بردر را حذف میکنیم تا تمیزتر شود یا استایل Input پیش‌فرض
+                          className="w-full"
+                        />
                       ) : (
                         <input
                           type={col.type}

@@ -2,6 +2,7 @@
 import React, { useEffect } from "react";
 import { clsx } from "clsx";
 import { UploadCloud, Trash2, X } from "lucide-react";
+import PersianDatePicker from "@/components/ui/PersianDatePicker";
 
 export type FieldType =
   | "text"
@@ -98,9 +99,7 @@ export default function AutoForm({
             )}
 
             {/* Inputs based on type */}
-            {["text", "number", "email", "date", "password"].includes(
-              field.type
-            ) && (
+            {["text", "number", "email", "password"].includes(field.type) && (
               <input
                 type={field.type}
                 className={commonInputClasses}
@@ -109,6 +108,18 @@ export default function AutoForm({
                 onChange={(e) => onChange(field.name, e.target.value)}
                 disabled={loading || field.disabled}
                 required={field.required}
+              />
+            )}
+
+            {/* هندل کردن تاریخ شمسی */}
+            {field.type === "date" && (
+              <PersianDatePicker
+                value={fieldValue}
+                onChange={(newDate) => onChange(field.name, newDate)}
+                disabled={loading || field.disabled}
+                required={field.required}
+                placeholder={field.placeholder}
+                hasError={!fieldValue && field.required} // شرط ساده ارور
               />
             )}
 
