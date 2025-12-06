@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Loader2 } from "lucide-react";
 import type {
-  Unit,
   SortConfig,
   ColumnFilter as AdvancedColumnFilter,
   ColumnConfig,
@@ -39,7 +38,7 @@ type PaginationState = {
 
 // Base interface برای تمام table rows
 interface TableRow {
-  id: number;
+  id: number | string;
   [key: string]: any;
 }
 
@@ -66,8 +65,11 @@ interface DataTableProps<TData extends TableRow> {
     updater: ((old: SortConfig) => SortConfig | null) | SortConfig | null
   ) => void;
 
-  onEdit: (row: TData) => void;
-  onDelete: (row: TData) => void;
+  renderRowActions?: (row: TData) => React.ReactNode;
+  renderContextMenu?: (row: TData, closeMenu: () => void) => React.ReactNode;
+
+  onEdit?: (row: TData) => void;
+  onDelete?: (row: TData) => void;
 }
 
 export function DataTable<TData extends TableRow>({
@@ -87,41 +89,41 @@ export function DataTable<TData extends TableRow>({
   onClearAllFilters,
   onPaginationChange,
   onSortChange,
+  renderRowActions,
+  renderContextMenu,
   onEdit,
   onDelete,
 }: DataTableProps<TData>) {
   const [contextMenuOpen, setContextMenuOpen] = React.useState(false);
-  const [contextMenuUnit, setContextMenuUnit] = React.useState<TData | null>(
+  const [contextMenuRow, setContextMenuRow] = React.useState<TData | null>(
     null
   );
   const [contextMenuPosition, setContextMenuPosition] = React.useState({
     x: 0,
     y: 0,
   });
-  const [selectedRowId, setSelectedRowId] = React.useState<number | null>(null);
+  const [selectedRowId, setSelectedRowId] = React.useState<
+    number | string | null
+  >(null);
 
   const [columnWidths, setColumnWidths] = React.useState<
     Record<string, number>
   >(
-    columns.reduce((acc, col) => ({ ...acc, [col.key]: 150 }), { actions: 80 })
+    columns.reduce((acc, col) => ({ ...acc, [col.key]: 150 }), { actions: 140 })
   );
 
   const handleResize =
     (key: string) =>
     (e: any, { size }: any) => {
-      setColumnWidths((prev) => ({
-        ...prev,
-        [key]: size.width,
-      }));
+      setColumnWidths((prev) => ({ ...prev, [key]: size.width }));
     };
 
   const handleSort = (key: string) => {
     onSortChange((prev) => {
       if (prev?.key === key) {
-        if (prev.direction === "ascending") {
-          return { key, direction: "descending" };
-        }
-        return null;
+        return prev.direction === "ascending"
+          ? { key, direction: "descending" }
+          : null;
       }
       return { key, direction: "ascending" };
     });
@@ -136,18 +138,19 @@ export function DataTable<TData extends TableRow>({
     setSelectedRowId(row.id);
   };
 
-  const handleContextMenu = (e: React.MouseEvent, unit: TData) => {
+  const handleContextMenu = (e: React.MouseEvent, row: TData) => {
     e.preventDefault();
-    setSelectedRowId(unit.id);
-    setContextMenuUnit(unit);
+    setSelectedRowId(row.id);
+    setContextMenuRow(row);
     setContextMenuPosition({ x: e.clientX, y: e.clientY });
     setContextMenuOpen(true);
   };
 
   React.useEffect(() => {
     const handleClick = (e: MouseEvent) => {
+      if (!contextMenuOpen) return;
       setContextMenuOpen(false);
-      setContextMenuUnit(null);
+      setContextMenuRow(null);
       if (
         !(e.target as HTMLElement).closest('[role="row"], [role="menuitem"]')
       ) {
@@ -155,53 +158,20 @@ export function DataTable<TData extends TableRow>({
       }
     };
     document.addEventListener("click", handleClick);
-    return () => {
-      document.removeEventListener("click", handleClick);
-    };
-  }, []);
+    return () => document.removeEventListener("click", handleClick);
+  }, [contextMenuOpen]);
+
+  const closeContextMenu = () => {
+    setContextMenuOpen(false);
+    setContextMenuRow(null);
+  };
 
   const handleExport = () => {
-    console.log("Exporting current page data...");
-    const escapeCsvCell = (cell: any) => {
-      if (cell == null) return "";
-      const str = String(cell);
-      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    };
-
-    const headers = columns.map((c) => c.label).join(",");
-    const rows = data.map((row) =>
-      columns.map((c) => escapeCsvCell(row[c.key as keyof TData])).join(",")
-    );
-    const csvContent = "\uFEFF" + [headers, ...rows].join("\r\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", "data.csv");
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    console.log("Export triggered");
   };
 
   const handlePrint = () => {
     window.print();
-  };
-
-  const handleRowAction = (action: "edit" | "delete") => {
-    if (contextMenuUnit) {
-      if (action === "edit") {
-        onEdit(contextMenuUnit);
-      } else if (action === "delete") {
-        onDelete(contextMenuUnit);
-      }
-    }
-    setContextMenuOpen(false);
-    setContextMenuUnit(null);
   };
 
   return (
@@ -213,7 +183,7 @@ export function DataTable<TData extends TableRow>({
         onExport={handleExport}
         onPrint={handlePrint}
       />
-      {/* تغییر bg-card و border-border برای کانتینر جدول */}
+
       <div className="rounded-md border border-border printable-area bg-card">
         <div className="relative max-h-[60vh] overflow-auto custom-scrollbar">
           <Table style={{ tableLayout: "fixed", width: "100%" }}>
@@ -254,8 +224,7 @@ export function DataTable<TData extends TableRow>({
                   عملیات
                 </TableHead>
               </TableRow>
-              {/* ردیف فیلترها */}
-              {/* در فایل data-table.tsx - داخل TableHeader - ردیف دوم */}
+
               <TableRow className="no-print bg-muted/10 hover:bg-muted/10 border-b border-border">
                 {columns.map((column) => (
                   <TableCell
@@ -265,7 +234,6 @@ export function DataTable<TData extends TableRow>({
                       maxWidth: `${columnWidths[column.key]}px`,
                     }}
                   >
-                    {/* ↓↓↓ کد اشتباه (استفاده از render و row) را پاک کنید و این را بگذارید ↓↓↓ */}
                     <ColumnFilter
                       column={column}
                       columnKey={column.key}
@@ -276,12 +244,12 @@ export function DataTable<TData extends TableRow>({
                       onChange={onColumnFilterChange}
                       onApplyAdvancedFilter={onAdvancedFilterChange}
                     />
-                    {/* ↑↑↑ پایان اصلاح ↑↑↑ */}
                   </TableCell>
                 ))}
                 <TableCell key="actions-filter" className="p-1"></TableCell>
               </TableRow>
             </TableHeader>
+
             <TableBody>
               {isLoading ? (
                 <TableRow>
@@ -300,16 +268,15 @@ export function DataTable<TData extends TableRow>({
               ) : data.length > 0 ? (
                 data.map((row, index) => (
                   <TableRow
-                    key={(row as any).id || index}
+                    key={row.id || index}
                     onClick={() => handleRowClick(row)}
                     onContextMenu={(e) => handleContextMenu(e, row)}
                     className={cn(
-                      "cursor-pointer border-b border-border transition-colors hover:bg-muted/50",
-                      // بهبود استایل ردیف انتخاب شده برای دارک مود
-                      {
-                        "bg-primary/10 text-primary hover:bg-primary/15":
-                          selectedRowId === row.id,
-                      }
+                      "cursor-pointer border-b border-border transition-colors",
+                      // نکته مهم: استفاده از !bg-orange-... برای اعمال اجباری رنگ روی حالت‌های Striped
+                      selectedRowId === row.id
+                        ? "!bg-orange-100 dark:!bg-orange-900/40 text-orange-900 dark:text-orange-100 hover:!bg-orange-200 dark:hover:!bg-orange-900/50"
+                        : "hover:bg-muted/50"
                     )}
                   >
                     {columns.map((column) => (
@@ -320,13 +287,10 @@ export function DataTable<TData extends TableRow>({
                           maxWidth: `${columnWidths[column.key]}px`,
                         }}
                       >
-                        {/* ↓↓↓ اینجا باید از render استفاده کنید چون متغیر row اینجا تعریف شده است ↓↓↓ */}
-                        <div className="truncate text-foreground flex items-center">
+                        <div className="truncate flex items-center">
                           {column.render ? (
-                            // 1. استفاده از رندر سفارشی (برای عکس و ...)
                             column.render(row[column.key as keyof TData], row)
                           ) : column.key === "isActive" ? (
-                            // 2. کد قبلی برای بج وضعیت
                             <Badge
                               variant={row.isActive ? "default" : "destructive"}
                               className={cn(
@@ -339,42 +303,53 @@ export function DataTable<TData extends TableRow>({
                               {row.isActive ? "فعال" : "غیرفعال"}
                             </Badge>
                           ) : (
-                            // 3. متن ساده
                             String(row[column.key as keyof TData] ?? "—")
                           )}
                         </div>
-                        {/* ↑↑↑ پایان اصلاح ↑↑↑ */}
                       </TableCell>
                     ))}
+
                     <TableCell
                       className="no-print text-center"
                       style={{ width: `${columnWidths.actions}px` }}
                     >
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            className="h-8 w-8 p-0 flex justify-center items-center rounded-md hover:bg-accent text-muted-foreground"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">بازکردن منو</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="bg-popover border-border"
+                      {renderRowActions ? (
+                        <div
+                          className="flex items-center justify-center gap-1"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <DropdownMenuItem onClick={() => onEdit(row)}>
-                            ویرایش
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => onDelete(row)}
-                            className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                          {renderRowActions(row)}
+                        </div>
+                      ) : (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              className="h-8 w-8 p-0 flex justify-center items-center rounded-md hover:bg-accent text-muted-foreground"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="end"
+                            className="bg-popover border-border"
                           >
-                            حذف
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            {onEdit && (
+                              <DropdownMenuItem onClick={() => onEdit(row)}>
+                                ویرایش
+                              </DropdownMenuItem>
+                            )}
+                            {onDelete && (
+                              <DropdownMenuItem
+                                onClick={() => onDelete(row)}
+                                className="text-destructive"
+                              >
+                                حذف
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
@@ -392,7 +367,6 @@ export function DataTable<TData extends TableRow>({
           </Table>
         </div>
 
-        {/* کانتکست منو */}
         <DropdownMenu open={contextMenuOpen} onOpenChange={setContextMenuOpen}>
           <DropdownMenuTrigger asChild>
             <div
@@ -406,20 +380,39 @@ export function DataTable<TData extends TableRow>({
           <DropdownMenuContent
             align="start"
             onCloseAutoFocus={(e) => e.preventDefault()}
-            className="bg-popover border-border"
+            className="bg-popover border-border min-w-[160px]"
           >
-            <DropdownMenuItem onClick={() => handleRowAction("edit")}>
-              ویرایش
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => handleRowAction("delete")}
-              className="text-destructive focus:text-destructive focus:bg-destructive/10"
-            >
-              حذف
-            </DropdownMenuItem>
+            {contextMenuRow && renderContextMenu ? (
+              renderContextMenu(contextMenuRow, closeContextMenu)
+            ) : (
+              <>
+                {contextMenuRow && onEdit && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      onEdit(contextMenuRow!);
+                      closeContextMenu();
+                    }}
+                  >
+                    ویرایش
+                  </DropdownMenuItem>
+                )}
+                {contextMenuRow && onDelete && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      onDelete(contextMenuRow!);
+                      closeContextMenu();
+                    }}
+                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                  >
+                    حذف
+                  </DropdownMenuItem>
+                )}
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
       <DataTablePagination
         pagination={pagination}
         onPaginationChange={onPaginationChange}

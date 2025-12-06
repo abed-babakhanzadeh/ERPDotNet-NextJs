@@ -90,8 +90,8 @@ export const MENU_ITEMS: MenuItem[] = [
         submenu: [
           // سطح سوم: آیتم‌های داخلی
           {
-            title: "ایجاد BOM جدید",
-            href: "/product-engineering/boms/create",
+            title: "لیست BOMها",
+            href: "/product-engineering/boms",
             icon: FilePlus,
             permission: "ProductEngineering.BOM.Create",
           },
