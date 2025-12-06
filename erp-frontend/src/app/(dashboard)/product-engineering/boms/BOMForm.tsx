@@ -4,7 +4,16 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import apiClient from "@/services/apiClient";
 import { toast } from "sonner";
-import { Layers, FileText, Save, Pencil, X, Loader2 } from "lucide-react";
+import {
+  Layers,
+  FileText,
+  Save,
+  Pencil,
+  X,
+  Loader2,
+  CopyPlus,
+  Network,
+} from "lucide-react";
 
 // Components
 import MasterDetailForm from "@/components/form/MasterDetailForm";
@@ -15,7 +24,13 @@ import {
   ColumnDef,
 } from "@/components/ui/TableLookupCombobox";
 import { Button } from "@/components/ui/button";
-import SubstitutesDialog, { SubstituteRow } from "./SubstitutesDialog"; // <--- مطمئن شوید این ایمپورت درست است
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"; // دیالوگ برای الگو
+import SubstitutesDialog, { SubstituteRow } from "./SubstitutesDialog";
 
 // Hooks & Providers
 import { usePermissions } from "@/providers/PermissionProvider";
@@ -36,6 +51,15 @@ interface ProductLookupDto {
   unitName: string;
 }
 
+// اینترفیس برای جستجوی BOM (برای الگو)
+interface BOMLookupDto {
+  id: number;
+  title: string;
+  version: string;
+  productName: string;
+  productCode: string;
+}
+
 interface BOMHeaderState {
   productId: number | null;
   productName?: string;
@@ -54,7 +78,7 @@ interface BOMRow {
   unitName?: string;
   quantity: number;
   wastePercentage: number;
-  substitutes: SubstituteRow[]; // <--- لیست جایگزین‌ها
+  substitutes: SubstituteRow[];
 }
 
 export default function BOMForm({ mode, bomId }: BOMFormProps) {
@@ -83,7 +107,12 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeRowIndex, setActiveRowIndex] = useState<number | null>(null);
 
-  // --- Lookup States ---
+  // --- استیت‌های مودال فراخوانی الگو ---
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [templateLoading, setTemplateLoading] = useState(false);
+  const [templateOptions, setTemplateOptions] = useState<BOMLookupDto[]>([]);
+
+  // --- Lookup States (Product) ---
   const [headerProductOptions, setHeaderProductOptions] = useState<
     ProductLookupDto[]
   >([]);
@@ -100,11 +129,19 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
     }
   }, [mode, bomId]);
 
+  // تابعی برای بستن امن تب (رفع ارور Router Update)
+  const safeCloseTab = () => {
+    setTimeout(() => {
+      closeTab(activeTabId);
+    }, 0);
+  };
+
   const loadBOMData = async (id: number) => {
     setLoadingData(true);
     try {
       const { data } = await apiClient.get(`/BOMs/${id}`);
 
+      // مپ کردن هدر
       setHeaderData({
         productId: data.productId,
         productName: data.productName,
@@ -124,40 +161,44 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
         } as any,
       ]);
 
-      const mappedDetails: BOMRow[] = data.details.map((d: any) => ({
-        id: Math.random().toString(36).substr(2, 9),
-        childProductId: d.childProductId,
-        childProductName: d.childProductName,
-        childProductCode: d.childProductCode,
-        unitName: d.unitName,
-        quantity: d.quantity,
-        wastePercentage: d.wastePercentage,
-        // مپ کردن جایگزین‌ها از سرور
-        substitutes: d.substitutes
-          ? d.substitutes.map((s: any) => ({
-              id: Math.random().toString(36).substr(2, 9),
-              substituteProductId: s.substituteProductId,
-              productName: s.substituteProductName,
-              productCode: s.substituteProductCode,
-              priority: s.priority,
-              factor: s.factor,
-              isMixAllowed: s.isMixAllowed ?? false,
-              maxMixPercentage: s.maxMixPercentage ?? 0,
-              note: s.note ?? "",
-            }))
-          : [],
-      }));
-
+      // مپ کردن دیتیل (از تابع مشترک استفاده می‌کنیم)
+      const mappedDetails = mapServerDetailsToRows(data.details);
       setDetails(mappedDetails);
     } catch (error) {
       toast.error("خطا در دریافت اطلاعات BOM");
-      closeTab(activeTabId);
+      safeCloseTab(); // بستن امن
     } finally {
       setLoadingData(false);
     }
   };
 
-  // --- Search Logic ---
+  // تابع کمکی: تبدیل دیتای سرور به فرمت ردیف‌های گرید
+  const mapServerDetailsToRows = (serverDetails: any[]): BOMRow[] => {
+    return serverDetails.map((d: any) => ({
+      id: Math.random().toString(36).substr(2, 9),
+      childProductId: d.childProductId,
+      childProductName: d.childProductName,
+      childProductCode: d.childProductCode,
+      unitName: d.unitName,
+      quantity: d.quantity,
+      wastePercentage: d.wastePercentage,
+      substitutes: d.substitutes
+        ? d.substitutes.map((s: any) => ({
+            id: Math.random().toString(36).substr(2, 9),
+            substituteProductId: s.substituteProductId,
+            productName: s.substituteProductName,
+            productCode: s.substituteProductCode,
+            priority: s.priority,
+            factor: s.factor,
+            isMixAllowed: s.isMixAllowed ?? false,
+            maxMixPercentage: s.maxMixPercentage ?? 0,
+            note: s.note ?? "",
+          }))
+        : [],
+    }));
+  };
+
+  // --- Search Logic (Product) ---
   const searchProductsApi = async (term: string) => {
     if (!term && mode === "create") return [];
     const res = await apiClient.post("/Products/search", {
@@ -185,6 +226,47 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
       setGridProductOptions(items);
     } finally {
       setGridLoading(false);
+    }
+  };
+
+  // --- Search Logic (Template BOM) ---
+  const onSearchTemplate = async (term: string) => {
+    setTemplateLoading(true);
+    try {
+      // استفاده از همان اندپوینت لیست BOM ها
+      const res = await apiClient.post("/BOMs/search", {
+        pageNumber: 1,
+        pageSize: 20,
+        searchTerm: term,
+      });
+      setTemplateOptions(res.data.items || []);
+    } finally {
+      setTemplateLoading(false);
+    }
+  };
+
+  const handleImportTemplate = async (sourceBomId: number) => {
+    setTemplateLoading(true);
+    try {
+      // گرفتن جزییات BOM انتخاب شده
+      const { data } = await apiClient.get(`/BOMs/${sourceBomId}`);
+
+      if (data.details && data.details.length > 0) {
+        const newRows = mapServerDetailsToRows(data.details);
+
+        // سوال: آیا جایگزین شود یا اضافه؟ (فعلا جایگزین میکنیم که استانداردتر است)
+        // اگر خواستید اضافه شود: setDetails([...details, ...newRows])
+        setDetails(newRows);
+
+        toast.success(`${newRows.length} ردیف با موفقیت فراخوانی شد.`);
+        setTemplateDialogOpen(false);
+      } else {
+        toast.warning("BOM انتخاب شده هیچ ردیفی ندارد.");
+      }
+    } catch (error) {
+      toast.error("خطا در فراخوانی الگو");
+    } finally {
+      setTemplateLoading(false);
     }
   };
 
@@ -322,7 +404,6 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                // ست کردن ردیف فعال و باز کردن دیالوگ
                 setActiveRowIndex(index);
                 setDialogOpen(true);
               }}
@@ -379,10 +460,11 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
         await apiClient.post("/BOMs", payload);
         toast.success("BOM با موفقیت ایجاد شد");
       } else if (mode === "edit" && bomId) {
-        // TODO: Implement Update API
         toast.info("API ویرایش هنوز متصل نشده است");
       }
-      setTimeout(() => closeTab(activeTabId), 0);
+
+      // رفع ارور: بستن تب در سیکل بعدی رندر
+      safeCloseTab();
     } catch (error: any) {
       toast.error(error.response?.data?.detail || "خطا در ثبت اطلاعات");
     } finally {
@@ -448,15 +530,46 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
         headerContent={headerContent}
         headerActions={
           <>
+            {/* دکمه انصراف با رفع ارور Router */}
             <Button
               type="button"
               variant="ghost"
-              onClick={() => setTimeout(() => closeTab(activeTabId), 0)}
+              onClick={safeCloseTab}
               disabled={submitting}
               className="h-9 gap-2"
             >
               <X size={16} /> انصراف
             </Button>
+
+            {/* دکمه نمایش ساختار درختی (در حالت مشاهده/ویرایش) */}
+            {(mode === "view" || mode === "edit") && bomId && (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-9 gap-2 text-purple-700 border-purple-200 hover:bg-purple-50"
+                onClick={() =>
+                  addTab(
+                    `درخت محصول`,
+                    `/product-engineering/boms/tree/${bomId}`
+                  )
+                }
+              >
+                <Network size={16} /> ساختار درختی
+              </Button>
+            )}
+
+            {/* دکمه فراخوانی از الگو (فقط در حالت ایجاد) */}
+            {mode === "create" && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setTemplateDialogOpen(true)}
+                disabled={submitting}
+                className="h-9 gap-2 text-blue-700 border-blue-200 hover:bg-blue-50"
+              >
+                <CopyPlus size={16} /> فراخوانی از الگو
+              </Button>
+            )}
 
             {mode === "view" && canEdit && (
               <Button
@@ -531,13 +644,12 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
         ]}
       />
 
-      {/* --- رندر مشروط دیالوگ جایگزین --- */}
+      {/* --- دیالوگ جایگزین --- */}
       {activeRowIndex !== null && (
         <SubstitutesDialog
           open={dialogOpen}
           onClose={() => {
             setDialogOpen(false);
-            // setActiveRowIndex(null); // اینجا نال نکنید، چون انیمیشن بسته شدن نیاز به ایندکس دارد
           }}
           parentProductName={
             details[activeRowIndex]?.childProductName || "نامشخص"
@@ -551,6 +663,44 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
           }}
         />
       )}
+
+      {/* --- دیالوگ انتخاب الگو (جدید) --- */}
+      <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>فراخوانی اقلام از فرمول (الگو)</DialogTitle>
+          </DialogHeader>
+          <div className="py-6">
+            <label className="text-sm font-medium mb-2 block">
+              انتخاب BOM منبع:
+            </label>
+            <TableLookupCombobox<BOMLookupDto>
+              items={templateOptions}
+              loading={templateLoading}
+              columns={[
+                { key: "productName", label: "نام محصول", width: "40%" },
+                { key: "version", label: "ورژن", width: "20%" },
+                { key: "title", label: "عنوان", width: "40%" },
+              ]}
+              searchableFields={["productName", "productCode", "title"]}
+              displayFields={["productName", "version"]}
+              onSearch={onSearchTemplate}
+              onOpenChange={(isOpen) => {
+                if (isOpen && templateOptions.length === 0)
+                  onSearchTemplate("");
+              }}
+              onValueChange={(id) => {
+                if (id) handleImportTemplate(id as number);
+              }}
+              placeholder="جستجو بر اساس نام محصول یا عنوان فرمول..."
+            />
+            <p className="text-xs text-muted-foreground mt-4 leading-5">
+              نکته: با انتخاب یک الگو، تمام ردیف‌های فعلی جدول پاک شده و اقلام
+              فرمول انتخاب شده جایگزین می‌شوند.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
