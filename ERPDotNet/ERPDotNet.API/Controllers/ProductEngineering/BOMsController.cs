@@ -2,6 +2,7 @@ using ERPDotNet.API.Attributes;
 using ERPDotNet.Application.Common.Models;
 using ERPDotNet.Application.Modules.ProductEngineering.Commands.CopyBOM;
 using ERPDotNet.Application.Modules.ProductEngineering.Commands.CreateBOM;
+using ERPDotNet.Application.Modules.ProductEngineering.Commands.DeleteBOM;
 using ERPDotNet.Application.Modules.ProductEngineering.Queries.GetBOM;
 using ERPDotNet.Application.Modules.ProductEngineering.Queries.GetBOMsList;
 using ERPDotNet.Application.Modules.ProductEngineering.Queries.GetBOMTree;
@@ -80,4 +81,17 @@ public class BOMsController : ControllerBase
         var newId = await _mediator.Send(command);
         return Ok(new { id = newId });
     }
+
+    // --- متد جدید حذف ---
+    [HttpDelete("{id}")]
+    [HasPermission("ProductEngineering.BOM.Create")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        // حالا این متد یک int برمی‌گرداند، که پایپ‌لاین کش را فعال می‌کند
+        await _mediator.Send(new DeleteBOMCommand(id));
+        
+        return NoContent();
+    }
+
+    
 }
