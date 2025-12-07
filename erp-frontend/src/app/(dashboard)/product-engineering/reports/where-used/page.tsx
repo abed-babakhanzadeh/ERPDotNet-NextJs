@@ -7,7 +7,7 @@ import { Layers, ArrowRight, Search, FileSearch, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { TableLookupCombobox } from "@/components/ui/TableLookupCombobox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // <--- رادیو گروپ
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useTabs } from "@/providers/TabsProvider";
 import { useSearchParams } from "next/navigation";
@@ -21,6 +21,8 @@ import {
 
 import VisualTreeDialog from "./VisualTreeDialog";
 import { cn } from "@/lib/utils";
+// ایمپورت هوک ذخیره‌سازی
+import { useFormPersist } from "@/hooks/useFormPersist";
 
 interface ProductLookupDto {
   id: number;
@@ -28,9 +30,10 @@ interface ProductLookupDto {
   name: string;
 }
 
+// اصلاح اینترفیس بر اساس JSON سرور
 interface WhereUsedDto {
   id: number;
-  bomHeaderId: number;
+  bomId: number; // <--- اصلاح شد: قبلاً bomHeaderId بود
   bomTitle: string;
   bomVersion: string;
   bomStatus: string;
@@ -55,15 +58,29 @@ export default function WhereUsedPage() {
   const initialProductName = searchParams.get("productName") || "";
   const initialProductCode = searchParams.get("productCode") || "";
 
+  // --- استیت‌های صفحه ---
+  // این‌ها را در یک آبجکت جمع می‌کنیم تا راحت‌تر ذخیره شوند، اما جدا هم می‌شود
   const [selectedProductId, setSelectedProductId] = useState<number | null>(
     initialProductId
   );
   const [data, setData] = useState<WhereUsedDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
-
-  // استیت جدید برای حالت گزارش (پیش‌فرض: مستقیم)
   const [reportMode, setReportMode] = useState<ReportMode>("direct");
+
+  // --- اعمال Persistence ---
+  // ذخیره دیتای جدول و فیلترها در لوکال استوریج
+  useFormPersist(
+    "where-used-report-state",
+    { selectedProductId, reportMode, data, totalCount },
+    (savedState) => {
+      if (savedState.selectedProductId)
+        setSelectedProductId(savedState.selectedProductId);
+      if (savedState.reportMode) setReportMode(savedState.reportMode);
+      if (savedState.data) setData(savedState.data);
+      if (savedState.totalCount) setTotalCount(savedState.totalCount);
+    }
+  );
 
   const [treeDialogOpen, setTreeDialogOpen] = useState(false);
   const [selectedTreeRow, setSelectedTreeRow] = useState<WhereUsedDto | null>(
@@ -101,7 +118,6 @@ export default function WhereUsedPage() {
     if (!prodId) return;
     setLoading(true);
     try {
-      // تبدیل حالت رادیویی به پارامترهای API
       const isMulti = reportMode !== "direct";
       const isEndItems = reportMode === "endItems";
 
@@ -113,9 +129,13 @@ export default function WhereUsedPage() {
         endItemsOnly: isEndItems,
       });
 
+      // مپ کردن و ساختن ID یکتا برای کلید جدول
       const mappedItems = (res.data.items || []).map((item: any) => ({
         ...item,
-        id: item.bomHeaderId + "_" + Math.random(),
+        // نکته مهم: اگر سرور bomId می‌فرستد، اینجا نیازی به تغییر نام نیست
+        // چون اینترفیس را درست کردیم، خود به خود مپ می‌شود.
+        // فقط یک id فرانت‌اندی برای key جدول می‌سازیم:
+        id: (item.bomId || item.bomHeaderId) + "_" + Math.random(),
       }));
 
       setData(mappedItems);
@@ -127,10 +147,13 @@ export default function WhereUsedPage() {
     }
   };
 
+  // اگر پارامتر URL وجود داشت، اولویت با آن است و باید فچ شود
   useEffect(() => {
     if (initialProductId) {
+      setSelectedProductId(initialProductId); // آپدیت استیت
       fetchReport(initialProductId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialProductId]);
 
   const columns: ColumnConfig[] = useMemo(
@@ -171,7 +194,7 @@ export default function WhereUsedPage() {
           <span
             className={cn(
               "text-xs px-2 py-1 rounded border",
-              val.includes("سطح")
+              val && val.includes("سطح")
                 ? "bg-purple-50 text-purple-700 border-purple-200"
                 : "bg-blue-50 text-blue-700 border-blue-200"
             )}
@@ -195,9 +218,15 @@ export default function WhereUsedPage() {
   );
 
   const handleOpenBOM = (row: WhereUsedDto) => {
+    // اصلاح: استفاده از bomId صحیح
+    const idToOpen = row.bomId;
+    if (!idToOpen) {
+      toast.error("شناسه BOM نامعتبر است");
+      return;
+    }
     addTab(
       `مشاهده BOM ${row.bomVersion}`,
-      `/product-engineering/boms/view/${row.bomHeaderId}`
+      `/product-engineering/boms/view/${idToOpen}`
     );
   };
 
@@ -261,7 +290,6 @@ export default function WhereUsedPage() {
             </Button>
           </div>
 
-          {/* بخش رادیو باتون برای انتخاب نوع گزارش */}
           <div className="mt-4 border-t pt-4">
             <Label className="text-xs text-muted-foreground mb-2 block">
               نوع گزارش:
@@ -316,13 +344,12 @@ export default function WhereUsedPage() {
             renderRowActions={(row) => (
               <TooltipProvider delayDuration={0}>
                 <div className="flex items-center gap-1 justify-center min-w-fit">
-                  {/* دکمه مشاهده فرم - بزرگتر شده */}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
-                        size="sm" // هنوز sm باشد ولی کلاس ارتفاع را زیاد میکنیم
+                        // سایز دکمه اصلاح شد
                         variant="ghost"
-                        className="h-9 w-9 text-blue-600 hover:bg-blue-50"
+                        className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleOpenBOM(row);
@@ -334,13 +361,12 @@ export default function WhereUsedPage() {
                     <TooltipContent>مشاهده فرم BOM</TooltipContent>
                   </Tooltip>
 
-                  {/* دکمه گرافیکی جدید - بزرگتر شده */}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
-                        size="sm"
+                        // سایز دکمه اصلاح شد
                         variant="ghost"
-                        className="h-9 w-9 text-purple-600 hover:bg-purple-50"
+                        className="h-8 w-8 p-0 text-purple-600 hover:bg-purple-50"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleOpenVisualTree(row);
@@ -358,12 +384,12 @@ export default function WhereUsedPage() {
         </div>
       </div>
 
-      {/* مودال درخت گرافیکی */}
       {selectedTreeRow && (
         <VisualTreeDialog
           open={treeDialogOpen}
           onClose={() => setTreeDialogOpen(false)}
-          bomId={selectedTreeRow.bomHeaderId}
+          // اصلاح: استفاده از bomId صحیح برای ارسال به دیالوگ
+          bomId={selectedTreeRow.bomId}
           rootProductName={selectedTreeRow.parentProductName}
           highlightProductId={selectedProductId}
         />

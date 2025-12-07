@@ -12,12 +12,14 @@ import apiClient from "@/services/apiClient";
 import { Loader2, Box, Layers, Component, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// --- اصلاح ۱: هماهنگ‌سازی با بک‌‌اند ---
 interface BOMTreeNode {
   key: string;
   productId: number;
   productName: string;
   productCode: string;
-  quantityPerParent: number;
+  quantity: number; // قبلاً quantityPerParent بود
+  totalQuantity: number;
   type: string;
   children: BOMTreeNode[];
 }
@@ -38,16 +40,15 @@ export default function VisualTreeDialog({
   rootProductName,
 }: VisualTreeDialogProps) {
   const [data, setData] = useState<BOMTreeNode | null>(null);
-  // تغییر ۱: مقدار اولیه فالس باشد
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // تغییر ۲: اگر دیالوگ بسته است یا آی‌دی نداریم، هیچ کاری نکن (لودینگ هم نزن)
     if (!open || !bomId) return;
 
     setLoading(true);
     setError(null);
+    setData(null); // ریست کردن دیتا قبل از درخواست جدید
 
     apiClient
       .get(`/BOMs/${bomId}/tree`)
@@ -151,7 +152,8 @@ const TreeNode = ({
 
         {level > 0 && (
           <div className="mt-2 text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-mono">
-            تعداد: {Number(node.quantityPerParent).toLocaleString()}
+            {/* اصلاح ۲: استفاده از quantity */}
+            تعداد: {Number(node.quantity).toLocaleString()}
           </div>
         )}
       </div>
