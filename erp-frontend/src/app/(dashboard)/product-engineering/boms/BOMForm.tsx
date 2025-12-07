@@ -13,6 +13,7 @@ import {
   Loader2,
   CopyPlus,
   Network,
+  FileSearch,
 } from "lucide-react";
 
 // Components
@@ -70,13 +71,31 @@ interface BOMHeaderState {
   toDate?: string;
 }
 
+// اینترفیس واحد (برای دراپ داون)
+interface UnitOption {
+  value: number; // UnitId
+  label: string; // UnitTitle
+  factor: number; // ضریب تبدیل نسبت به واحد اصلی
+}
+
 interface BOMRow {
   id: string;
   childProductId: number | null;
   childProductCode?: string;
   childProductName?: string;
-  unitName?: string;
-  quantity: number;
+
+  // مقادیر پایه (Read Only - همیشه به واحد اصلی ذخیره می‌شود)
+  unitName: string; // نام واحد اصلی
+  baseUnitId: number; // آی‌دی واحد اصلی
+  quantity: number; // مقدار محاسبه شده به واحد اصلی
+
+  // مقادیر ورودی (Editable - چیزی که کاربر می‌بیند و تغییر می‌دهد)
+  inputQuantity: number;
+  inputUnitId: number;
+
+  // لیست واحدهای قابل انتخاب برای این کالا (اصلی + فرعی‌ها)
+  unitOptions: UnitOption[];
+
   wastePercentage: number;
   substitutes: SubstituteRow[];
 }
@@ -136,12 +155,47 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
     }, 0);
   };
 
+  // دریافت واحدهای کالا از API
+  // نسخه ایمن شده تابع دریافت واحدها
+  const fetchProductUnits = async (
+    productId: number
+  ): Promise<UnitOption[]> => {
+    try {
+      const { data } = await apiClient.get(`/Products/${productId}`);
+      const options: UnitOption[] = [];
+
+      if (data.unitId) {
+        options.push({
+          value: data.unitId,
+          label: data.unitName || "واحد اصلی",
+          factor: 1,
+        });
+      }
+      if (data.conversions) {
+        data.conversions.forEach((c: any) => {
+          options.push({
+            value: c.alternativeUnitId,
+            label: c.alternativeUnitName,
+            factor: c.factor,
+          });
+        });
+      }
+      return options;
+    } catch (error) {
+      // --- نکته مهم: اگر خطا داد، آرایه خالی برگردان تا صفحه کرش نکند ---
+      console.warn(`Error fetching units for product ${productId}`, error);
+      return [];
+    }
+  };
+
   const loadBOMData = async (id: number) => {
+    if (isNaN(id)) return; // جلوگیری از درخواست با NaN
+
     setLoadingData(true);
     try {
       const { data } = await apiClient.get(`/BOMs/${id}`);
 
-      // مپ کردن هدر
+      // 1. ست کردن داده‌های هدر
       setHeaderData({
         productId: data.productId,
         productName: data.productName,
@@ -152,50 +206,104 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
         toDate: data.toDate,
       });
 
-      setHeaderProductOptions([
-        {
-          id: data.productId,
-          code: data.productCode,
-          name: data.productName,
-          unitName: data.unitName,
-        } as any,
-      ]);
+      // 2. ست کردن آپشن‌های لوکاپ (بسیار مهم برای نمایش مقدار اولیه)
+      const initialProductOption = {
+        id: data.productId,
+        code: data.productCode,
+        name: data.productName,
+        unitName: data.unitName,
+      };
 
-      // مپ کردن دیتیل (از تابع مشترک استفاده می‌کنیم)
-      const mappedDetails = mapServerDetailsToRows(data.details);
+      setHeaderProductOptions([initialProductOption as any]);
+
+      // مپ کردن دیتیل
+      // نکته: اینجا چون async (دریافت واحدها) داریم، باید از Promise.all استفاده کنیم
+      const mappedDetails = await Promise.all(
+        data.details.map(async (d: any) => {
+          // دریافت واحدهای کالا برای پر کردن دراپ‌داون
+          const units = await fetchProductUnits(d.childProductId);
+
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            childProductId: d.childProductId,
+            childProductName: d.childProductName,
+            childProductCode: d.childProductCode,
+
+            // مقادیر پایه
+            quantity: d.quantity,
+            baseUnitId: d.unitId, // فرض بر اینکه DTO سرور unitId (اصلی) را دارد
+            unitName: d.unitName,
+
+            // مقادیر ورودی (اگر دیتابیس داشت که هیچ، اگر نه پیش‌فرض اصلی)
+            inputQuantity: d.inputQuantity || d.quantity,
+            inputUnitId: d.inputUnitId || d.unitId,
+
+            unitOptions:
+              units.length > 0
+                ? units
+                : [{ value: d.unitId, label: d.unitName, factor: 1 }],
+
+            wastePercentage: d.wastePercentage,
+            substitutes: d.substitutes
+              ? d.substitutes.map((s: any) => ({
+                  id: Math.random().toString(36).substr(2, 9),
+                  substituteProductId: s.substituteProductId,
+                  productName: s.substituteProductName,
+                  productCode: s.substituteProductCode,
+                  priority: s.priority,
+                  factor: s.factor,
+                  isMixAllowed: s.isMixAllowed ?? false,
+                  maxMixPercentage: s.maxMixPercentage ?? 0,
+                  note: s.note ?? "",
+                }))
+              : [],
+          };
+        })
+      );
+
       setDetails(mappedDetails);
     } catch (error) {
       toast.error("خطا در دریافت اطلاعات BOM");
-      safeCloseTab(); // بستن امن
+      safeCloseTab();
     } finally {
       setLoadingData(false);
     }
   };
 
-  // تابع کمکی: تبدیل دیتای سرور به فرمت ردیف‌های گرید
-  const mapServerDetailsToRows = (serverDetails: any[]): BOMRow[] => {
-    return serverDetails.map((d: any) => ({
-      id: Math.random().toString(36).substr(2, 9),
-      childProductId: d.childProductId,
-      childProductName: d.childProductName,
-      childProductCode: d.childProductCode,
-      unitName: d.unitName,
-      quantity: d.quantity,
-      wastePercentage: d.wastePercentage,
-      substitutes: d.substitutes
-        ? d.substitutes.map((s: any) => ({
-            id: Math.random().toString(36).substr(2, 9),
-            substituteProductId: s.substituteProductId,
-            productName: s.substituteProductName,
-            productCode: s.substituteProductCode,
-            priority: s.priority,
-            factor: s.factor,
-            isMixAllowed: s.isMixAllowed ?? false,
-            maxMixPercentage: s.maxMixPercentage ?? 0,
-            note: s.note ?? "",
-          }))
-        : [],
-    }));
+  // تابع کمکی برای مپ کردن دیتای الگو (بدون درخواست async واحدها - واحدها بعداً موقع ادیت لود میشوند یا اینجا هم میشه لود کرد)
+  // برای سادگی و سرعت، اینجا فقط دیتا را مپ میکنیم و واحدها را در لحظه تغییر کالا لود میکنیم
+  const mapTemplateToRows = async (serverDetails: any[]): Promise<BOMRow[]> => {
+    return await Promise.all(
+      serverDetails.map(async (d: any) => {
+        const units = await fetchProductUnits(d.childProductId);
+        return {
+          id: Math.random().toString(36).substr(2, 9),
+          childProductId: d.childProductId,
+          childProductName: d.childProductName,
+          childProductCode: d.childProductCode,
+          quantity: d.quantity,
+          baseUnitId: d.unitId || units[0]?.value,
+          unitName: d.unitName || units[0]?.label,
+          inputQuantity: d.inputQuantity || d.quantity,
+          inputUnitId: d.inputUnitId || d.unitId || units[0]?.value,
+          unitOptions: units,
+          wastePercentage: d.wastePercentage,
+          substitutes: d.substitutes
+            ? d.substitutes.map((s: any) => ({
+                id: Math.random().toString(36).substr(2, 9),
+                substituteProductId: s.substituteProductId,
+                productName: s.substituteProductName,
+                productCode: s.substituteProductCode,
+                priority: s.priority,
+                factor: s.factor,
+                isMixAllowed: s.isMixAllowed ?? false,
+                maxMixPercentage: s.maxMixPercentage ?? 0,
+                note: s.note ?? "",
+              }))
+            : [],
+        };
+      })
+    );
   };
 
   // --- Search Logic (Product) ---
@@ -233,7 +341,6 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
   const onSearchTemplate = async (term: string) => {
     setTemplateLoading(true);
     try {
-      // استفاده از همان اندپوینت لیست BOM ها
       const res = await apiClient.post("/BOMs/search", {
         pageNumber: 1,
         pageSize: 20,
@@ -248,16 +355,11 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
   const handleImportTemplate = async (sourceBomId: number) => {
     setTemplateLoading(true);
     try {
-      // گرفتن جزییات BOM انتخاب شده
       const { data } = await apiClient.get(`/BOMs/${sourceBomId}`);
 
       if (data.details && data.details.length > 0) {
-        const newRows = mapServerDetailsToRows(data.details);
-
-        // سوال: آیا جایگزین شود یا اضافه؟ (فعلا جایگزین میکنیم که استانداردتر است)
-        // اگر خواستید اضافه شود: setDetails([...details, ...newRows])
+        const newRows = await mapTemplateToRows(data.details);
         setDetails(newRows);
-
         toast.success(`${newRows.length} ردیف با موفقیت فراخوانی شد.`);
         setTemplateDialogOpen(false);
       } else {
@@ -337,58 +439,187 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
         key: "childProductId",
         title: "ماده اولیه / قطعه",
         type: "select",
-        width: "35%",
+        width: "30%",
         required: true,
         disabled: isReadOnly,
         render: (row, index) => (
-          <TableLookupCombobox<ProductLookupDto>
-            value={row.childProductId}
-            items={gridProductOptions}
-            loading={gridLoading}
-            columns={productLookupColumns}
-            searchableFields={["code", "name"]}
-            displayFields={["code", "name"]}
-            placeholder={row.childProductName || "جستجو..."}
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <TableLookupCombobox<ProductLookupDto>
+                value={row.childProductId}
+                items={gridProductOptions}
+                loading={gridLoading}
+                columns={productLookupColumns}
+                searchableFields={["code", "name"]}
+                displayFields={["code", "name"]}
+                placeholder={row.childProductName || "جستجو..."}
+                disabled={isReadOnly}
+                onSearch={onSearchGrid}
+                onOpenChange={(isOpen) => {
+                  if (isOpen && gridProductOptions.length === 0)
+                    onSearchGrid("");
+                }}
+                onValueChange={async (newId, item) => {
+                  // 1. دریافت واحدهای کالا
+                  const units = await fetchProductUnits(newId as number);
+
+                  const newDetails = [...details];
+                  newDetails[index] = {
+                    ...newDetails[index],
+                    childProductId: newId as number,
+                    childProductName: item?.name,
+                    childProductCode: item?.code,
+
+                    // ست کردن واحد اصلی
+                    baseUnitId: units[0].value,
+                    unitName: units[0].label,
+
+                    // پیش‌فرض: واحد ورودی = واحد اصلی
+                    inputUnitId: units[0].value,
+                    inputQuantity: 1,
+                    quantity: 1,
+
+                    unitOptions: units,
+
+                    // پاک کردن مقادیر قبلی
+                    substitutes: [],
+                  };
+                  setDetails(newDetails);
+                }}
+              />
+            </div>
+
+            {/* دکمه میانبر گزارش مصرف (فقط وقتی کالا انتخاب شده باشد) */}
+            {row.childProductId && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-blue-600"
+                title="مشاهده موارد مصرف (Where Used)"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // اضافه کردن &productCode=${row.childProductCode || ""}
+                  addTab(
+                    `مصرف: ${row.childProductName}`,
+                    `/product-engineering/reports/where-used?productId=${
+                      row.childProductId
+                    }&productName=${row.childProductName}&productCode=${
+                      row.childProductCode || ""
+                    }`
+                  );
+                }}
+              >
+                <FileSearch className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+        ),
+      },
+      // --- ستون مقدار ورودی (Editable) ---
+      {
+        key: "inputQuantity",
+        title: "مقدار مصرفی",
+        type: "number",
+        width: "12%",
+        required: true,
+        disabled: isReadOnly,
+        render: (row, index) => (
+          <input
+            type="number"
+            className="w-full h-8 border rounded px-2 text-center focus:ring-2 focus:ring-primary/20 outline-none"
+            value={row.inputQuantity}
             disabled={isReadOnly}
-            onSearch={onSearchGrid}
-            onOpenChange={(isOpen) => {
-              if (isOpen && gridProductOptions.length === 0) onSearchGrid("");
-            }}
-            onValueChange={(newId, item) => {
+            onChange={(e) => {
+              const val = Number(e.target.value);
               const newDetails = [...details];
-              newDetails[index] = {
-                ...newDetails[index],
-                childProductId: newId as number,
-                childProductName: item?.name,
-                childProductCode: item?.code,
-                unitName: item?.unitName || "-",
-              };
+              const currentRow = newDetails[index];
+
+              // محاسبه مجدد مقدار پایه
+              const selectedUnit = currentRow.unitOptions?.find(
+                (u) => u.value == currentRow.inputUnitId
+              );
+              const factor = selectedUnit ? selectedUnit.factor : 1;
+
+              currentRow.inputQuantity = val;
+              currentRow.quantity = val * factor;
+
               setDetails(newDetails);
             }}
           />
         ),
       },
-      { key: "unitName", title: "واحد", type: "readonly", width: "10%" },
+
+      // --- ستون واحد مصرفی (Dropdown) ---
+      {
+        key: "inputUnitId",
+        title: "واحد مصرفی",
+        type: "select",
+        width: "12%",
+        disabled: isReadOnly,
+        render: (row, index) => (
+          <select
+            className="w-full h-8 border rounded px-1 text-xs bg-background focus:ring-2 focus:ring-primary/20 outline-none"
+            value={row.inputUnitId}
+            disabled={isReadOnly}
+            onChange={(e) => {
+              const newUnitId = Number(e.target.value);
+              const newDetails = [...details];
+              const currentRow = newDetails[index];
+
+              // پیدا کردن ضریب جدید
+              const selectedUnit = currentRow.unitOptions?.find(
+                (u) => u.value == newUnitId
+              );
+              const factor = selectedUnit ? selectedUnit.factor : 1;
+
+              currentRow.inputUnitId = newUnitId;
+              // آپدیت مقدار پایه
+              currentRow.quantity = currentRow.inputQuantity * factor;
+
+              setDetails(newDetails);
+            }}
+          >
+            {row.unitOptions?.map((u) => (
+              <option key={u.value} value={u.value}>
+                {u.label}
+              </option>
+            ))}
+            {!row.unitOptions?.length && (
+              <option value={row.baseUnitId}>{row.unitName}</option>
+            )}
+          </select>
+        ),
+      },
+
+      // --- ستون مقدار پایه (Read Only) ---
       {
         key: "quantity",
-        title: "مقدار",
-        type: "number",
-        required: true,
-        width: "15%",
-        disabled: isReadOnly,
+        title: "مقدار (پایه)",
+        type: "readonly",
+        width: "10%",
+        render: (row) => (
+          <div
+            className="flex items-center justify-center gap-1 bg-muted/50 rounded h-8 px-2 text-xs font-mono text-muted-foreground"
+            title={`معادل: ${row.quantity} ${row.unitName}`}
+          >
+            <span>{Number(row.quantity).toLocaleString()}</span>
+            <span className="text-[10px]">{row.unitName}</span>
+          </div>
+        ),
       },
       {
         key: "wastePercentage",
         title: "ضایعات %",
         type: "number",
-        width: "10%",
+        width: "8%",
         disabled: isReadOnly,
       },
       {
         key: "substitutes",
         title: "جایگزین",
         type: "readonly",
-        width: "10%",
+        width: "8%",
         render: (row, index) => {
           const subCount = row.substitutes?.length || 0;
           return (
@@ -443,6 +674,10 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
       details: details.map((d) => ({
         childProductId: d.childProductId,
         quantity: Number(d.quantity),
+        // ارسال مقادیر ورودی به سرور
+        inputQuantity: Number(d.inputQuantity),
+        inputUnitId: Number(d.inputUnitId),
+
         wastePercentage: Number(d.wastePercentage || 0),
         substitutes: d.substitutes.map((s) => ({
           substituteProductId: s.substituteProductId,
@@ -463,7 +698,6 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
         toast.info("API ویرایش هنوز متصل نشده است");
       }
 
-      // رفع ارور: بستن تب در سیکل بعدی رندر
       safeCloseTab();
     } catch (error: any) {
       toast.error(error.response?.data?.detail || "خطا در ثبت اطلاعات");
@@ -530,7 +764,6 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
         headerContent={headerContent}
         headerActions={
           <>
-            {/* دکمه انصراف با رفع ارور Router */}
             <Button
               type="button"
               variant="ghost"
@@ -541,7 +774,6 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
               <X size={16} /> انصراف
             </Button>
 
-            {/* دکمه نمایش ساختار درختی (در حالت مشاهده/ویرایش) */}
             {(mode === "view" || mode === "edit") && bomId && (
               <Button
                 type="button"
@@ -558,8 +790,7 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
               </Button>
             )}
 
-            {/* دکمه فراخوانی از الگو (فقط در حالت ایجاد) */}
-            {mode === "create" && (
+            {(mode === "create" || (mode === "edit" && canEdit)) && (
               <Button
                 type="button"
                 variant="outline"
@@ -615,9 +846,13 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
                     : () => ({
                         id: Math.random().toString(36).substr(2, 9),
                         childProductId: null,
-                        quantity: 1,
-                        wastePercentage: 0,
+                        quantity: 0,
+                        inputQuantity: 0,
+                        inputUnitId: 0,
+                        baseUnitId: 0,
                         unitName: "-",
+                        unitOptions: [],
+                        wastePercentage: 0,
                         substitutes: [],
                       })
                 }
@@ -664,7 +899,7 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
         />
       )}
 
-      {/* --- دیالوگ انتخاب الگو (جدید) --- */}
+      {/* --- دیالوگ انتخاب الگو --- */}
       <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
         <DialogContent className="max-w-xl">
           <DialogHeader>

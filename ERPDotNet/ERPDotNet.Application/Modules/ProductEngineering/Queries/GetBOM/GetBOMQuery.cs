@@ -65,6 +65,9 @@ public class GetBOMHandler : IRequestHandler<GetBOMQuery, BOMDto?>
                 d.ChildProduct.Unit!.Title,
                 
                 d.Quantity,
+                d.InputQuantity,
+                d.InputUnitId,
+                d.InputUnitId == d.ChildProduct.UnitId ? d.ChildProduct.Unit.Title : "واحد فرعی",
                 d.WastePercentage,
 
                 d.Substitutes.Select(s => new BOMSubstituteDto(

@@ -2,16 +2,17 @@ using ERPDotNet.Application.Common.Attributes;
 using ERPDotNet.Application.Common.Extensions;
 using ERPDotNet.Application.Common.Interfaces;
 using ERPDotNet.Application.Common.Models;
-using ERPDotNet.Domain.Modules.ProductEngineering.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace ERPDotNet.Application.Modules.ProductEngineering.Queries.GetWhereUsed;
 
-[Cached(timeToLiveSeconds: 60, "WhereUsed")] // کش کوتاه مدت
+[Cached(timeToLiveSeconds: 60, "WhereUsed")]
 public record GetWhereUsedQuery : PaginatedRequest, IRequest<PaginatedResult<WhereUsedDto>>
 {
-    public int ProductId { get; set; } // کالایی که دنبالش می‌گردیم
+    public int ProductId { get; set; }
+    public bool MultiLevel { get; set; } = false;
+    public bool EndItemsOnly { get; set; } = false;
 }
 
 public class GetWhereUsedHandler : IRequestHandler<GetWhereUsedQuery, PaginatedResult<WhereUsedDto>>
@@ -23,92 +24,119 @@ public class GetWhereUsedHandler : IRequestHandler<GetWhereUsedQuery, PaginatedR
         _context = context;
     }
 
-    public async Task<PaginatedResult<WhereUsedDto>> Handle(GetWhereUsedQuery request, CancellationToken cancellationToken)
+   public async Task<PaginatedResult<WhereUsedDto>> Handle(GetWhereUsedQuery request, CancellationToken cancellationToken)
     {
-        // 1. جستجو در مواد اولیه مستقیم (Direct Usage)
-        var directUsageQuery = _context.BOMDetails
-            .AsNoTracking()
-            .Where(d => d.ChildProductId == request.ProductId)
-            .Select(d => new 
-            {
-                d.BOMHeaderId,
-                d.BOMHeader!.Title,
-                d.BOMHeader.Version,
-                d.BOMHeader.Status,
-                d.BOMHeader.ProductId,
-                d.BOMHeader.Product!.Name,
-                d.BOMHeader.Product.Code,
-                UnitName = d.BOMHeader.Product.Unit!.Title,
-                UsageType = "ماده اولیه",
-                Quantity = d.Quantity
-            });
+        List<WhereUsedDto> finalDtos = new();
+        int totalCount = 0;
 
-        // 2. جستجو در جایگزین‌ها (Substitute Usage)
-        var subUsageQuery = _context.BOMSubstitutes
-            .AsNoTracking()
-            .Where(s => s.SubstituteProductId == request.ProductId)
-            .Select(s => new 
-            {
-                BOMHeaderId = s.BOMDetail!.BOMHeaderId,
-                Title = s.BOMDetail.BOMHeader!.Title,
-                Version = s.BOMDetail.BOMHeader.Version,
-                Status = s.BOMDetail.BOMHeader.Status,
-                ProductId = s.BOMDetail.BOMHeader.ProductId,
-                Name = s.BOMDetail.BOMHeader.Product!.Name,
-                Code = s.BOMDetail.BOMHeader.Product.Code,
-                UnitName = s.BOMDetail.BOMHeader.Product.Unit!.Title,
-                UsageType = "جایگزین",
-                Quantity = s.Factor // اینجا ضریب را به جای مقدار نمایش می‌دهیم
-            });
-
-        // 3. ترکیب دو کوئری (Union)
-        var combinedQuery = directUsageQuery.Union(subUsageQuery);
-
-        // 4. اعمال فیلتر جستجو (روی نام محصول پدر یا ورژن BOM)
-        if (!string.IsNullOrWhiteSpace(request.SearchTerm))
+        if (request.MultiLevel)
         {
-            combinedQuery = combinedQuery.Where(x => 
-                x.Name.Contains(request.SearchTerm) || 
-                x.Code.Contains(request.SearchTerm) ||
-                x.Title.Contains(request.SearchTerm));
-        }
+            // 1. فراخوانی تابع بازگشتی (کل درخت از پایین به بالا)
+            var rawData = await _context.Set<WhereUsedRecursiveResult>()
+                .FromSqlInterpolated($"SELECT * FROM get_where_used_recursive({request.ProductId})")
+                .ToListAsync(cancellationToken);
 
-        // --- سورت هوشمند (جدید) ---
-        if (!string.IsNullOrEmpty(request.SortColumn))
-        {
-            // نکته: SortColumn باید دقیقاً هم‌نام پراپرتی‌هایно Select بالا باشد (مثلا "Code" یا "Name")
-            // اگر فرانت camelCase می‌فرستد، باید در فرانت یا اینجا هندل شود (معمولا MRT دقیق می‌فرستد)
-            combinedQuery = combinedQuery.OrderByNatural(request.SortColumn, request.SortDescending);
+            // 2. اعمال فیلتر "فقط محصولات نهایی"
+            if (request.EndItemsOnly)
+            {
+                // الگوریتم: محصولاتی که در این لیست هستند (Parent)، آیا خودشان جایی Child هستند؟
+                // اگر Child باشند، یعنی محصول نهایی نیستند (هنوز پدر دارند).
+                
+                // الف) تمام ProductId های موجود در لیست (همه پدران و اجداد)
+                var allParentIds = rawData.Select(x => x.ProductId).Distinct().ToList();
+
+                // ب) چک می‌کنیم کدام یک از اینها در جدول BOMDetails به عنوان Child استفاده شده‌اند
+                // (فقط در BOMهای فعال)
+                var notEndItems = await _context.BOMDetails
+                    .AsNoTracking()
+                    .Include(d => d.BOMHeader)
+                    .Where(d => allParentIds.Contains(d.ChildProductId) && d.BOMHeader!.IsActive)
+                    .Select(d => d.ChildProductId)
+                    .Distinct()
+                    .ToListAsync(cancellationToken);
+
+                // ج) محصولات نهایی = کل لیست - آنهایی که فرزند هستند
+                // نکته: ما ردیف‌های گزارش را فیلتر می‌کنیم
+                rawData = rawData
+                    .Where(r => !notEndItems.Contains(r.ProductId))
+                    .ToList();
+            }
+
+            // 3. دریافت اطلاعات تکمیلی (نام، کد، ورژن)
+            var bomIds = rawData.Select(r => r.BomHeaderId).Distinct().ToList();
+            
+            var bomDetails = await _context.BOMHeaders
+                .AsNoTracking()
+                .Include(b => b.Product).ThenInclude(p => p!.Unit)
+                .Where(b => bomIds.Contains(b.Id))
+                .ToDictionaryAsync(b => b.Id, cancellationToken);
+
+            // 4. مپ کردن نهایی
+            finalDtos = rawData.Select(r => {
+                var bom = bomDetails.GetValueOrDefault(r.BomHeaderId);
+                var bomTitle = bom?.Title ?? "-";
+                var bomVersion = bom?.Version ?? "-";
+                var bomStatus = bom?.Status.ToDisplay() ?? "-";
+                var parentName = bom?.Product?.Name ?? "-";
+                var parentCode = bom?.Product?.Code ?? "-";
+                var unitName = bom?.Product?.Unit?.Title ?? "-";
+
+                return new WhereUsedDto(
+                    r.BomHeaderId,
+                    r.BomHeaderId,
+                    bomTitle,
+                    bomVersion,
+                    bomStatus,
+                    r.ProductId,
+                    parentName,
+                    parentCode,
+                    r.Level == 1 ? r.UsageType : $"{r.UsageType} (سطح {r.Level})",
+                    r.Quantity,
+                    unitName
+                );
+            }).ToList();
+
+            totalCount = finalDtos.Count;
+            
+            // صفحه‌بندی در حافظه
+            finalDtos = finalDtos
+                .Skip((request.PageNumber - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToList();
         }
         else
         {
-            // پیش‌فرض: سورت نچرال روی نام محصول
-            combinedQuery = combinedQuery.OrderByNatural("Name", false);
+            // === حالت تک سطحی (بدون تغییر) ===
+            // برای اطمینان از عملکرد، همان کد قبلی که کار می‌کرد را اینجا بگذارید
+            // یا از همین روش SQL Function با فیلتر Level=1 استفاده کنید:
+            
+             var rawData = await _context.Set<WhereUsedRecursiveResult>()
+                .FromSqlInterpolated($"SELECT * FROM get_where_used_recursive({request.ProductId})")
+                .ToListAsync(cancellationToken);
+                
+            rawData = rawData.Where(x => x.Level == 1).ToList();
+            
+            var bomIds = rawData.Select(r => r.BomHeaderId).Distinct().ToList();
+            var bomDetails = await _context.BOMHeaders
+                .AsNoTracking()
+                .Include(b => b.Product).ThenInclude(p => p!.Unit)
+                .Where(b => bomIds.Contains(b.Id))
+                .ToDictionaryAsync(b => b.Id, cancellationToken);
+
+             finalDtos = rawData.Select(r => {
+                var bom = bomDetails.GetValueOrDefault(r.BomHeaderId);
+                // ... (مپینگ مشابه بالا) ...
+                return new WhereUsedDto(
+                    r.BomHeaderId, r.BomHeaderId, 
+                    bom?.Title ?? "-", bom?.Version ?? "-", bom?.Status.ToDisplay() ?? "-",
+                    r.ProductId, bom?.Product?.Name ?? "-", bom?.Product?.Code ?? "-",
+                    r.UsageType, r.Quantity, bom?.Product?.Unit?.Title ?? "-"
+                );
+            }).ToList();
+            
+            totalCount = finalDtos.Count;
         }
 
-        // 5. صفحه بندی دستی
-        var totalCount = await combinedQuery.CountAsync(cancellationToken);
-        
-        var items = await combinedQuery
-            .OrderBy(x => x.Name) // مرتب‌سازی بر اساس نام محصول نهایی
-            .Skip((request.PageNumber - 1) * request.PageSize)
-            .Take(request.PageSize)
-            .ToListAsync(cancellationToken);
-
-        // 6. مپینگ نهایی
-        var dtos = items.Select(x => new WhereUsedDto(
-            x.BOMHeaderId,
-            x.Title,
-            x.Version,
-            x.Status.ToDisplay(),
-            x.ProductId,
-            x.Name,
-            x.Code,
-            x.UsageType,
-            x.Quantity,
-            x.UnitName
-        )).ToList();
-
-        return new PaginatedResult<WhereUsedDto>(dtos, totalCount, request.PageNumber, request.PageSize);
+        return new PaginatedResult<WhereUsedDto>(finalDtos, totalCount, request.PageNumber, request.PageSize);
     }
 }

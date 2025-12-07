@@ -26,6 +26,10 @@ public record BOMDetailInputDto
 {
     public required int ChildProductId { get; set; }
     public decimal Quantity { get; set; }
+    // --- فیلدهای جدید ---
+    public decimal InputQuantity { get; set; }
+    public int InputUnitId { get; set; }
+    // -------------------
     public decimal WastePercentage { get; set; }
     
     // لیست جایگزین‌های این ماده
@@ -140,6 +144,9 @@ public class CreateBOMHandler : IRequestHandler<CreateBOMCommand, int>
                 BOMHeaderId = 0, // موقت
                 ChildProductId = detailInput.ChildProductId,
                 Quantity = detailInput.Quantity,
+                // مقادیر ورودی کاربر (برای نمایش بعدی)
+                InputQuantity = detailInput.InputQuantity,
+                InputUnitId = detailInput.InputUnitId,
                 WastePercentage = detailInput.WastePercentage
             };
 

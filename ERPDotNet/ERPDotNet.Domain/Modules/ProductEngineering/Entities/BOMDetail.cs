@@ -15,8 +15,21 @@ public class BOMDetail : BaseEntity
     public required int ChildProductId { get; set; }
     public Product? ChildProduct { get; set; }
 
-    // مقدار مصرف
+        // مقدار مصرف
     public decimal Quantity { get; set; }
+    
+    // --- فیلدهای جدید برای نگهداری ورودی کاربر ---
+    
+    // مقداری که کاربر تایپ کرده (مثلا 2)
+    public decimal InputQuantity { get; set; }
+
+    // واحدی که کاربر انتخاب کرده (مثلا شاخه)
+    public int InputUnitId { get; set; }
+    
+    // (اختیاری) نویگیشن پراپرتی برای واحد ورودی
+    // public Unit? InputUnit { get; set; }
+
+
     
     // درصد ضایعات (پیش‌بینی پرت مواد)
     public decimal WastePercentage { get; set; } = 0;
