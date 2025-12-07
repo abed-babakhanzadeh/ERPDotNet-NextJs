@@ -76,7 +76,11 @@ public class GetBOMHandler : IRequestHandler<GetBOMQuery, BOMDto?>
                     s.SubstituteProduct!.Name,
                     s.SubstituteProduct.Code,
                     s.Priority,
-                    s.Factor
+                    s.Factor,
+                    // --- مپینگ جدید ---
+                    s.IsMixAllowed,
+                    s.MaxMixPercentage,
+                    s.Note
                 )).OrderBy(s => s.Priority).ToList()
             )).ToList()
         );
