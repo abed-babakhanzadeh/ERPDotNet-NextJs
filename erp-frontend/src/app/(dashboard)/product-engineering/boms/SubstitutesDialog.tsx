@@ -45,13 +45,31 @@ export default function SubstitutesDialog({
   const [productOptions, setProductOptions] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
 
-  // همگام‌سازی استیت با پراپس ورودی
+  // --- اصلاح مهم: پر کردن آپشن‌ها هنگام باز شدن ---
   React.useEffect(() => {
     if (open) {
-      // دیپ کپی برای جلوگیری از تغییر ناخواسته فرم اصلی
-      setRows(
-        initialData?.length ? JSON.parse(JSON.stringify(initialData)) : []
+      // 1. کپی کردن دیتا
+      const safeData = initialData?.length
+        ? JSON.parse(JSON.stringify(initialData))
+        : [];
+      setRows(safeData);
+
+      // 2. ساختن آپشن‌های اولیه از روی دیتای موجود
+      // تا وقتی مودال باز میشه، اسم کالاها نمایش داده بشه و خالی نباشه
+      const initialOptions = safeData
+        .filter((r: SubstituteRow) => r.substituteProductId)
+        .map((r: SubstituteRow) => ({
+          id: r.substituteProductId,
+          code: r.productCode || "",
+          name: r.productName || "",
+        }));
+
+      // حذف تکراری‌ها (اگر یک کالا چند بار جایگزین شده باشد)
+      const uniqueOptions = Array.from(
+        new Map(initialOptions.map((item: any) => [item.id, item])).values()
       );
+
+      setProductOptions(uniqueOptions);
     }
   }, [open, initialData]);
 
@@ -80,7 +98,7 @@ export default function SubstitutesDialog({
         render: (row, index) => (
           <TableLookupCombobox
             value={row.substituteProductId}
-            items={productOptions}
+            items={productOptions} // اینجا حالا مقادیر اولیه را دارد
             loading={loadingProducts}
             columns={[
               { key: "code", label: "کد", width: "30%" },
@@ -91,6 +109,7 @@ export default function SubstitutesDialog({
             placeholder="انتخاب کالا..."
             onSearch={handleProductSearch}
             onOpenChange={(isOpen) => {
+              // فقط اگر لیست خالی بود سرچ کن، وگرنه ممکنه مقادیر اولیه رو بپرونه
               if (isOpen && productOptions.length === 0)
                 handleProductSearch("");
             }}
@@ -166,7 +185,9 @@ export default function SubstitutesDialog({
   );
 
   const handleSave = () => {
-    onSave(rows);
+    // فیلتر کردن ردیف‌های ناقص قبل از ذخیره در استیت محلی
+    const validRows = rows.filter((r) => r.substituteProductId);
+    onSave(validRows);
     onClose();
   };
 

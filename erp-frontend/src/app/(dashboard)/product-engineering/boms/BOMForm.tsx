@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import apiClient from "@/services/apiClient";
 import { toast } from "sonner";
 import {
@@ -30,7 +29,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"; // دیالوگ برای الگو
+  DialogDescription, // <--- اضافه شد برای رفع وارنینگ
+} from "@/components/ui/dialog";
 import SubstitutesDialog, { SubstituteRow } from "./SubstitutesDialog";
 
 // Hooks & Providers
@@ -52,7 +52,6 @@ interface ProductLookupDto {
   unitName: string;
 }
 
-// اینترفیس برای جستجوی BOM (برای الگو)
 interface BOMLookupDto {
   id: number;
   title: string;
@@ -71,11 +70,10 @@ interface BOMHeaderState {
   toDate?: string;
 }
 
-// اینترفیس واحد (برای دراپ داون)
 interface UnitOption {
-  value: number; // UnitId
-  label: string; // UnitTitle
-  factor: number; // ضریب تبدیل نسبت به واحد اصلی
+  value: number;
+  label: string;
+  factor: number;
 }
 
 interface BOMRow {
@@ -84,16 +82,13 @@ interface BOMRow {
   childProductCode?: string;
   childProductName?: string;
 
-  // مقادیر پایه (Read Only - همیشه به واحد اصلی ذخیره می‌شود)
-  unitName: string; // نام واحد اصلی
-  baseUnitId: number; // آی‌دی واحد اصلی
-  quantity: number; // مقدار محاسبه شده به واحد اصلی
+  unitName: string;
+  baseUnitId: number;
+  quantity: number;
 
-  // مقادیر ورودی (Editable - چیزی که کاربر می‌بیند و تغییر می‌دهد)
   inputQuantity: number;
   inputUnitId: number;
 
-  // لیست واحدهای قابل انتخاب برای این کالا (اصلی + فرعی‌ها)
   unitOptions: UnitOption[];
 
   wastePercentage: number;
@@ -122,16 +117,13 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
 
   const [details, setDetails] = useState<BOMRow[]>([]);
 
-  // --- استیت‌های مودال جایگزین ---
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeRowIndex, setActiveRowIndex] = useState<number | null>(null);
 
-  // --- استیت‌های مودال فراخوانی الگو ---
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [templateLoading, setTemplateLoading] = useState(false);
   const [templateOptions, setTemplateOptions] = useState<BOMLookupDto[]>([]);
 
-  // --- Lookup States (Product) ---
   const [headerProductOptions, setHeaderProductOptions] = useState<
     ProductLookupDto[]
   >([]);
@@ -141,22 +133,18 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
   >([]);
   const [gridLoading, setGridLoading] = useState(false);
 
-  // --- Load Data (Edit/View) ---
   useEffect(() => {
     if ((mode === "edit" || mode === "view") && bomId) {
       loadBOMData(bomId);
     }
   }, [mode, bomId]);
 
-  // تابعی برای بستن امن تب (رفع ارور Router Update)
   const safeCloseTab = () => {
     setTimeout(() => {
       closeTab(activeTabId);
     }, 0);
   };
 
-  // دریافت واحدهای کالا از API
-  // نسخه ایمن شده تابع دریافت واحدها
   const fetchProductUnits = async (
     productId: number
   ): Promise<UnitOption[]> => {
@@ -182,31 +170,31 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
       }
       return options;
     } catch (error) {
-      // --- نکته مهم: اگر خطا داد، آرایه خالی برگردان تا صفحه کرش نکند ---
       console.warn(`Error fetching units for product ${productId}`, error);
       return [];
     }
   };
 
   const loadBOMData = async (id: number) => {
-    if (isNaN(id)) return; // جلوگیری از درخواست با NaN
+    if (isNaN(id)) return;
 
     setLoadingData(true);
     try {
       const { data } = await apiClient.get(`/BOMs/${id}`);
 
-      // 1. ست کردن داده‌های هدر
       setHeaderData({
         productId: data.productId,
         productName: data.productName,
-        title: data.title,
+        title: data.title || "",
         version: data.version,
         type: data.typeId,
-        fromDate: data.fromDate,
-        toDate: data.toDate,
+        // اینجا هم تاریخ را به فرمت استاندارد تبدیل می‌کنیم
+        fromDate: data.fromDate
+          ? data.fromDate.split("T")[0]
+          : new Date().toISOString().split("T")[0],
+        toDate: data.toDate ? data.toDate.split("T")[0] : undefined,
       });
 
-      // 2. ست کردن آپشن‌های لوکاپ (بسیار مهم برای نمایش مقدار اولیه)
       const initialProductOption = {
         id: data.productId,
         code: data.productCode,
@@ -216,11 +204,8 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
 
       setHeaderProductOptions([initialProductOption as any]);
 
-      // مپ کردن دیتیل
-      // نکته: اینجا چون async (دریافت واحدها) داریم، باید از Promise.all استفاده کنیم
       const mappedDetails = await Promise.all(
         data.details.map(async (d: any) => {
-          // دریافت واحدهای کالا برای پر کردن دراپ‌داون
           const units = await fetchProductUnits(d.childProductId);
 
           return {
@@ -229,12 +214,10 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
             childProductName: d.childProductName,
             childProductCode: d.childProductCode,
 
-            // مقادیر پایه
             quantity: d.quantity,
-            baseUnitId: d.unitId, // فرض بر اینکه DTO سرور unitId (اصلی) را دارد
+            baseUnitId: d.unitId,
             unitName: d.unitName,
 
-            // مقادیر ورودی (اگر دیتابیس داشت که هیچ، اگر نه پیش‌فرض اصلی)
             inputQuantity: d.inputQuantity || d.quantity,
             inputUnitId: d.inputUnitId || d.unitId,
 
@@ -270,8 +253,7 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
     }
   };
 
-  // تابع کمکی برای مپ کردن دیتای الگو (بدون درخواست async واحدها - واحدها بعداً موقع ادیت لود میشوند یا اینجا هم میشه لود کرد)
-  // برای سادگی و سرعت، اینجا فقط دیتا را مپ میکنیم و واحدها را در لحظه تغییر کالا لود میکنیم
+  // ... (سایر توابع مثل mapTemplateToRows, searchProductsApi و ... بدون تغییر)
   const mapTemplateToRows = async (serverDetails: any[]): Promise<BOMRow[]> => {
     return await Promise.all(
       serverDetails.map(async (d: any) => {
@@ -306,7 +288,6 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
     );
   };
 
-  // --- Search Logic (Product) ---
   const searchProductsApi = async (term: string) => {
     if (!term && mode === "create") return [];
     const res = await apiClient.post("/Products/search", {
@@ -337,7 +318,6 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
     }
   };
 
-  // --- Search Logic (Template BOM) ---
   const onSearchTemplate = async (term: string) => {
     setTemplateLoading(true);
     try {
@@ -372,7 +352,6 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
     }
   };
 
-  // --- Columns Definitions ---
   const productLookupColumns: ColumnDef[] = useMemo(
     () => [
       { key: "code", label: "کد کالا", width: "30%" },
@@ -460,7 +439,6 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
                     onSearchGrid("");
                 }}
                 onValueChange={async (newId, item) => {
-                  // 1. دریافت واحدهای کالا
                   const units = await fetchProductUnits(newId as number);
 
                   const newDetails = [...details];
@@ -469,19 +447,12 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
                     childProductId: newId as number,
                     childProductName: item?.name,
                     childProductCode: item?.code,
-
-                    // ست کردن واحد اصلی
                     baseUnitId: units[0].value,
                     unitName: units[0].label,
-
-                    // پیش‌فرض: واحد ورودی = واحد اصلی
                     inputUnitId: units[0].value,
                     inputQuantity: 1,
                     quantity: 1,
-
                     unitOptions: units,
-
-                    // پاک کردن مقادیر قبلی
                     substitutes: [],
                   };
                   setDetails(newDetails);
@@ -489,17 +460,15 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
               />
             </div>
 
-            {/* دکمه میانبر گزارش مصرف (فقط وقتی کالا انتخاب شده باشد) */}
             {row.childProductId && (
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-muted-foreground hover:text-blue-600"
-                title="مشاهده موارد مصرف (Where Used)"
+                title="مشاهده موارد مصرف"
                 onClick={(e) => {
                   e.stopPropagation();
-                  // اضافه کردن &productCode=${row.childProductCode || ""}
                   addTab(
                     `مصرف: ${row.childProductName}`,
                     `/product-engineering/reports/where-used?productId=${
@@ -516,7 +485,6 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
           </div>
         ),
       },
-      // --- ستون مقدار ورودی (Editable) ---
       {
         key: "inputQuantity",
         title: "مقدار مصرفی",
@@ -534,23 +502,17 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
               const val = Number(e.target.value);
               const newDetails = [...details];
               const currentRow = newDetails[index];
-
-              // محاسبه مجدد مقدار پایه
               const selectedUnit = currentRow.unitOptions?.find(
                 (u) => u.value == currentRow.inputUnitId
               );
               const factor = selectedUnit ? selectedUnit.factor : 1;
-
               currentRow.inputQuantity = val;
               currentRow.quantity = val * factor;
-
               setDetails(newDetails);
             }}
           />
         ),
       },
-
-      // --- ستون واحد مصرفی (Dropdown) ---
       {
         key: "inputUnitId",
         title: "واحد مصرفی",
@@ -566,17 +528,12 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
               const newUnitId = Number(e.target.value);
               const newDetails = [...details];
               const currentRow = newDetails[index];
-
-              // پیدا کردن ضریب جدید
               const selectedUnit = currentRow.unitOptions?.find(
                 (u) => u.value == newUnitId
               );
               const factor = selectedUnit ? selectedUnit.factor : 1;
-
               currentRow.inputUnitId = newUnitId;
-              // آپدیت مقدار پایه
               currentRow.quantity = currentRow.inputQuantity * factor;
-
               setDetails(newDetails);
             }}
           >
@@ -591,8 +548,6 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
           </select>
         ),
       },
-
-      // --- ستون مقدار پایه (Read Only) ---
       {
         key: "quantity",
         title: "مقدار (پایه)",
@@ -649,7 +604,23 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
     [details, gridProductOptions, gridLoading, isReadOnly]
   );
 
-  // --- Actions ---
+  // --- اصلاح نهایی: تابع فرمت‌دهی تاریخ به ISO YYYY-MM-DD ---
+  const formatDateToISO = (dateValue: string | undefined) => {
+    if (!dateValue) return new Date().toISOString().split("T")[0];
+
+    // اگر از قبل فرمت ISO بود (مثلا 2025-12-07)
+    if (dateValue.includes("-") && dateValue.length === 10) return dateValue;
+
+    // تلاش برای تبدیل تاریخ‌های دیگر به ISO
+    const d = new Date(dateValue);
+    if (!isNaN(d.getTime())) {
+      return d.toISOString().split("T")[0];
+    }
+
+    // فال‌بک به تاریخ امروز
+    return new Date().toISOString().split("T")[0];
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isReadOnly) return;
@@ -664,43 +635,90 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
     }
 
     setSubmitting(true);
-    const payload = {
-      productId: headerData.productId,
-      title: headerData.title,
-      version: headerData.version,
-      type: Number(headerData.type),
-      fromDate: headerData.fromDate,
-      toDate: headerData.toDate,
-      details: details.map((d) => ({
-        childProductId: d.childProductId,
-        quantity: Number(d.quantity),
-        // ارسال مقادیر ورودی به سرور
-        inputQuantity: Number(d.inputQuantity),
-        inputUnitId: Number(d.inputUnitId),
-
-        wastePercentage: Number(d.wastePercentage || 0),
-        substitutes: d.substitutes.map((s) => ({
-          substituteProductId: s.substituteProductId,
-          priority: Number(s.priority),
-          factor: Number(s.factor),
-          isMixAllowed: s.isMixAllowed,
-          maxMixPercentage: Number(s.maxMixPercentage),
-          note: s.note,
-        })),
-      })),
-    };
 
     try {
+      // 1. اصلاح تاریخ‌ها
+      const safeFromDate = formatDateToISO(headerData.fromDate);
+      const cleanToDate =
+        headerData.toDate && headerData.toDate.trim() !== ""
+          ? formatDateToISO(headerData.toDate)
+          : null;
+
+      const cleanDetails = details.map((d) => {
+        if (!d.childProductId) {
+          throw new Error("یکی از ردیف‌های جدول فاقد کالا است.");
+        }
+
+        const validSubstitutes = (d.substitutes || [])
+          .filter(
+            (s) => s.substituteProductId && Number(s.substituteProductId) > 0
+          )
+          .map((s) => ({
+            substituteProductId: Number(s.substituteProductId),
+            priority: Number(s.priority || 1),
+            factor: Number(s.factor || 1),
+            isMixAllowed: Boolean(s.isMixAllowed),
+            maxMixPercentage: Number(s.maxMixPercentage || 0),
+            note: s.note || null,
+          }));
+
+        return {
+          childProductId: Number(d.childProductId),
+          quantity: Number(d.quantity),
+          inputQuantity: Number(d.inputQuantity || 0),
+          inputUnitId: Number(d.inputUnitId) || d.baseUnitId || 0,
+          wastePercentage: Number(d.wastePercentage || 0),
+          substitutes: validSubstitutes,
+        };
+      });
+
+      // 2. ساخت Payload نهایی
+      const payload: any = {
+        title: headerData.title || "",
+        version: headerData.version || "1.0",
+        type: Number(headerData.type) || 1,
+        fromDate: safeFromDate, // <--- از مقدار فرمت شده استفاده می‌کنیم
+        toDate: cleanToDate, // <--- از مقدار فرمت شده استفاده می‌کنیم
+        details: cleanDetails,
+      };
+
+      // اضافه کردن ID برای متد ویرایش (مهم: در لاگ قبلی شما ID نبود)
+      if (mode === "edit" && bomId) {
+        payload.id = Number(bomId);
+      }
+
+      console.log("PAYLOAD SENT TO SERVER:", JSON.stringify(payload, null, 2));
+
       if (mode === "create") {
+        payload.productId = Number(headerData.productId);
         await apiClient.post("/BOMs", payload);
         toast.success("BOM با موفقیت ایجاد شد");
       } else if (mode === "edit" && bomId) {
-        toast.info("API ویرایش هنوز متصل نشده است");
+        await apiClient.put(`/BOMs/${bomId}`, payload);
+        toast.success("تغییرات با موفقیت ذخیره شد");
       }
 
       safeCloseTab();
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || "خطا در ثبت اطلاعات");
+      console.error("Full Submission Error:", error);
+
+      if (error.message === "یکی از ردیف‌های جدول فاقد کالا است.") {
+        toast.error(error.message);
+      } else {
+        const status = error.response?.status;
+        const validationErrors = error.response?.data?.errors;
+        const detail = error.response?.data?.detail;
+
+        if (validationErrors) {
+          const firstField = Object.keys(validationErrors)[0];
+          const firstMsg = validationErrors[firstField][0];
+          toast.error(`خطای ورودی: ${firstMsg}`);
+        } else if (detail) {
+          toast.error(`خطای سرور: ${detail}`);
+        } else {
+          toast.error(`خطا در ارتباط با سرور (${status || "نامشخص"})`);
+        }
+      }
     } finally {
       setSubmitting(false);
     }
@@ -879,7 +897,6 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
         ]}
       />
 
-      {/* --- دیالوگ جایگزین --- */}
       {activeRowIndex !== null && (
         <SubstitutesDialog
           open={dialogOpen}
@@ -899,11 +916,13 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
         />
       )}
 
-      {/* --- دیالوگ انتخاب الگو --- */}
       <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>فراخوانی اقلام از فرمول (الگو)</DialogTitle>
+            <DialogDescription>
+              با انتخاب یک الگو، اقلام آن به لیست فعلی اضافه خواهند شد.
+            </DialogDescription>
           </DialogHeader>
           <div className="py-6">
             <label className="text-sm font-medium mb-2 block">

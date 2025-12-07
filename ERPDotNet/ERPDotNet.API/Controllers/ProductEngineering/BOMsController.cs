@@ -3,6 +3,7 @@ using ERPDotNet.Application.Common.Models;
 using ERPDotNet.Application.Modules.ProductEngineering.Commands.CopyBOM;
 using ERPDotNet.Application.Modules.ProductEngineering.Commands.CreateBOM;
 using ERPDotNet.Application.Modules.ProductEngineering.Commands.DeleteBOM;
+using ERPDotNet.Application.Modules.ProductEngineering.Commands.UpdateBOM;
 using ERPDotNet.Application.Modules.ProductEngineering.Queries.GetBOM;
 using ERPDotNet.Application.Modules.ProductEngineering.Queries.GetBOMsList;
 using ERPDotNet.Application.Modules.ProductEngineering.Queries.GetBOMTree;
@@ -91,6 +92,23 @@ public class BOMsController : ControllerBase
         await _mediator.Send(new DeleteBOMCommand(id));
         
         return NoContent();
+    }
+
+    [HttpPut("{id}")]
+    [HasPermission("ProductEngineering.BOM.Create")] // پرمیشن ویرایش
+    public async Task<IActionResult> Update(int id, [FromBody] UpdateBOMCommand command)
+    {
+        // اطمینان از یکی بودن ID در URL و Body
+        if (id != command.Id)
+        {
+            command.Id = id; // یا return BadRequest
+        }
+
+        var result = await _mediator.Send(command);
+        
+        if (!result) return NotFound();
+
+        return Ok(new { success = true });
     }
 
     
