@@ -43,5 +43,8 @@ public record BOMSubstituteDto(
     string SubstituteProductName,
     string SubstituteProductCode,
     int Priority,
-    decimal Factor
+    decimal Factor,
+    bool IsMixAllowed,
+    decimal MaxMixPercentage,
+    string? Note
 );
