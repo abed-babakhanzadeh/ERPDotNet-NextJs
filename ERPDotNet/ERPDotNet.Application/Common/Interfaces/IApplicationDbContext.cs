@@ -23,8 +23,11 @@ public interface IApplicationDbContext
     DbSet<BOMHeader> BOMHeaders { get; }
     DbSet<BOMDetail> BOMDetails { get; }
     DbSet<BOMSubstitute> BOMSubstitutes { get; }
+    DbSet<TEntity> Set<TEntity>() where TEntity : class;
 
     // متدهای پایه
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
+    // object Set<T>();
+
     DatabaseFacade Database { get; }
 }

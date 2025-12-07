@@ -1,6 +1,7 @@
 namespace ERPDotNet.Application.Modules.ProductEngineering.Queries.GetWhereUsed;
 
 public record WhereUsedDto(
+    int Id,
     int BomId,
     string BomTitle,
     string BomVersion,

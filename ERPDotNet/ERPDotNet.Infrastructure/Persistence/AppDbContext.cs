@@ -6,7 +6,8 @@ using ERPDotNet.Application.Common.Interfaces;
 using ERPDotNet.Domain.Modules.BaseInfo.Entities;
 using ERPDotNet.Domain.Modules.ProductEngineering.Entities;
 using ERPDotNet.Domain.Common; // <--- این را برای دسترسی به BaseEntity اضافه کنید
-using System.Linq.Expressions; // <--- برای کار با Expression Tree
+using System.Linq.Expressions;
+using ERPDotNet.Application.Modules.ProductEngineering.Queries.GetWhereUsed; // <--- برای کار با Expression Tree
 
 namespace ERPDotNet.Infrastructure.Persistence;
 
@@ -26,6 +27,7 @@ public class AppDbContext : IdentityDbContext<User>, IApplicationDbContext
     public DbSet<BOMHeader> BOMHeaders { get; set; }
     public DbSet<BOMDetail> BOMDetails { get; set; }
     public DbSet<BOMSubstitute> BOMSubstitutes { get; set; }
+    
 
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
@@ -37,6 +39,7 @@ public class AppDbContext : IdentityDbContext<User>, IApplicationDbContext
 
         // اعمال کانفیگ‌های جداگانه (مثل UnitConfiguration)
         builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+        builder.Entity<WhereUsedRecursiveResult>().HasNoKey().ToView(null);
 
         // === اعمال Global Query Filter به صورت خودکار ===
         // روی تمام موجودیت‌هایی که از BaseEntity ارث برده‌اند

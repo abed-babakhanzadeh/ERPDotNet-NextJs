@@ -95,9 +95,18 @@ export const MENU_ITEMS: MenuItem[] = [
             icon: FilePlus,
             permission: "ProductEngineering.BOM.Create",
           },
+        ],
+      },
+
+      {
+        title: "گزارش ها",
+        // href: "/base-info/products",
+        icon: Package,
+        permission: "BaseInfo.Products",
+        submenu: [
           {
-            title: "گزارشات BOM",
-            // href: "/product-engineering/bom-reports",
+            title: "گزارش مصرف مواد",
+            href: "/product-engineering/reports/where-used",
             icon: ClipboardList,
             permission: "ProductEngineering.BOM.Reports",
           },

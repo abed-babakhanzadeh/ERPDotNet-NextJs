@@ -29,6 +29,9 @@ public record BOMDetailDto(
     string UnitName, // واحد سنجش ماده اولیه
     
     decimal Quantity,
+    decimal InputQuantity, // مقدار ورودی
+    int InputUnitId,       // واحد ورودی
+    string InputUnitName,  // نام واحد ورودی (برای نمایش)
     decimal WastePercentage,
     
     List<BOMSubstituteDto> Substitutes
