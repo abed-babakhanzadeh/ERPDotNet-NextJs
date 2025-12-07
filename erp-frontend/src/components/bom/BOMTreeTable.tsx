@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import {
   ChevronDown,
   ChevronLeft,
-  Box,
   Layers,
   Component,
   CircleDot,
@@ -12,7 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
-// اینترفیس دقیقاً منطبق با خروجی GetBOMTreeQuery
+// اینترفیس اصلاح شده: نام فیلدها باید دقیقاً مثل JSON خروجی سرور باشد
 export interface BOMTreeNodeDto {
   key: string;
   bomId: number | null;
@@ -20,11 +19,17 @@ export interface BOMTreeNodeDto {
   productName: string;
   productCode: string;
   unitName: string;
-  quantityPerParent: number;
+
+  quantity: number; // <--- اصلاح شد (قبلاً quantityPerParent بود)
   totalQuantity: number;
+
   wastePercentage: number;
   type: string;
-  hasChildren: boolean;
+
+  // سرور isRecursive می‌فرستد، اما ما اینجا بر اساس children چک می‌کنیم
+  // پس نیازی به hasChildren در اینترفیس نیست، اما اگر باشد باید isRecursive باشد
+  isRecursive: boolean;
+
   children: BOMTreeNodeDto[];
 }
 
@@ -79,6 +84,8 @@ function TreeRow({
   isRoot?: boolean;
 }) {
   const [expanded, setExpanded] = useState(true); // پیش‌فرض باز باشد
+
+  // بررسی وجود فرزندان برای نمایش آیکون و دکمه باز/بسته
   const hasChildren = node.children && node.children.length > 0;
 
   // تعیین آیکون بر اساس سطح
@@ -158,7 +165,8 @@ function TreeRow({
 
         {/* مقدار پایه (ضریب مصرف در این مرحله) */}
         <td className="p-2 text-center font-mono text-muted-foreground dir-ltr">
-          {isRoot ? "1" : Number(node.quantityPerParent).toLocaleString()}
+          {/* اصلاح شده: استفاده از node.quantity به جای node.quantityPerParent */}
+          {isRoot ? "1" : Number(node.quantity || 0).toLocaleString()}
         </td>
 
         {/* ضایعات */}
@@ -174,7 +182,7 @@ function TreeRow({
 
         {/* تعداد کل (محاسبه شده) */}
         <td className="p-2 text-center font-mono font-medium dir-ltr">
-          {Number(node.totalQuantity).toLocaleString()}
+          {Number(node.totalQuantity || 0).toLocaleString()}
         </td>
       </tr>
 
