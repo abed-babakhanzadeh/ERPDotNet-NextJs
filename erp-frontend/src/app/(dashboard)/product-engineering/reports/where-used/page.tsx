@@ -30,10 +30,9 @@ interface ProductLookupDto {
   name: string;
 }
 
-// اصلاح اینترفیس بر اساس JSON سرور
 interface WhereUsedDto {
   id: number;
-  bomId: number; // <--- اصلاح شد: قبلاً bomHeaderId بود
+  bomId: number;
   bomTitle: string;
   bomVersion: string;
   bomStatus: string;
@@ -45,8 +44,16 @@ interface WhereUsedDto {
   unitName: string;
 }
 
-// نوع گزارش
 type ReportMode = "direct" | "multi" | "endItems";
+
+// تعریف یک اینترفیس برای استیت کلی صفحه
+interface PageState {
+  selectedProductId: number | null;
+  reportMode: ReportMode;
+  data: WhereUsedDto[];
+  totalCount: number;
+  productOptions: ProductLookupDto[]; // اضافه شد
+}
 
 export default function WhereUsedPage() {
   const { closeTab, activeTabId, addTab } = useTabs();
@@ -58,47 +65,58 @@ export default function WhereUsedPage() {
   const initialProductName = searchParams.get("productName") || "";
   const initialProductCode = searchParams.get("productCode") || "";
 
-  // --- استیت‌های صفحه ---
-  // این‌ها را در یک آبجکت جمع می‌کنیم تا راحت‌تر ذخیره شوند، اما جدا هم می‌شود
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(
-    initialProductId
-  );
-  const [data, setData] = useState<WhereUsedDto[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [totalCount, setTotalCount] = useState(0);
-  const [reportMode, setReportMode] = useState<ReportMode>("direct");
-
-  // --- اعمال Persistence ---
-  // ذخیره دیتای جدول و فیلترها در لوکال استوریج
-  useFormPersist(
-    "where-used-report-state",
-    { selectedProductId, reportMode, data, totalCount },
-    (savedState) => {
-      if (savedState.selectedProductId)
-        setSelectedProductId(savedState.selectedProductId);
-      if (savedState.reportMode) setReportMode(savedState.reportMode);
-      if (savedState.data) setData(savedState.data);
-      if (savedState.totalCount) setTotalCount(savedState.totalCount);
-    }
-  );
-
-  const [treeDialogOpen, setTreeDialogOpen] = useState(false);
-  const [selectedTreeRow, setSelectedTreeRow] = useState<WhereUsedDto | null>(
-    null
-  );
-
-  const [productOptions, setProductOptions] = useState<ProductLookupDto[]>(
-    initialProductId
+  // --- تجمیع Stateها در یک آبجکت برای کارکرد صحیح useFormPersist ---
+  const [reportState, setReportState] = useState<PageState>({
+    selectedProductId: initialProductId,
+    reportMode: "direct",
+    data: [],
+    totalCount: 0,
+    productOptions: initialProductId
       ? [
           {
             id: initialProductId,
             name: initialProductName,
             code: initialProductCode,
-          } as any,
+          },
         ]
-      : []
+      : [],
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [treeDialogOpen, setTreeDialogOpen] = useState(false);
+  const [selectedTreeRow, setSelectedTreeRow] = useState<WhereUsedDto | null>(
+    null
   );
+
   const [productLoading, setProductLoading] = useState(false);
+
+  // --- اتصال به LocalStorage ---
+  // این هوک به صورت خودکار تغییرات reportState را ذخیره و هنگام لود بازیابی می‌کند
+  useFormPersist("where-used-page-state", reportState, setReportState);
+
+  // --- هندل کردن پارامترهای URL ---
+  // اگر کاربر با لینک خاصی (مثلاً از BOM Form) آمد، آن را جایگزین دیتای ذخیره شده کن
+  useEffect(() => {
+    if (initialProductId) {
+      setReportState((prev) => ({
+        ...prev,
+        selectedProductId: initialProductId,
+        // اگر کالا عوض شده، آپشن‌های کامبوباکس را هم آپدیت کن تا نامش نمایش داده شود
+        productOptions: initialProductName
+          ? [
+              {
+                id: initialProductId,
+                name: initialProductName,
+                code: initialProductCode,
+              },
+            ]
+          : prev.productOptions,
+      }));
+      // بلافاصله فچ کن
+      fetchReport(initialProductId, reportState.reportMode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialProductId]);
 
   const handleProductSearch = async (term: string) => {
     setProductLoading(true);
@@ -108,18 +126,24 @@ export default function WhereUsedPage() {
         pageSize: 20,
         searchTerm: term,
       });
-      setProductOptions(res.data.items || []);
+      const newOptions = res.data.items || [];
+      // آپدیت در reportState
+      setReportState((prev) => ({
+        ...prev,
+        productOptions: newOptions,
+      }));
     } finally {
       setProductLoading(false);
     }
   };
 
-  const fetchReport = async (prodId: number | null) => {
+  // تابع فچ که حالا مستقل از استیت کار می‌کند (برای رفع مشکل closure)
+  const fetchReport = async (prodId: number | null, mode: ReportMode) => {
     if (!prodId) return;
     setLoading(true);
     try {
-      const isMulti = reportMode !== "direct";
-      const isEndItems = reportMode === "endItems";
+      const isMulti = mode !== "direct";
+      const isEndItems = mode === "endItems";
 
       const res = await apiClient.post("/BOMs/where-used", {
         pageNumber: 1,
@@ -129,17 +153,18 @@ export default function WhereUsedPage() {
         endItemsOnly: isEndItems,
       });
 
-      // مپ کردن و ساختن ID یکتا برای کلید جدول
       const mappedItems = (res.data.items || []).map((item: any) => ({
         ...item,
-        // نکته مهم: اگر سرور bomId می‌فرستد، اینجا نیازی به تغییر نام نیست
-        // چون اینترفیس را درست کردیم، خود به خود مپ می‌شود.
-        // فقط یک id فرانت‌اندی برای key جدول می‌سازیم:
+        // ساخت آیدی یکتا برای کلید جدول
         id: (item.bomId || item.bomHeaderId) + "_" + Math.random(),
       }));
 
-      setData(mappedItems);
-      setTotalCount(res.data.totalCount || 0);
+      // آپدیت استیت کلی
+      setReportState((prev) => ({
+        ...prev,
+        data: mappedItems,
+        totalCount: res.data.totalCount || 0,
+      }));
     } catch (error) {
       toast.error("خطا در دریافت گزارش");
     } finally {
@@ -147,14 +172,17 @@ export default function WhereUsedPage() {
     }
   };
 
-  // اگر پارامتر URL وجود داشت، اولویت با آن است و باید فچ شود
-  useEffect(() => {
-    if (initialProductId) {
-      setSelectedProductId(initialProductId); // آپدیت استیت
-      fetchReport(initialProductId);
+  const onSearchClick = () => {
+    fetchReport(reportState.selectedProductId, reportState.reportMode);
+  };
+
+  // وقتی مود گزارش عوض می‌شود، اگر کالایی انتخاب شده باشد، دوباره فچ کن
+  const handleModeChange = (newMode: ReportMode) => {
+    setReportState((prev) => ({ ...prev, reportMode: newMode }));
+    if (reportState.selectedProductId) {
+      fetchReport(reportState.selectedProductId, newMode);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialProductId]);
+  };
 
   const columns: ColumnConfig[] = useMemo(
     () => [
@@ -218,7 +246,6 @@ export default function WhereUsedPage() {
   );
 
   const handleOpenBOM = (row: WhereUsedDto) => {
-    // اصلاح: استفاده از bomId صحیح
     const idToOpen = row.bomId;
     if (!idToOpen) {
       toast.error("شناسه BOM نامعتبر است");
@@ -261,8 +288,8 @@ export default function WhereUsedPage() {
                 انتخاب قطعه / ماده اولیه:
               </label>
               <TableLookupCombobox<ProductLookupDto>
-                value={selectedProductId}
-                items={productOptions}
+                value={reportState.selectedProductId}
+                items={reportState.productOptions}
                 loading={productLoading}
                 columns={[
                   { key: "code", label: "کد" },
@@ -272,17 +299,22 @@ export default function WhereUsedPage() {
                 displayFields={["code", "name"]}
                 onSearch={handleProductSearch}
                 onOpenChange={(isOpen) => {
-                  if (isOpen && productOptions.length === 0)
+                  if (isOpen && reportState.productOptions.length === 0)
                     handleProductSearch("");
                 }}
-                onValueChange={(id) => setSelectedProductId(id as number)}
+                onValueChange={(id) =>
+                  setReportState((prev) => ({
+                    ...prev,
+                    selectedProductId: id as number,
+                  }))
+                }
                 placeholder="جستجوی کالا..."
               />
             </div>
 
             <Button
-              onClick={() => fetchReport(selectedProductId)}
-              disabled={!selectedProductId || loading}
+              onClick={onSearchClick}
+              disabled={!reportState.selectedProductId || loading}
               className="mb-[1px]"
             >
               <Search className="ml-2 w-4 h-4" />
@@ -295,9 +327,8 @@ export default function WhereUsedPage() {
               نوع گزارش:
             </Label>
             <RadioGroup
-              defaultValue="direct"
-              value={reportMode}
-              onValueChange={(v) => setReportMode(v as ReportMode)}
+              value={reportState.reportMode}
+              onValueChange={(v) => handleModeChange(v as ReportMode)}
               className="flex flex-row gap-6"
             >
               <div className="flex items-center space-x-2 space-x-reverse">
@@ -326,8 +357,8 @@ export default function WhereUsedPage() {
         <div className="flex-1 border rounded-lg bg-card overflow-hidden">
           <DataTable<WhereUsedDto>
             columns={columns}
-            data={data}
-            rowCount={totalCount}
+            data={reportState.data}
+            rowCount={reportState.totalCount}
             pagination={{ pageIndex: 0, pageSize: 100 }}
             pageCount={1}
             onPaginationChange={() => {}}
@@ -347,7 +378,6 @@ export default function WhereUsedPage() {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
-                        // سایز دکمه اصلاح شد
                         variant="ghost"
                         className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50"
                         onClick={(e) => {
@@ -364,7 +394,6 @@ export default function WhereUsedPage() {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
-                        // سایز دکمه اصلاح شد
                         variant="ghost"
                         className="h-8 w-8 p-0 text-purple-600 hover:bg-purple-50"
                         onClick={(e) => {
@@ -388,10 +417,9 @@ export default function WhereUsedPage() {
         <VisualTreeDialog
           open={treeDialogOpen}
           onClose={() => setTreeDialogOpen(false)}
-          // اصلاح: استفاده از bomId صحیح برای ارسال به دیالوگ
           bomId={selectedTreeRow.bomId}
           rootProductName={selectedTreeRow.parentProductName}
-          highlightProductId={selectedProductId}
+          highlightProductId={reportState.selectedProductId}
         />
       )}
     </div>
