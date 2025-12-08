@@ -1,7 +1,7 @@
 "use client";
-import React, { useEffect } from "react";
+import React from "react";
 import { clsx } from "clsx";
-import { UploadCloud, Trash2, X } from "lucide-react";
+import { UploadCloud, X } from "lucide-react";
 import PersianDatePicker from "@/components/ui/PersianDatePicker";
 
 export type FieldType =
@@ -53,23 +53,22 @@ export default function AutoForm({
   ) => {
     const file = e.target.files?.[0] || null;
     onChange(name, file);
-    // ریست کردن ولیو اینپوت تا اگر همان فایل دوباره انتخاب شد ایونت فایر شود
     e.target.value = "";
   };
 
   const handleRemoveFile = (name: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // جلوگیری از باز شدن پنجره انتخاب فایل
+    e.stopPropagation();
     onChange(name, null);
   };
 
   const commonInputClasses =
-    "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200";
+    "flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs ring-offset-background file:border-0 file:bg-transparent file:text-xs file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200";
 
   return (
     <div
       className={clsx(
-        // تغییر ۳: در صفحات خیلی بزرگ (xl) چهار ستون، در بزرگ (lg) سه ستون
-        "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-6",
+        // گرید فشرده‌تر با فاصله کمتر
+        "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-3",
         className
       )}
     >
@@ -81,24 +80,21 @@ export default function AutoForm({
           <div
             key={field.name}
             className={clsx(
-              "space-y-2",
-              // تغییر ۴: هندل کردن colSpan در گریدهای جدید
-              // اگر colSpan=2 باشد در حالت ۴ ستونه ۲ خانه اشغال می‌کند.
-              // اگر می‌خواهید کاملاً تمام عرض باشد باید کلاس col-span-full بدهید.
+              "space-y-1",
               isFullWidth
                 ? "md:col-span-2 lg:col-span-3 xl:col-span-4"
                 : "col-span-1"
             )}
           >
-            {/* Label */}
+            {/* Label - کوچکتر */}
             {field.type !== "checkbox" && (
-              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-1">
+              <label className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-1">
                 {field.label}
                 {field.required && <span className="text-destructive">*</span>}
               </label>
             )}
 
-            {/* Inputs based on type */}
+            {/* Inputs */}
             {["text", "number", "email", "password"].includes(field.type) && (
               <input
                 type={field.type}
@@ -111,7 +107,6 @@ export default function AutoForm({
               />
             )}
 
-            {/* هندل کردن تاریخ شمسی */}
             {field.type === "date" && (
               <PersianDatePicker
                 value={fieldValue}
@@ -119,7 +114,8 @@ export default function AutoForm({
                 disabled={loading || field.disabled}
                 required={field.required}
                 placeholder={field.placeholder}
-                hasError={!fieldValue && field.required} // شرط ساده ارور
+                hasError={!fieldValue && field.required}
+                className="h-8"
               />
             )}
 
@@ -141,7 +137,7 @@ export default function AutoForm({
                     </option>
                   ))}
                 </select>
-                <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                <div className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground">
                   <svg
                     width="10"
                     height="6"
@@ -163,7 +159,7 @@ export default function AutoForm({
 
             {field.type === "textarea" && (
               <textarea
-                className={clsx(commonInputClasses, "min-h-[100px] resize-y")}
+                className={clsx(commonInputClasses, "min-h-[80px] resize-y")}
                 placeholder={field.placeholder}
                 value={fieldValue || ""}
                 onChange={(e) => onChange(field.name, e.target.value)}
@@ -173,29 +169,29 @@ export default function AutoForm({
             )}
 
             {field.type === "checkbox" && (
-              <div className="flex items-center gap-2 pt-2">
+              <div className="flex items-center gap-2 pt-1">
                 <input
                   type="checkbox"
                   id={`field-${field.name}`}
-                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  className="h-3.5 w-3.5 rounded border-gray-300 text-primary focus:ring-primary"
                   checked={!!fieldValue}
                   onChange={(e) => onChange(field.name, e.target.checked)}
                   disabled={loading || field.disabled}
                 />
                 <label
                   htmlFor={`field-${field.name}`}
-                  className="text-sm font-medium leading-none cursor-pointer select-none"
+                  className="text-xs font-medium leading-none cursor-pointer select-none"
                 >
                   {field.label}
                 </label>
               </div>
             )}
 
-            {/* --- اصلاح شده: بخش فایل --- */}
+            {/* File Upload - فشرده‌تر */}
             {field.type === "file" && (
               <div
                 className={clsx(
-                  "relative flex items-center justify-center w-full border-2 border-dashed rounded-lg p-6 transition-colors",
+                  "relative flex items-center justify-center w-full border-2 border-dashed rounded-lg p-3 transition-colors",
                   "cursor-pointer group",
                   fieldValue instanceof File
                     ? "border-primary/50 bg-primary/5"
@@ -214,42 +210,40 @@ export default function AutoForm({
                   disabled={loading || field.disabled}
                 />
 
-                <div className="flex flex-col items-center justify-center text-center gap-2 w-full">
-                  {/* فقط اگر مقدار فایل واقعا از نوع File باشد پیش نمایش میدهیم */}
+                <div className="flex flex-col items-center justify-center text-center gap-1.5 w-full">
                   {fieldValue instanceof File ? (
                     <div className="relative w-full flex flex-col items-center">
-                      <div className="w-24 h-24 rounded-lg overflow-hidden shadow-sm relative border bg-white mb-2">
+                      <div className="w-16 h-16 rounded-lg overflow-hidden shadow-sm relative border bg-white mb-1">
                         <img
                           src={URL.createObjectURL(fieldValue)}
                           alt="Preview"
                           className="w-full h-full object-cover"
                         />
                       </div>
-                      <span className="text-xs text-primary font-medium truncate max-w-[200px]">
+                      <span className="text-[10px] text-primary font-medium truncate max-w-[150px]">
                         {fieldValue.name}
                       </span>
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="text-[9px] text-muted-foreground">
                         {(fieldValue.size / 1024 / 1024).toFixed(2)} MB
                       </span>
 
-                      {/* دکمه حذف */}
                       <button
                         type="button"
                         onClick={(e) => handleRemoveFile(field.name, e)}
-                        className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground p-1 rounded-full shadow-md hover:bg-destructive/90 transition z-10"
+                        className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground p-0.5 rounded-full shadow-md hover:bg-destructive/90 transition z-10"
                         title="حذف فایل"
                       >
-                        <X size={14} />
+                        <X size={12} />
                       </button>
                     </div>
                   ) : (
                     <>
-                      <UploadCloud className="w-8 h-8 text-muted-foreground/50 group-hover:text-primary/70 transition-colors" />
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-muted-foreground group-hover:text-primary/80 transition-colors">
-                          برای انتخاب تصویر کلیک کنید
+                      <UploadCloud className="w-6 h-6 text-muted-foreground/50 group-hover:text-primary/70 transition-colors" />
+                      <div className="space-y-0.5">
+                        <p className="text-xs font-medium text-muted-foreground group-hover:text-primary/80 transition-colors">
+                          کلیک برای انتخاب
                         </p>
-                        <p className="text-xs text-muted-foreground/70">
+                        <p className="text-[10px] text-muted-foreground/70">
                           JPG, PNG
                         </p>
                       </div>

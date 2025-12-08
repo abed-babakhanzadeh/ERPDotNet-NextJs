@@ -1,10 +1,19 @@
 "use client";
 
+import { Menu, Bell, Settings, User, LogOut, Moon, Sun } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
-import { LogOut, Bell, UserCircle, Menu } from "lucide-react";
-import { toast } from "sonner";
-import { clsx } from "clsx";
-import { ModeToggle } from "@/components/theme/ModeToggle"; // ایمپورت دکمه تم
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -12,60 +21,134 @@ interface HeaderProps {
 }
 
 export default function Header({ onMenuClick, isCollapsed }: HeaderProps) {
+  const { theme, setTheme } = useTheme();
   const router = useRouter();
 
   const handleLogout = () => {
     localStorage.removeItem("accessToken");
-    toast.info("از سیستم خارج شدید");
     router.push("/login");
   };
 
   return (
-    <header 
-      className={clsx(
-        // تغییر bg-white به bg-card و border-gray-200 به border-border
-        "fixed left-0 top-0 z-30 w-full border-b border-border bg-card px-4 py-3 shadow-sm transition-all duration-300 ease-in-out",
-        isCollapsed ? "md:w-[calc(100%-5rem)]" : "md:w-[calc(100%-16rem)]"
-      )}
-    >
-      <div className="flex items-center justify-between">
-        
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={onMenuClick}
-            // تغییر رنگ‌های هاور به حالت پویا
-            className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground md:hidden"
-          >
-            <Menu size={24} />
-          </button>
-          
-          <h2 className="text-lg font-semibold text-foreground">پیشخوان</h2>
-        </div>
+    <header className="fixed top-0 right-0 left-0 z-40 flex items-center justify-between border-b bg-card/98 backdrop-blur-md supports-[backdrop-filter]:bg-card/95 px-3 h-8 shadow-sm">
+      {/* Right Side - Logo & Menu */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onMenuClick}
+          className="h-6 w-6 md:hidden hover:bg-accent/80 rounded transition-colors"
+        >
+          <Menu size={14} />
+        </Button>
 
-        <div className="flex items-center gap-2 sm:gap-4">
-          
-          {/* دکمه تغییر تم اینجا اضافه شد */}
-          <ModeToggle />
-
-          <button className="relative text-muted-foreground hover:text-foreground">
-            <Bell size={20} />
-            <span className="absolute -top-1 -right-1 flex h-2 w-2 rounded-full bg-destructive"></span>
-          </button>
-
-          <div className="hidden items-center gap-2 border-r border-border pr-4 sm:flex">
-            <UserCircle size={24} className="text-muted-foreground" />
-            <span className="text-sm font-medium text-foreground">مدیر سیستم</span>
+        <div className="flex items-center gap-1.5">
+          <div className="h-5 w-5 rounded bg-primary flex items-center justify-center">
+            <span className="text-[10px] font-bold text-primary-foreground">
+              E
+            </span>
           </div>
-
-          <button 
-            onClick={handleLogout}
-            // استفاده از رنگ‌های destructive برای دکمه خروج
-            className="flex items-center gap-1 rounded-md bg-destructive/10 px-3 py-1.5 text-sm text-destructive transition-colors hover:bg-destructive/20"
-          >
-            <LogOut size={16} />
-            <span className="hidden sm:inline">خروج</span>
-          </button>
+          <span className="text-[11px] font-bold hidden sm:inline">
+            ERP System
+          </span>
         </div>
+      </div>
+
+      {/* Left Side - Actions */}
+      <div className="flex items-center gap-1">
+        {/* Theme Toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="h-6 w-6 rounded hover:bg-accent/80 transition-colors"
+        >
+          {theme === "dark" ? <Sun size={13} /> : <Moon size={13} />}
+        </Button>
+
+        {/* Notifications */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 rounded relative hover:bg-accent/80 transition-colors"
+            >
+              <Bell size={13} />
+              <Badge
+                variant="destructive"
+                className="absolute -top-0.5 -left-0.5 h-3.5 w-3.5 p-0 flex items-center justify-center text-[8px]"
+              >
+                3
+              </Badge>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-72">
+            <DropdownMenuLabel className="text-xs">اعلان‌ها</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <div className="max-h-64 overflow-y-auto">
+              <DropdownMenuItem className="text-[11px] py-2">
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-medium">سفارش جدید ثبت شد</span>
+                  <span className="text-muted-foreground text-[10px]">
+                    5 دقیقه پیش
+                  </span>
+                </div>
+              </DropdownMenuItem>
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Settings */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 rounded hover:bg-accent/80 transition-colors"
+        >
+          <Settings size={13} />
+        </Button>
+
+        {/* User Menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="h-6 px-1.5 gap-1 rounded hover:bg-accent/80 transition-colors"
+            >
+              <Avatar className="h-5 w-5">
+                <AvatarImage src="/avatar.png" />
+                <AvatarFallback className="text-[10px] bg-primary/10">
+                  ع
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-[11px] hidden sm:inline max-w-20 truncate">
+                عابد
+              </span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuLabel className="text-xs">
+              حساب کاربری
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-[11px]">
+              <User className="ml-2 h-3 w-3" />
+              پروفایل
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-[11px]">
+              <Settings className="ml-2 h-3 w-3" />
+              تنظیمات
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={handleLogout}
+              className="text-[11px] text-destructive"
+            >
+              <LogOut className="ml-2 h-3 w-3" />
+              خروج
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );

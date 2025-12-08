@@ -18,14 +18,13 @@ export default function CreateProductPage() {
   const [submitting, setSubmitting] = useState(false);
   const [units, setUnits] = useState<Unit[]>([]);
 
-  // استیت اولیه
   const [formData, setFormData] = useState<any>({
     code: "",
     name: "",
     technicalSpec: "",
     unitId: "",
     supplyType: 1,
-    file: null, // این باید نال باشد
+    file: null,
   });
 
   const [conversions, setConversions] = useState<any[]>([]);
@@ -53,7 +52,6 @@ export default function CreateProductPage() {
         colSpan: 1,
         accept: "image/png, image/jpeg",
       },
-      // ... سایر فیلدها ...
       {
         name: "code",
         label: "کد کالا",
@@ -95,7 +93,6 @@ export default function CreateProductPage() {
     [units]
   );
 
-  // هندلرهای تبدیل واحد (بدون تغییر) ...
   const addConversionRow = () =>
     setConversions([...conversions, { alternativeUnitId: "", factor: 1 }]);
   const removeConversionRow = (index: number) => {
@@ -116,7 +113,6 @@ export default function CreateProductPage() {
     try {
       let imagePath = null;
 
-      // آپلود عکس فقط اگر فایلی انتخاب شده باشد (و از نوع File باشد)
       if (formData.file && formData.file instanceof File) {
         const uploadData = new FormData();
         uploadData.append("file", formData.file);
@@ -130,7 +126,7 @@ export default function CreateProductPage() {
           console.error(uploadError);
           toast.error("خطا در آپلود عکس");
           setSubmitting(false);
-          return; // اگر آپلود عکس خطا داد، کالا را نساز
+          return;
         }
       }
 
@@ -139,7 +135,7 @@ export default function CreateProductPage() {
         unitId: Number(formData.unitId),
         supplyType: Number(formData.supplyType),
         imagePath: imagePath,
-        file: undefined, // حذف فایل خام از پی‌لود
+        file: undefined,
 
         conversions: conversions
           .filter((c) => c.alternativeUnitId && c.factor > 0)
@@ -171,38 +167,18 @@ export default function CreateProductPage() {
       isLoading={loadingUnits}
       onSubmit={handleSubmit}
       formId={FORM_ID}
-      // چون اینجا همیشه حالت "ایجاد" است، همیشه دکمه‌های ذخیره و انصراف را داریم
-      headerActions={
-        <>
-          <Button
-            type="button"
-            // variant="ghost"
-            onClick={() => closeTab(activeTabId)}
-            disabled={submitting}
-            className="h-9 gap-2 text-muted-foreground hover:text-foreground"
-          >
-            <X size={16} />
-            انصراف
-          </Button>
-
-          <Button
-            type="submit"
-            form={FORM_ID} // اتصال به فرم
-            disabled={submitting}
-            className="h-9 gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-          >
-            {submitting ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Save size={16} />
-            )}
-            {submitting ? "در حال ثبت..." : "ثبت کالا"}
-          </Button>
-        </>
+      onCancel={() => closeTab(activeTabId)}
+      saveDisabled={submitting}
+      saveLabel={submitting ? "در حال ثبت..." : "ثبت کالا"}
+      saveIcon={
+        submitting ? (
+          <Loader2 size={14} className="animate-spin" />
+        ) : (
+          <Save size={14} />
+        )
       }
     >
-      {/* تغییر ۵: استفاده از flex-grow برای پر کردن فضا اگر نیاز بود */}
-      <div className="bg-card border rounded-lg p-6 shadow-sm">
+      <div className="bg-card border rounded-lg p-4 md:p-6 shadow-sm">
         <AutoForm
           fields={formFields}
           data={formData}
@@ -213,30 +189,32 @@ export default function CreateProductPage() {
         />
       </div>
 
-      {/* بخش تبدیل واحدها (بدون تغییر) */}
-      <div className="bg-card border rounded-lg p-4 mt-4 shadow-sm relative">
-        <div className="flex items-center justify-between">
+      {/* بخش تبدیل واحدها */}
+      <div className="bg-card border rounded-lg p-3 md:p-4 mt-3 md:mt-4 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
             <ArrowLeftRight className="w-4 h-4 text-orange-500" />
             واحدهای فرعی
           </h3>
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={addConversionRow}
-            className="text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-md hover:bg-primary/20 transition"
+            className="h-6 text-[10px] px-2"
           >
             + افزودن واحد
-          </button>
+          </Button>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-2">
           {conversions.map((row, index) => (
             <div
               key={index}
-              className="flex flex-wrap sm:flex-nowrap items-center gap-3 bg-muted/30 p-3 rounded-lg border"
+              className="flex flex-wrap md:flex-nowrap items-center gap-2 bg-muted/30 p-2 rounded-lg border"
             >
               <select
-                className="flex-1 min-w-[120px] h-9 rounded-md border border-input bg-background px-3 text-sm"
+                className="flex-1 min-w-[120px] h-8 rounded-md border border-input bg-background px-2 text-xs"
                 value={row.alternativeUnitId}
                 onChange={(e) =>
                   updateConversionRow(
@@ -255,28 +233,30 @@ export default function CreateProductPage() {
                     </option>
                   ))}
               </select>
-              <span className="text-xs text-muted-foreground">=</span>
+              <span className="text-[10px] text-muted-foreground">=</span>
               <input
                 type="number"
                 step="0.001"
                 placeholder="ضریب"
-                className="w-24 h-9 rounded-md border border-input bg-background px-3 text-center text-sm font-semibold"
+                className="w-20 h-8 rounded-md border border-input bg-background px-2 text-center text-xs font-semibold"
                 value={row.factor}
                 onChange={(e) =>
                   updateConversionRow(index, "factor", Number(e.target.value))
                 }
               />
-              <span className="text-xs text-muted-foreground min-w-[60px]">
+              <span className="text-[10px] text-muted-foreground min-w-[50px]">
                 {units.find((u) => u.id == formData.unitId)?.title ||
                   "واحد اصلی"}
               </span>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon"
                 onClick={() => removeConversionRow(index)}
-                className="h-9 w-9 flex items-center justify-center text-destructive hover:bg-destructive/10 rounded-md transition ml-auto sm:ml-0"
+                className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded ml-auto md:ml-0"
               >
-                <Trash2 size={16} />
-              </button>
+                <Trash2 size={14} />
+              </Button>
             </div>
           ))}
         </div>

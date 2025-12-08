@@ -60,24 +60,32 @@ export function DataTablePagination({
   );
 
   return (
-    <div className="flex items-center justify-between px-2 py-4 no-print border-t bg-muted/30">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0 px-2 py-3 sm:py-4 no-print border-t bg-muted/30">
       {/* اطلاعات سمت چپ */}
-      <div className="flex items-center gap-6">
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">نمایش</span>
-          <span className="font-medium text-foreground">
+      <div className="flex items-center gap-3 sm:gap-6 text-xs w-full sm:w-auto justify-center sm:justify-start">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <span className="text-muted-foreground text-[10px] sm:text-xs">
+            نمایش
+          </span>
+          <span className="font-medium text-foreground text-[10px] sm:text-xs">
             {startRow} تا {endRow}
           </span>
-          <span className="text-muted-foreground">از</span>
-          <span className="font-medium text-primary">{rowCount}</span>
-          <span className="text-muted-foreground">ردیف</span>
+          <span className="text-muted-foreground text-[10px] sm:text-xs">
+            از
+          </span>
+          <span className="font-medium text-primary text-[10px] sm:text-xs">
+            {rowCount}
+          </span>
+          <span className="text-muted-foreground text-[10px] sm:text-xs">
+            ردیف
+          </span>
         </div>
 
-        <div className="h-4 w-px bg-border" />
+        <div className="hidden sm:block h-4 w-px bg-border" />
 
         {/* تعداد ردیف در هر صفحه */}
         <div className="flex items-center gap-2">
-          <p className="text-sm text-muted-foreground whitespace-nowrap">
+          <p className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
             تعداد در صفحه:
           </p>
           <Select
@@ -86,12 +94,12 @@ export function DataTablePagination({
               setPageSize(Number(value));
             }}
           >
-            <SelectTrigger className="h-9 w-[75px] text-sm">
+            <SelectTrigger className="h-7 sm:h-9 w-[60px] sm:w-[75px] text-[10px] sm:text-xs">
               <SelectValue placeholder={pagination.pageSize} />
             </SelectTrigger>
             <SelectContent side="top">
               {[10, 20, 30, 50, 100].map((size) => (
-                <SelectItem key={size} value={`${size}`}>
+                <SelectItem key={size} value={`${size}`} className="text-xs">
                   {size}
                 </SelectItem>
               ))}
@@ -101,20 +109,20 @@ export function DataTablePagination({
       </div>
 
       {/* کنترل‌های صفحه‌بندی */}
-      <div className="flex items-center gap-2">
-        {/* اولین صفحه */}
+      <div className="flex items-center gap-1 sm:gap-2">
+        {/* اولین صفحه - فقط دسکتاپ */}
         <Button
           variant="outline"
           size="icon"
           className={cn(
-            "hidden h-9 w-9 lg:flex transition-all",
+            "hidden lg:flex h-7 w-7 sm:h-9 sm:w-9 transition-all",
             pagination.pageIndex === 0 && "opacity-50"
           )}
           onClick={() => setPageIndex(0)}
           disabled={pagination.pageIndex === 0}
         >
           <span className="sr-only">برو به اولین صفحه</span>
-          <ChevronsRight className="h-4 w-4" />
+          <ChevronsRight className="h-3 w-3 sm:h-4 sm:w-4" />
         </Button>
 
         {/* صفحه قبل */}
@@ -122,19 +130,19 @@ export function DataTablePagination({
           variant="outline"
           size="icon"
           className={cn(
-            "h-9 w-9 transition-all",
+            "h-7 w-7 sm:h-9 sm:w-9 transition-all",
             pagination.pageIndex === 0 && "opacity-50"
           )}
           onClick={() => setPageIndex(pagination.pageIndex - 1)}
           disabled={pagination.pageIndex === 0}
         >
           <span className="sr-only">برو به صفحه قبل</span>
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
         </Button>
 
-        {/* نمایش و ویرایش شماره صفحه */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground whitespace-nowrap">
+        {/* نمایش و ویرایش شماره صفحه - فشرده‌تر در موبایل */}
+        <div className="flex items-center gap-1 sm:gap-2">
+          <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap hidden sm:inline">
             صفحه
           </span>
           <Input
@@ -143,10 +151,10 @@ export function DataTablePagination({
             max={pageCount > 0 ? pageCount : 1}
             value={pageCount > 0 ? pagination.pageIndex + 1 : 1}
             onChange={handlePageInputChange}
-            className="h-9 w-16 text-center text-sm font-medium"
+            className="h-7 w-12 sm:h-9 sm:w-16 text-center text-[10px] sm:text-xs font-medium"
             disabled={pageCount <= 1}
           />
-          <span className="text-sm text-muted-foreground whitespace-nowrap">
+          <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
             از {pageCount}
           </span>
         </div>
@@ -156,29 +164,29 @@ export function DataTablePagination({
           variant="outline"
           size="icon"
           className={cn(
-            "h-9 w-9 transition-all",
+            "h-7 w-7 sm:h-9 sm:w-9 transition-all",
             pagination.pageIndex >= pageCount - 1 && "opacity-50"
           )}
           onClick={() => setPageIndex(pagination.pageIndex + 1)}
           disabled={pagination.pageIndex >= pageCount - 1}
         >
           <span className="sr-only">برو به صفحه بعد</span>
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4" />
         </Button>
 
-        {/* آخرین صفحه */}
+        {/* آخرین صفحه - فقط دسکتاپ */}
         <Button
           variant="outline"
           size="icon"
           className={cn(
-            "hidden h-9 w-9 lg:flex transition-all",
+            "hidden lg:flex h-7 w-7 sm:h-9 sm:w-9 transition-all",
             pagination.pageIndex >= pageCount - 1 && "opacity-50"
           )}
           onClick={() => setPageIndex(pageCount - 1)}
           disabled={pagination.pageIndex >= pageCount - 1}
         >
-          <span className="sr-only">برو به آخرین صفچه</span>
-          <ChevronsLeft className="h-4 w-4" />
+          <span className="sr-only">برو به آخرین صفحه</span>
+          <ChevronsLeft className="h-3 w-3 sm:h-4 sm:w-4" />
         </Button>
       </div>
     </div>

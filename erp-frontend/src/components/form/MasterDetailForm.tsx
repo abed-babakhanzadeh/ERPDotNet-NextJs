@@ -44,32 +44,29 @@ export default function MasterDetailForm({
       formId={formId}
       headerActions={headerActions}
     >
-      <div className="flex flex-col gap-6 h-full">
-        {/* 1. Header Section */}
-        {/* جهت هدر را هم صراحتا راست‌چین میکنیم */}
-        <div className="bg-card border rounded-lg p-5 shadow-sm" dir="rtl">
+      <div className="flex flex-col gap-3 h-full">
+        {/* 1. Header Section - فشرده‌تر */}
+        <div className="bg-card border rounded-lg p-3 shadow-sm" dir="rtl">
           {headerContent}
         </div>
 
-        {/* 2. Details Section (Tabs) */}
+        {/* 2. Details Section (Tabs) - فشرده‌تر */}
         <div className="flex-1 bg-card border rounded-lg shadow-sm overflow-hidden flex flex-col">
-          {/* تغییر ۱: اضافه کردن dir="rtl" به کامپوننت Tabs */}
           <Tabs
             defaultValue={tabs[0]?.key}
             className="flex flex-col h-full"
             dir="rtl"
           >
-            <div className="border-b px-4 bg-muted/20">
-              {/* تغییر ۲: استفاده از justify-start که در حالت RTL یعنی شروع از راست */}
-              <TabsList className="bg-transparent h-12 p-0 gap-6 w-full justify-start">
+            <div className="border-b px-3 bg-muted/20">
+              <TabsList className="bg-transparent h-10 p-0 gap-4 w-full justify-start">
                 {tabs.map((tab) => (
                   <TabsTrigger
                     key={tab.key}
                     value={tab.key}
-                    className="h-full rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 font-medium text-muted-foreground data-[state=active]:text-foreground transition-all"
+                    className="h-full rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 font-medium text-xs text-muted-foreground data-[state=active]:text-foreground transition-all"
                   >
-                    <div className="flex items-center gap-2">
-                      {tab.icon && <tab.icon className="w-4 h-4" />}
+                    <div className="flex items-center gap-1.5">
+                      {tab.icon && <tab.icon className="w-3.5 h-3.5" />}
                       {tab.label}
                     </div>
                   </TabsTrigger>
@@ -77,12 +74,12 @@ export default function MasterDetailForm({
               </TabsList>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-0 bg-white dark:bg-zinc-950">
+            <div className="flex-1 overflow-y-auto p-0 bg-white dark:bg-zinc-950 custom-scrollbar">
               {tabs.map((tab) => (
                 <TabsContent
                   key={tab.key}
                   value={tab.key}
-                  className="h-full m-0 p-4 data-[state=inactive]:hidden"
+                  className="h-full m-0 p-3 data-[state=inactive]:hidden"
                 >
                   {tab.content}
                 </TabsContent>
