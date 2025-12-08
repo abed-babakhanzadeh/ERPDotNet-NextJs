@@ -31,9 +31,10 @@ export type ColumnFilter = {
   conditions: FilterCondition[];
 };
 
+// types.ts
 export type ColumnConfig = {
-  key: string; // Allow any property name for flexibility
+  key: string;
   label: string;
-  type: "string" | "number" | "boolean";
+  type: "string" | "number" | "boolean" | "date"; // اضافه شدن date
   render?: (value: any, row: any) => React.ReactNode;
 };
