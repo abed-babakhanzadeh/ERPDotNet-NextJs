@@ -16,8 +16,15 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Loader2 } from "lucide-react";
+import {
+  MoreHorizontal,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  FilterX,
+} from "lucide-react";
 import type {
   SortConfig,
   ColumnFilter as AdvancedColumnFilter,
@@ -30,13 +37,14 @@ import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { Resizable } from "react-resizable";
 import { ColumnFilter } from "./column-filter";
+import { exportFilteredToExcel } from "@/utils/export-to-excel";
+import { useState } from "react";
 
 type PaginationState = {
   pageIndex: number;
   pageSize: number;
 };
 
-// Base interface برای تمام table rows
 interface TableRow {
   id: number | string;
   [key: string]: any;
@@ -70,6 +78,7 @@ interface DataTableProps<TData extends TableRow> {
 
   onEdit?: (row: TData) => void;
   onDelete?: (row: TData) => void;
+  onRefresh?: () => void;
 }
 
 export function DataTable<TData extends TableRow>({
@@ -93,6 +102,7 @@ export function DataTable<TData extends TableRow>({
   renderContextMenu,
   onEdit,
   onDelete,
+  onRefresh,
 }: DataTableProps<TData>) {
   const [contextMenuOpen, setContextMenuOpen] = React.useState(false);
   const [contextMenuRow, setContextMenuRow] = React.useState<TData | null>(
@@ -118,13 +128,19 @@ export function DataTable<TData extends TableRow>({
       setColumnWidths((prev) => ({ ...prev, [key]: size.width }));
     };
 
+  // رفع مشکل سورت: حالا سه حالت داریم null -> ascending -> descending -> null
   const handleSort = (key: string) => {
     onSortChange((prev) => {
+      // اگر ستون فعلی همان ستون کلیک شده است
       if (prev?.key === key) {
-        return prev.direction === "ascending"
-          ? { key, direction: "descending" }
-          : null;
+        // اگر ascending بود، به descending تبدیل شود
+        if (prev.direction === "ascending") {
+          return { key, direction: "descending" };
+        }
+        // اگر descending بود، سورت پاک شود (null)
+        return null;
       }
+      // اگر ستون جدید است، از ascending شروع کن
       return { key, direction: "ascending" };
     });
   };
@@ -165,14 +181,60 @@ export function DataTable<TData extends TableRow>({
     setContextMenuOpen(false);
     setContextMenuRow(null);
   };
-
+  const [isExporting, setIsExporting] = useState(false);
   const handleExport = () => {
-    console.log("Export triggered");
+    setIsExporting(true);
+    try {
+      exportFilteredToExcel(
+        data,
+        columns,
+        {
+          globalFilter,
+          columnFilters,
+          advancedFilters,
+        },
+        {
+          filename: `جدول_${new Date().toLocaleDateString("fa-IR")}.xlsx`,
+          sheetName: "داده‌ها",
+        }
+      );
+    } catch (error) {
+      console.error("خطا در خروجی اکسل:", error);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handlePrint = () => {
     window.print();
   };
+
+  // محاسبه تعداد فیلترهای فعال
+  const activeFiltersCount = React.useMemo(() => {
+    let count = 0;
+
+    // فیلتر سراسری
+    if (globalFilter) count++;
+
+    // فیلترهای ستونی ساده
+    Object.values(columnFilters).forEach((val) => {
+      if (val) count++;
+    });
+
+    // فیلترهای پیشرفته
+    advancedFilters.forEach((filter) => {
+      if (
+        filter.conditions.some((c) => {
+          if (["isEmpty", "isNotEmpty"].includes(c.operator)) return true;
+          return c.value !== "" && c.value !== null;
+        })
+      ) {
+        count++;
+      }
+    });
+
+    return count;
+  }, [globalFilter, columnFilters, advancedFilters]);
 
   return (
     <div className="w-full space-y-4">
@@ -182,13 +244,16 @@ export function DataTable<TData extends TableRow>({
         onClearAllFilters={onClearAllFilters}
         onExport={handleExport}
         onPrint={handlePrint}
+        activeFiltersCount={activeFiltersCount}
+        onRefresh={onRefresh}
+        isExporting={isExporting} // اضافه کن
       />
 
-      <div className="rounded-md border border-border printable-area bg-card">
-        <div className="relative max-h-[60vh] overflow-auto custom-scrollbar">
+      <div className="rounded-xl border border-border shadow-sm printable-area bg-card overflow-hidden">
+        <div className="relative max-h-[65vh] overflow-auto custom-scrollbar">
           <Table style={{ tableLayout: "fixed", width: "100%" }}>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent border-b border-border">
+            <TableHeader className="sticky top-0 z-20 bg-muted/80 backdrop-blur-sm">
+              <TableRow className="hover:bg-transparent border-b-2 border-border">
                 {columns.map((column) => (
                   <Resizable
                     key={column.key}
@@ -196,12 +261,12 @@ export function DataTable<TData extends TableRow>({
                     height={0}
                     onResize={handleResize(column.key)}
                     axis="x"
-                    minConstraints={[50, 0]}
-                    maxConstraints={[500, Infinity]}
+                    minConstraints={[80, 0]}
+                    maxConstraints={[600, Infinity]}
                   >
                     <TableHead
                       style={{ width: `${columnWidths[column.key]}px` }}
-                      className="bg-muted/50 text-muted-foreground"
+                      className="bg-muted/90 text-muted-foreground font-semibold"
                     >
                       <div className="flex items-center justify-between h-full overflow-hidden">
                         <DataTableColumnHeader
@@ -218,14 +283,14 @@ export function DataTable<TData extends TableRow>({
                   </Resizable>
                 ))}
                 <TableHead
-                  className="no-print text-center sticky top-0 z-10 bg-muted/50 text-muted-foreground"
+                  className="no-print text-center sticky top-0 z-10 bg-muted/90 text-muted-foreground font-semibold"
                   style={{ width: `${columnWidths.actions}px` }}
                 >
                   عملیات
                 </TableHead>
               </TableRow>
 
-              <TableRow className="no-print bg-muted/10 hover:bg-muted/10 border-b border-border">
+              <TableRow className="no-print bg-muted/50 hover:bg-muted/50 border-b border-border sticky top-[41px] z-10">
                 {columns.map((column) => (
                   <TableCell
                     key={column.key}
@@ -233,6 +298,7 @@ export function DataTable<TData extends TableRow>({
                       width: `${columnWidths[column.key]}px`,
                       maxWidth: `${columnWidths[column.key]}px`,
                     }}
+                    className="py-2"
                   >
                     <ColumnFilter
                       column={column}
@@ -255,13 +321,18 @@ export function DataTable<TData extends TableRow>({
                 <TableRow>
                   <TableCell
                     colSpan={columns.length + 1}
-                    className="h-24 text-center"
+                    className="h-32 text-center"
                   >
-                    <div className="flex justify-center items-center gap-2">
-                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                      <span className="text-muted-foreground">
-                        در حال بارگذاری اطلاعات...
-                      </span>
+                    <div className="flex flex-col justify-center items-center gap-3">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-muted-foreground">
+                          در حال بارگذاری اطلاعات
+                        </p>
+                        <p className="text-xs text-muted-foreground/70">
+                          لطفاً صبر کنید...
+                        </p>
+                      </div>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -272,8 +343,8 @@ export function DataTable<TData extends TableRow>({
                     onClick={() => handleRowClick(row)}
                     onContextMenu={(e) => handleContextMenu(e, row)}
                     className={cn(
-                      "cursor-pointer border-b border-border transition-colors",
-                      // نکته مهم: استفاده از !bg-orange-... برای اعمال اجباری رنگ روی حالت‌های Striped
+                      "cursor-pointer border-b border-border transition-colors h-2", // اضافه شدن h-10
+                      "hover:bg-muted/40",
                       selectedRowId === row.id
                         ? "!bg-orange-100 dark:!bg-orange-900/40 text-orange-900 dark:text-orange-100 hover:!bg-orange-200 dark:hover:!bg-orange-900/50"
                         : "hover:bg-muted/50"
@@ -286,6 +357,7 @@ export function DataTable<TData extends TableRow>({
                           width: `${columnWidths[column.key]}px`,
                           maxWidth: `${columnWidths[column.key]}px`,
                         }}
+                        className="py-2 px-3" // کاهش padding
                       >
                         <div className="truncate flex items-center">
                           {column.render ? (
@@ -294,16 +366,26 @@ export function DataTable<TData extends TableRow>({
                             <Badge
                               variant={row.isActive ? "default" : "destructive"}
                               className={cn(
-                                "text-white",
+                                "text-white font-medium shadow-sm",
                                 row.isActive
                                   ? "bg-emerald-500 hover:bg-emerald-600"
                                   : "bg-red-500 hover:bg-red-600"
                               )}
                             >
-                              {row.isActive ? "فعال" : "غیرفعال"}
+                              {row.isActive ? (
+                                <>
+                                  <CheckCircle2 className="w-3 h-3 ml-1" /> فعال
+                                </>
+                              ) : (
+                                <>
+                                  <XCircle className="w-3 h-3 ml-1" /> غیرفعال
+                                </>
+                              )}
                             </Badge>
                           ) : (
-                            String(row[column.key as keyof TData] ?? "—")
+                            <span className="text-sm">
+                              {String(row[column.key as keyof TData] ?? "—")}
+                            </span>
                           )}
                         </div>
                       </TableCell>
@@ -325,26 +407,30 @@ export function DataTable<TData extends TableRow>({
                           <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
-                              className="h-8 w-8 p-0 flex justify-center items-center rounded-md hover:bg-accent text-muted-foreground"
+                              className="h-8 w-8 p-0 flex justify-center items-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
                             >
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent
                             align="end"
-                            className="bg-popover border-border"
+                            className="bg-popover border-border w-48"
                           >
                             {onEdit && (
-                              <DropdownMenuItem onClick={() => onEdit(row)}>
-                                ویرایش
+                              <DropdownMenuItem
+                                onClick={() => onEdit(row)}
+                                className="cursor-pointer"
+                              >
+                                <span className="text-sm">ویرایش</span>
                               </DropdownMenuItem>
                             )}
+                            {onEdit && onDelete && <DropdownMenuSeparator />}
                             {onDelete && (
                               <DropdownMenuItem
                                 onClick={() => onDelete(row)}
-                                className="text-destructive"
+                                className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
                               >
-                                حذف
+                                <span className="text-sm">حذف</span>
                               </DropdownMenuItem>
                             )}
                           </DropdownMenuContent>
@@ -357,9 +443,19 @@ export function DataTable<TData extends TableRow>({
                 <TableRow>
                   <TableCell
                     colSpan={columns.length + 1}
-                    className="h-24 text-center text-muted-foreground"
+                    className="h-32 text-center"
                   >
-                    هیچ نتیجه‌ای یافت نشد.
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="p-3 rounded-full bg-muted">
+                        <FilterX className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        هیچ نتیجه‌ای یافت نشد
+                      </p>
+                      <p className="text-xs text-muted-foreground/70">
+                        فیلترهای خود را تغییر دهید یا جستجوی جدیدی انجام دهید
+                      </p>
+                    </div>
                   </TableCell>
                 </TableRow>
               )}
@@ -380,7 +476,7 @@ export function DataTable<TData extends TableRow>({
           <DropdownMenuContent
             align="start"
             onCloseAutoFocus={(e) => e.preventDefault()}
-            className="bg-popover border-border min-w-[160px]"
+            className="bg-popover border-border min-w-[180px]"
           >
             {contextMenuRow && renderContextMenu ? (
               renderContextMenu(contextMenuRow, closeContextMenu)
@@ -392,9 +488,13 @@ export function DataTable<TData extends TableRow>({
                       onEdit(contextMenuRow!);
                       closeContextMenu();
                     }}
+                    className="cursor-pointer"
                   >
                     ویرایش
                   </DropdownMenuItem>
+                )}
+                {contextMenuRow && onEdit && onDelete && (
+                  <DropdownMenuSeparator />
                 )}
                 {contextMenuRow && onDelete && (
                   <DropdownMenuItem
@@ -402,7 +502,7 @@ export function DataTable<TData extends TableRow>({
                       onDelete(contextMenuRow!);
                       closeContextMenu();
                     }}
-                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                    className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
                   >
                     حذف
                   </DropdownMenuItem>

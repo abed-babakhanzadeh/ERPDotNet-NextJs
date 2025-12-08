@@ -24,10 +24,10 @@
 
     --accent: 207 70% 70%;
     --accent-foreground: 222 84% 5%;
-    
+
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    
+
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 217 91% 60%;
@@ -38,7 +38,7 @@
   .dark {
     /* --- تم تاریک (Dark - ذغالی) --- */
     /* رنگ پس‌زمینه: ذغالی تیره (نه مشکی مطلق) */
-    --background: 224 15% 10%; 
+    --background: 224 15% 10%;
     --foreground: 210 20% 98%;
 
     /* رنگ کارت‌ها: کمی روشن‌تر از پس‌زمینه برای کنتراست */
@@ -91,10 +91,10 @@
 
     --accent: 207 70% 70%;
     --accent-foreground: 222 84% 5%;
-    
+
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    
+
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 217 91% 60%;
@@ -109,147 +109,215 @@
 }
 
 @layer components {
-    .react-resizable {
-      position: relative;
-      background-clip: padding-box;
-      .react-resizable-handle-se {
-        right: auto !important;
-        left: 0 !important;
-        bottom: 0 !important;
-        transform: rotate(90deg);
-      }
+  .react-resizable {
+    position: relative;
+    background-clip: padding-box;
+    .react-resizable-handle-se {
+      right: auto !important;
+      left: 0 !important;
+      bottom: 0 !important;
+      transform: rotate(90deg);
     }
+  }
 
-    .react-resizable-handle {
-      position: absolute;
-      width: 20px;
-      height: 100%;
-      top: 0;
-      right: -10px;
-      cursor: col-resize;
-      z-index: 10;
-    }
+  .react-resizable-handle {
+    position: absolute;
+    width: 20px;
+    height: 100%;
+    top: 0;
+    right: -10px;
+    cursor: col-resize;
+    z-index: 10;
+  }
 
-    [dir="rtl"] .react-resizable-handle {
-        right: auto;
-        left: -10px;
-    }
-    
-    .react-resizable-handle::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 9px;
-      width: 2px;
-      height: 100%;
-      background-color: hsl(var(--border));
-    }
-    
-    .table-header-gradient {
-        background: linear-gradient(to bottom, hsl(var(--muted) / 0.5), hsl(var(--muted) / 0.2));
-        @apply bg-card;
-    }
+  [dir="rtl"] .react-resizable-handle {
+    right: auto;
+    left: -10px;
+  }
 
-    /* کلاس‌های custom برای هدر و محتوا */
-    .bom-header {
-      @apply bg-white;
-    }
+  .react-resizable-handle::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 9px;
+    width: 2px;
+    height: 100%;
+    background-color: hsl(var(--border));
+  }
 
-    .dark .bom-header {
-      @apply bg-slate-800;
-    }
+  .table-header-gradient {
+    background: linear-gradient(
+      to bottom,
+      hsl(var(--muted) / 0.5),
+      hsl(var(--muted) / 0.2)
+    );
+    @apply bg-card;
+  }
 
-    .custom .bom-header {
-      @apply bg-purple-900;
-    }
+  /* کلاس‌های custom برای هدر و محتوا */
+  .bom-header {
+    @apply bg-white;
+  }
 
-    .bom-content {
-      @apply p-4 h-full bg-white;
-    }
+  .dark .bom-header {
+    @apply bg-slate-800;
+  }
 
-    .dark .bom-content {
-      @apply bg-slate-950;
-    }
+  .custom .bom-header {
+    @apply bg-purple-900;
+  }
 
-    .custom .bom-content {
-      @apply bg-purple-950;
-    }
+  .bom-content {
+    @apply p-4 h-full bg-white;
+  }
 
-    /* کلاس‌های جدید برای صفحات دیگر (Products, Units, Users, Dashboard) */
-    .page-header {
-      @apply bg-card text-card-foreground p-4 rounded-xl;
-    }
+  .dark .bom-content {
+    @apply bg-slate-950;
+  }
 
-    .dark .page-header {
-      @apply bg-slate-800 text-card-foreground;
-    }
+  .custom .bom-content {
+    @apply bg-purple-950;
+  }
 
-    .custom .page-header {
-      @apply bg-purple-900 text-primary-foreground;
-    }
+  /* کلاس‌های جدید برای صفحات دیگر (Products, Units, Users, Dashboard) */
+  .page-header {
+    @apply bg-card text-card-foreground p-4 rounded-xl;
+  }
 
-    .page-content {
-      @apply p-4 h-full bg-gray-50 text-foreground;
-    }
+  .dark .page-header {
+    @apply bg-slate-800 text-card-foreground;
+  }
 
-    .dark .page-content {
-      @apply bg-slate-900 text-foreground;
-    }
+  .custom .page-header {
+    @apply bg-purple-900 text-primary-foreground;
+  }
 
-    .custom .page-content {
-      @apply bg-purple-900 text-primary-foreground;
-    }
+  .page-content {
+    @apply p-4 h-full bg-gray-50 text-foreground;
+  }
 
-    /* headings inside page-header/content to ensure contrast */
-    .page-header h1,
-    .page-content h1,
-    .page-header h2,
-    .page-content h2 {
-      @apply text-foreground;
-    }
+  .dark .page-content {
+    @apply bg-slate-900 text-foreground;
+  }
 
-    /* Permission card (Roles page) */
-    .permission-card {
-      @apply rounded-2xl p-4 bg-card border border-border shadow-md;
-    }
+  .custom .page-content {
+    @apply bg-purple-900 text-primary-foreground;
+  }
 
-    .dark .permission-card {
-      @apply bg-slate-900;
-    }
+  /* headings inside page-header/content to ensure contrast */
+  .page-header h1,
+  .page-content h1,
+  .page-header h2,
+  .page-content h2 {
+    @apply text-foreground;
+  }
 
-    .custom .permission-card {
-      @apply bg-purple-900/90;
-    }
+  /* Permission card (Roles page) */
+  .permission-card {
+    @apply rounded-2xl p-4 bg-card border border-border shadow-md;
+  }
 
-    .permission-card-header {
-      @apply flex items-center justify-between gap-4 mb-4;
-    }
+  .dark .permission-card {
+    @apply bg-slate-900;
+  }
 
-    .permission-card-title {
-      @apply text-lg font-semibold text-foreground;
-    }
+  .custom .permission-card {
+    @apply bg-purple-900/90;
+  }
 
-    .permission-role-badge {
-      @apply text-sm px-2 py-1 rounded-full bg-primary/10 text-primary border border-primary/20;
-    }
+  .permission-card-header {
+    @apply flex items-center justify-between gap-4 mb-4;
+  }
 
-    .permission-tree-inner {
-      @apply rounded-md p-2;
-      max-height: 70vh;
-      overflow: auto;
-    }
+  .permission-card-title {
+    @apply text-lg font-semibold text-foreground;
+  }
 
-    .permission-tree-inner::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-    .permission-tree-inner::-webkit-scrollbar-thumb {
-      background: rgba(0,0,0,0.2);
-      border-radius: 8px;
-    }
-    .permission-tree-inner::-webkit-scrollbar-track {
-      background: transparent;
-    }
+  .permission-role-badge {
+    @apply text-sm px-2 py-1 rounded-full bg-primary/10 text-primary border border-primary/20;
+  }
+
+  .permission-tree-inner {
+    @apply rounded-md p-2;
+    max-height: 70vh;
+    overflow: auto;
+  }
+
+  .permission-tree-inner::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .permission-tree-inner::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+  }
+  .permission-tree-inner::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* اسکرول بار سفارشی */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* استایل چاپ */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .printable-area {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+  }
+
+  body {
+    background: white !important;
+  }
+}
+
+/* انیمیشن برای لودینگ */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* بهبود ظاهر ردیف انتخاب شده */
+.selected-row-highlight {
+  position: relative;
+}
+
+.selected-row-highlight::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: hsl(var(--primary));
+  border-radius: 0 4px 4px 0;
 }
 
 @media print {
