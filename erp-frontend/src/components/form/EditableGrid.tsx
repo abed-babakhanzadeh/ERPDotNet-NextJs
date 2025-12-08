@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import PersianDatePicker from "@/components/ui/PersianDatePicker";
 
-// ... (تایپ‌ها بدون تغییر) ...
 export type GridColumnType = "text" | "number" | "select" | "readonly" | "date";
 
 export interface GridColumn<T> {
@@ -59,42 +58,40 @@ export default function EditableGrid<T extends { id?: number | string }>({
   };
 
   return (
-    // تغییر ۱: اضافه کردن dir="rtl" به کانتینر اصلی
     <div className="flex flex-col h-full" dir="rtl">
-      <div className="border rounded-md overflow-hidden flex-1 relative bg-card">
-        <div className="overflow-auto max-h-[500px]">
-          <table className="w-full text-sm">
+      <div className="border rounded-lg overflow-hidden flex-1 relative bg-card shadow-sm">
+        <div className="overflow-auto max-h-[600px] custom-scrollbar">
+          <table className="w-full text-xs">
             <thead className="bg-muted/50 sticky top-0 z-10 border-b">
               <tr>
-                <th className="w-12 p-3 text-center text-muted-foreground font-medium">
+                <th className="w-10 p-2 text-center text-muted-foreground font-semibold text-[11px]">
                   #
                 </th>
                 {columns.map((col) => (
                   <th
                     key={String(col.key)}
-                    // تغییر ۲: اطمینان از text-right برای هدرها
-                    className="p-3 text-right font-medium text-muted-foreground"
+                    className="p-2 text-right font-semibold text-muted-foreground text-[11px]"
                     style={{ width: col.width }}
                   >
                     {col.title}{" "}
                     {col.required && <span className="text-red-500">*</span>}
                   </th>
                 ))}
-                {!readOnly && <th className="w-16 p-3 text-center"></th>}
+                {!readOnly && <th className="w-12 p-2 text-center"></th>}
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-border">
               {safeData.map((row, index) => (
                 <tr
-                  key={row.id || index} // استفاده از id برای key
+                  key={row.id || index}
                   className="group hover:bg-muted/20 transition-colors"
                 >
-                  <td className="p-2 text-center text-muted-foreground text-xs">
+                  <td className="p-2 text-center text-muted-foreground text-[11px]">
                     {index + 1}
                   </td>
 
                   {columns.map((col) => (
-                    <td key={String(col.key)} className="p-2">
+                    <td key={String(col.key)} className="p-1.5">
                       {col.render ? (
                         col.render(row, index)
                       ) : col.type === "select" ? (
@@ -104,12 +101,11 @@ export default function EditableGrid<T extends { id?: number | string }>({
                           onChange={(e) =>
                             handleCellChange(index, col.key, e.target.value)
                           }
-                          // تغییر ۳: اضافه کردن text-right به سلکت
                           className={cn(
-                            "w-full h-8 rounded border border-input bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary disabled:opacity-50 text-right",
+                            "w-full h-7 rounded border border-input bg-background px-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary disabled:opacity-50 text-right transition-all",
                             !row[col.key] &&
                               col.required &&
-                              "border-red-200 bg-red-50"
+                              "border-red-300 bg-red-50/50 dark:bg-red-900/10"
                           )}
                         >
                           <option value="">انتخاب...</option>
@@ -120,11 +116,10 @@ export default function EditableGrid<T extends { id?: number | string }>({
                           ))}
                         </select>
                       ) : col.type === "readonly" ? (
-                        <div className="px-2 py-1 bg-muted/20 rounded text-muted-foreground border border-transparent text-right">
+                        <div className="px-2 py-1 bg-muted/30 rounded text-muted-foreground border border-transparent text-right text-xs">
                           {String(row[col.key] || "-")}
                         </div>
                       ) : col.type === "date" ? (
-                        // --- اضافه کردن پشتیبانی از Date ---
                         <PersianDatePicker
                           value={String(row[col.key] || "")}
                           onChange={(newVal) =>
@@ -132,8 +127,7 @@ export default function EditableGrid<T extends { id?: number | string }>({
                           }
                           disabled={readOnly || loading || col.disabled}
                           required={col.required}
-                          // برای گرید بردر را حذف میکنیم تا تمیزتر شود یا استایل Input پیش‌فرض
-                          className="w-full"
+                          className="w-full h-7"
                         />
                       ) : (
                         <input
@@ -145,14 +139,13 @@ export default function EditableGrid<T extends { id?: number | string }>({
                             handleCellChange(index, col.key, e.target.value)
                           }
                           className={cn(
-                            "w-full h-8 rounded border border-input bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary disabled:opacity-50",
-                            // اعداد انگلیسی و چپ‌چین بمانند بهتر است، اما متن‌ها راست‌چین شوند
+                            "w-full h-7 rounded border border-input bg-background px-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary disabled:opacity-50 transition-all",
                             col.type === "number"
                               ? "text-left dir-ltr font-mono"
                               : "text-right",
                             !row[col.key] &&
                               col.required &&
-                              "border-red-200 bg-red-50"
+                              "border-red-300 bg-red-50/50 dark:bg-red-900/10"
                           )}
                         />
                       )}
@@ -160,15 +153,15 @@ export default function EditableGrid<T extends { id?: number | string }>({
                   ))}
 
                   {!readOnly && (
-                    <td className="p-2 text-center">
+                    <td className="p-1.5 text-center">
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={() => handleRemove(index)}
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={13} />
                       </Button>
                     </td>
                   )}
@@ -179,11 +172,11 @@ export default function EditableGrid<T extends { id?: number | string }>({
                 <tr>
                   <td
                     colSpan={columns.length + 2}
-                    className="p-8 text-center text-muted-foreground border-dashed"
+                    className="p-6 text-center text-muted-foreground border-dashed"
                   >
                     <div className="flex flex-col items-center gap-2">
-                      <AlertCircle className="w-8 h-8 opacity-20" />
-                      <span>هیچ ردیفی اضافه نشده است.</span>
+                      <AlertCircle className="w-6 h-6 opacity-20" />
+                      <span className="text-xs">هیچ ردیفی وجود ندارد.</span>
                     </div>
                   </td>
                 </tr>
@@ -191,19 +184,26 @@ export default function EditableGrid<T extends { id?: number | string }>({
             </tbody>
           </table>
         </div>
+
+        {/* Loading Bar */}
+        {loading && (
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200 dark:bg-gray-800 overflow-hidden">
+            <div className="h-full bg-blue-500 dark:bg-blue-600 animate-loading-bar"></div>
+          </div>
+        )}
       </div>
 
       {!readOnly && onAddRow && (
-        <div className="mt-3">
+        <div className="mt-2">
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={handleAdd}
             disabled={loading}
-            className="border-dashed border-2 hover:border-primary hover:bg-primary/5 text-muted-foreground hover:text-primary gap-2 w-full"
+            className="border-dashed border-2 hover:border-primary hover:bg-primary/5 text-muted-foreground hover:text-primary gap-1.5 w-full h-8 text-xs"
           >
-            <Plus size={16} />
+            <Plus size={14} />
             افزودن سطر جدید
           </Button>
         </div>

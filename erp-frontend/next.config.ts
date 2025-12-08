@@ -36,14 +36,13 @@
 //       {
 //         source: '/api/:path*',
 //         // لطفا این آدرس را با آدرس سرور Backend خود جایگزین کنید
-//         destination: 'http://localhost:5000/api/:path*', 
+//         destination: 'http://localhost:5000/api/:path*',
 //       },
 //     ]
 //   },
 // };
 
 // export default nextConfig;
-
 
 import type { NextConfig } from "next";
 

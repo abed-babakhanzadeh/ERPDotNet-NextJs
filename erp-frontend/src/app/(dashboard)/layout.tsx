@@ -13,7 +13,6 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -25,36 +24,35 @@ export default function DashboardLayout({
   }, [router]);
 
   return (
-    // تغییر ۱: حذف bg-gray-50 و استفاده از bg-background text-foreground
-    // استفاده از h-screen و overflow-hidden برای جلوگیری از اسکرول کل صفحه
-    <div className="flex h-screen overflow-hidden bg-background text-foreground transition-colors duration-300">
-      
-      <Sidebar 
-        isOpen={isSidebarOpen} 
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
+      {/* Sidebar */}
+      <Sidebar
+        isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
-        isCollapsed={isCollapsed} 
+        isCollapsed={isCollapsed}
         toggleCollapse={() => setIsCollapsed(!isCollapsed)}
       />
 
+      {/* Main Content Area */}
       <div
         className={clsx(
-          "relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden transition-all duration-300",
-          isCollapsed ? "md:mr-20" : "md:mr-64"
+          "relative flex flex-1 flex-col overflow-hidden transition-all duration-300",
+          isCollapsed ? "md:mr-16" : "md:mr-64"
         )}
       >
+        {/* Header - 32px */}
         <Header
           onMenuClick={() => setIsSidebarOpen(true)}
           isCollapsed={isCollapsed}
         />
 
-        <main className="flex-1 pt-16 flex flex-col">
-          {/* تغییر ۲: استایل‌دهی کانتینر تب‌ها با رنگ‌های تم */}
-          <div className="sticky top-16 z-20 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <TabsBar />
-          </div>
+        {/* Main Container - بدون padding-top اضافی */}
+        <main className="flex-1 flex flex-col overflow-hidden mt-8">
+          {/* TabsBar - بلافاصله بعد از Header */}
+          <TabsBar />
 
-          {/* تغییر ۳: حذف هرگونه bg-white اضافی */}
-          <div className="flex-1 p-4">
+          {/* Content Area */}
+          <div className="flex-1 min-h-0 overflow-auto bg-muted/5">
             {children}
           </div>
         </main>

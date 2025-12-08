@@ -4,7 +4,6 @@ import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { CustomThemeProvider } from "@/providers/CustomThemeProvider";
 import { ThemeCustomizer } from "@/components/theme/ThemeCustomizer";
-// اضافه کردن ایمپورت‌های جدید
 import { PermissionProvider } from "@/providers/PermissionProvider";
 import { TabsProvider } from "@/providers/TabsProvider";
 
@@ -20,25 +19,39 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fa" dir="rtl" suppressHydrationWarning>
-      <body className="bg-background text-foreground antialiased font-sans">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1"
+        />
+      </head>
+      <body className="bg-background text-foreground antialiased font-sans overflow-hidden">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
-          themes={['light', 'dark', 'custom']}
+          themes={["light", "dark", "custom"]}
         >
           <CustomThemeProvider>
-            {/* اضافه کردن PermissionProvider و TabsProvider در لایه بیرونی */}
             <PermissionProvider>
               <TabsProvider>
-                
-                {children}
-                
+                <div className="h-screen w-screen overflow-hidden">
+                  {children}
+                </div>
+
                 {/* ابزارهای شناور */}
                 <ThemeCustomizer />
-                <Toaster position="top-center" richColors />
-                
+                <Toaster
+                  position="top-center"
+                  richColors
+                  closeButton
+                  toastOptions={{
+                    className: "text-xs",
+                    duration: 3000,
+                  }}
+                />
               </TabsProvider>
             </PermissionProvider>
           </CustomThemeProvider>
