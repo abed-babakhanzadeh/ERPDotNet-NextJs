@@ -4,12 +4,11 @@ import React, { useMemo, useState } from "react";
 import { ColumnConfig } from "@/types";
 import apiClient from "@/services/apiClient";
 import { toast } from "sonner";
-import { Layers, Plus, Eye, Pencil, Copy, Trash2 } from "lucide-react";
+import { Plus, Eye, Pencil, Copy, Trash2, Network, Ruler } from "lucide-react";
 
 // Components
 import ProtectedPage from "@/components/ui/ProtectedPage";
 import PermissionGuard from "@/components/ui/PermissionGuard";
-import MasterDetailLayout from "@/components/ui/MasterDetailLayout";
 import { DataTable } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,9 +30,8 @@ import NewVersionDialog from "./NewVersionDialog";
 import { useServerDataTable } from "@/hooks/useServerDataTable";
 import { useTabs } from "@/providers/TabsProvider";
 import { useTabPrefetch } from "@/hooks/useTabPrefetch";
-import { Network } from "lucide-react";
 
-// رابط داده‌ای که از GetBOMsListQuery میاد
+// تایپ دادهای که از GetBOMsListQuery میاد
 interface BOMListDto {
   id: number;
   productName: string;
@@ -45,6 +43,15 @@ interface BOMListDto {
   isActive: boolean;
 }
 
+const PlaceholderWrapper: React.FC<{
+  children: React.ReactNode;
+  permission?: string;
+}> = ({ children }) => <div>{children}</div>;
+
+const ProtectedPagePlaceholder = ProtectedPage || PlaceholderWrapper;
+const PermissionGuardPlaceholder =
+  PermissionGuard || (({ children }) => <>{children}</>);
+
 export default function BOMsListPage() {
   const { addTab } = useTabs();
 
@@ -55,10 +62,10 @@ export default function BOMsListPage() {
   // Prefetch کردن صفحه ایجاد
   useTabPrefetch(["/product-engineering/boms/create"]);
 
-  // اتصال به کوئری
+  // اتصال به کنترلر
   const { tableProps, refresh } = useServerDataTable<BOMListDto>({
     endpoint: "/BOMs/search",
-    initialPageSize: 10,
+    initialPageSize: 30,
   });
 
   // --- تعریف ستون‌ها ---
@@ -176,7 +183,7 @@ export default function BOMsListPage() {
     }
   };
 
-  // --- رندر اکشن‌های ستون (آیکون‌ها) ---
+  // --- رندر اکشن‌های سطری (آیکونی‌ها) ---
   const renderRowActions = (row: BOMListDto) => {
     return (
       <TooltipProvider delayDuration={0}>
@@ -187,48 +194,48 @@ export default function BOMsListPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                className="h-6 w-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                 onClick={() => handleView(row)}
               >
-                <Eye size={16} />
+                <Eye size={14} />
               </Button>
             </TooltipTrigger>
             <TooltipContent>مشاهده جزئیات</TooltipContent>
           </Tooltip>
 
           {/* ویرایش */}
-          <PermissionGuard permission="ProductEngineering.BOM.Create">
+          <PermissionGuardPlaceholder permission="ProductEngineering.BOM.Create">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                  className="h-6 w-6 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                   onClick={() => handleEdit(row)}
                 >
-                  <Pencil size={16} />
+                  <Pencil size={14} />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>ویرایش</TooltipContent>
             </Tooltip>
-          </PermissionGuard>
+          </PermissionGuardPlaceholder>
 
           {/* نسخه جدید */}
-          <PermissionGuard permission="ProductEngineering.BOM.Create">
+          <PermissionGuardPlaceholder permission="ProductEngineering.BOM.Create">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                  className="h-6 w-6 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
                   onClick={() => handleOpenCopyModal(row)}
                 >
-                  <Copy size={16} />
+                  <Copy size={14} />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>ایجاد نسخه جدید</TooltipContent>
             </Tooltip>
-          </PermissionGuard>
+          </PermissionGuardPlaceholder>
 
           {/* دکمه درخت - بنفش */}
           <Tooltip>
@@ -236,31 +243,31 @@ export default function BOMsListPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                className="h-6 w-6 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
                 onClick={() => handleViewTree(row)}
               >
-                <Network size={16} />
+                <Network size={14} />
               </Button>
             </TooltipTrigger>
             <TooltipContent>ساختار درختی</TooltipContent>
           </Tooltip>
 
           {/* حذف */}
-          <PermissionGuard permission="ProductEngineering.BOM.Create">
+          <PermissionGuardPlaceholder permission="ProductEngineering.BOM.Create">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                  className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50"
                   onClick={() => handleDelete(row)}
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={14} />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>حذف</TooltipContent>
             </Tooltip>
-          </PermissionGuard>
+          </PermissionGuardPlaceholder>
         </div>
       </TooltipProvider>
     );
@@ -281,7 +288,7 @@ export default function BOMsListPage() {
           <span>مشاهده جزئیات</span>
         </DropdownMenuItem>
 
-        <PermissionGuard permission="ProductEngineering.BOM.Create">
+        <PermissionGuardPlaceholder permission="ProductEngineering.BOM.Create">
           <DropdownMenuItem
             onClick={() => {
               handleEdit(row);
@@ -327,26 +334,49 @@ export default function BOMsListPage() {
             <Trash2 className="w-4 h-4" />
             <span>حذف فرمول</span>
           </DropdownMenuItem>
-        </PermissionGuard>
+        </PermissionGuardPlaceholder>
       </>
     );
   };
 
   return (
-    <ProtectedPage permission="ProductEngineering.BOM">
-      <MasterDetailLayout
-        title="مدیریت فرمول‌های ساخت (BOM)"
-        icon={Layers}
-        actions={
-          <PermissionGuard permission="ProductEngineering.BOM.Create">
-            <Button onClick={handleCreate} className="h-9 gap-2 shadow-sm">
-              <Plus size={16} />
-              فرمول جدید
-            </Button>
-          </PermissionGuard>
-        }
-      >
-        <div className="page-content">
+    <ProtectedPagePlaceholder permission="ProductEngineering.BOM">
+      {/* Container اصلی با ارتفاع کامل */}
+      <div className="flex flex-col h-full bg-background">
+        {/* Fixed Header - با رنگ‌بندی بهتر */}
+        <div className="sticky top-0 z-50 flex items-center justify-between border-b bg-gradient-to-l from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 backdrop-blur supports-[backdrop-filter]:bg-card/90 px-4 py-2.5 shadow-sm h-12">
+          <div className="flex items-center gap-3 overflow-hidden min-w-0">
+            {/* Header فشرده - ارتفاع ثابت */}
+            <div className="flex items-center justify-between h-8 mb-2 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <Network className="h-5 w-5 text-primary" />
+                <h1 className="text-sm font-semibold">مدیریت BOM</h1>
+              </div>
+            </div>
+          </div>
+          <PermissionGuardPlaceholder permission="ProductEngineering.BOM.Create">
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={handleCreate}
+                    size="sm"
+                    className="h-7 gap-1.5 md:gap-2"
+                  >
+                    <Plus size={14} />
+                    <span className="hidden sm:inline text-xs">فرمول جدید</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-[10px] sm:hidden">
+                  فرمول جدید
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </PermissionGuardPlaceholder>
+        </div>
+
+        {/* DataTable - فضای باقیمانده */}
+        <div className="flex-1 min-h-0">
           <DataTable
             columns={columns}
             {...tableProps}
@@ -355,6 +385,7 @@ export default function BOMsListPage() {
           />
         </div>
 
+        {/* مودال نسخه جدید */}
         {selectedBOM && (
           <NewVersionDialog
             open={copyModalOpen}
@@ -367,7 +398,7 @@ export default function BOMsListPage() {
             productName={selectedBOM.productName}
           />
         )}
-      </MasterDetailLayout>
-    </ProtectedPage>
+      </div>
+    </ProtectedPagePlaceholder>
   );
 }

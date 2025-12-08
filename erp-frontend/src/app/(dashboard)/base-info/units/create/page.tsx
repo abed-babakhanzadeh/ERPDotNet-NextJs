@@ -3,161 +3,164 @@
 import { useState, useEffect, useMemo } from "react";
 import apiClient from "@/services/apiClient";
 import { toast } from "sonner";
-import { Unit } from "@/types";
-import { Loader2, Save, X } from "lucide-react";
+import { Unit } from "@/types/baseInfo";
+import { Ruler } from "lucide-react";
 import BaseFormLayout from "@/components/layout/BaseFormLayout";
 import { useTabs } from "@/providers/TabsProvider";
+import { useFormPersist } from "@/hooks/useFormPersist";
 import AutoForm, { FieldConfig } from "@/components/form/AutoForm";
-import { Button } from "@/components/ui/button";
 
 export default function CreateUnitPage() {
   const { closeTab, activeTabId } = useTabs();
+  const FORM_ID = "unit-create-form";
 
-  const [loadingInit, setLoadingInit] = useState(true);
+  const [loadingUnits, setLoadingUnits] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [units, setUnits] = useState<Unit[]>([]);
 
   const [formData, setFormData] = useState<any>({
     title: "",
     symbol: "",
-    precision: 0,
-    baseUnitId: "", // رشته خالی برای انتخاب نشده
+    baseUnitId: null,
     conversionFactor: 1,
     isActive: true,
   });
+
+  const { clearStorage } = useFormPersist(
+    "create-unit-draft",
+    formData,
+    setFormData
+  );
 
   useEffect(() => {
     apiClient
       .get<Unit[]>("/Units")
       .then((res) => setUnits(res.data))
-      .finally(() => setLoadingInit(false));
+      .catch(() => toast.error("خطا در دریافت واحدها"))
+      .finally(() => setLoadingUnits(false));
   }, []);
 
-  // کانفیگ فرم: فیلد ضریب را داینامیک می‌کنیم
-  const formFields: FieldConfig[] = useMemo(() => {
-    const fields: FieldConfig[] = [
+  const formFields: FieldConfig[] = useMemo(
+    () => [
       {
         name: "title",
         label: "عنوان واحد",
         type: "text",
         required: true,
         placeholder: "مثال: کیلوگرم",
+        colSpan: 2,
       },
       {
         name: "symbol",
-        label: "نماد (انگلیسی)",
+        label: "نماد",
         type: "text",
         required: true,
-        placeholder: "kg",
+        placeholder: "مثال: kg",
+        colSpan: 1,
       },
       {
-        name: "precision",
-        label: "تعداد اعشار",
-        type: "number",
-        required: true,
+        name: "isActive",
+        label: "واحد فعال است",
+        type: "checkbox",
+        colSpan: 1,
       },
       {
         name: "baseUnitId",
         label: "واحد پایه (اختیاری)",
         type: "select",
-        options: units.map((u) => ({
-          label: `${u.title} (${u.symbol})`,
-          value: u.id,
-        })),
+        options: [
+          { label: "--- بدون واحد پایه ---", value: null }, // ⭐ گزینه خالی
+          ...units.map((u) => ({ label: u.title, value: u.id })),
+        ],
+        placeholder: "انتخاب کنید...",
+        colSpan: 1,
       },
-      { name: "isActive", label: "واحد فعال است", type: "checkbox" },
-    ];
-
-    // فقط اگر واحد پایه انتخاب شده باشد، فیلد ضریب را اضافه کن
-    if (formData.baseUnitId) {
-      fields.splice(4, 0, {
-        // درج قبل از چک‌باکس
+      {
         name: "conversionFactor",
         label: "ضریب تبدیل",
         type: "number",
-        required: true,
-        placeholder: "1",
-      });
-    }
-
-    return fields;
-  }, [units, formData.baseUnitId]);
+        step: 0.001,
+        disabled: !formData.baseUnitId,
+        colSpan: 1,
+      },
+    ],
+    [units, formData.baseUnitId]
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+
     try {
       const payload = {
         ...formData,
         baseUnitId: formData.baseUnitId ? Number(formData.baseUnitId) : null,
         conversionFactor: formData.baseUnitId
           ? Number(formData.conversionFactor)
-          : 1,
+          : null,
       };
 
       await apiClient.post("/Units", payload);
-      toast.success("واحد جدید ایجاد شد");
+      toast.success("واحد با موفقیت ایجاد شد");
+
+      clearStorage();
       closeTab(activeTabId);
     } catch (error: any) {
-      toast.error("خطا در ثبت اطلاعات");
+      console.error(error);
+      const msg = error.response?.data?.errors
+        ? Object.values(error.response.data.errors).flat().join(" - ")
+        : "خطا در ثبت واحد";
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const FORM_ID = "create-unit-form";
-
   return (
     <BaseFormLayout
-      title="تعریف واحد سنجش"
-      isLoading={loadingInit}
+      title="تعریف واحد جدید"
+      isLoading={loadingUnits}
+      isSubmitting={submitting}
       onSubmit={handleSubmit}
+      onCancel={() => closeTab(activeTabId)}
       formId={FORM_ID}
-      headerActions={
-        <>
-          <Button
-            variant="ghost"
-            onClick={() => closeTab(activeTabId)}
-            disabled={submitting}
-            className="h-9 gap-2"
-          >
-            <X size={16} /> انصراف
-          </Button>
-          <Button
-            type="submit"
-            form={FORM_ID}
-            disabled={submitting}
-            className="h-9 gap-2"
-          >
-            {submitting ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Save size={16} />
-            )}
-            ثبت واحد
-          </Button>
-        </>
-      }
+      submitText="ثبت واحد"
+      showActions={true}
     >
-      <div className="bg-card border rounded-xl p-6 shadow-sm">
+      {/* کارت اصلی */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
+        <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg">
+            <Ruler className="w-5 h-5 text-white" />
+          </div>
+          <h3 className="font-semibold text-base text-slate-800 dark:text-slate-200">
+            اطلاعات واحد سنجش
+          </h3>
+        </div>
+
         <AutoForm
           fields={formFields}
           data={formData}
-          onChange={(name: any, value: any) =>
+          onChange={(name, value) =>
             setFormData((prev: any) => ({ ...prev, [name]: value }))
           }
           loading={submitting}
         />
 
-        {/* راهنمای کوچک برای ضریب */}
+        {/* راهنما */}
         {formData.baseUnitId && (
-          <div className="mt-4 p-3 bg-blue-50 text-blue-700 text-sm rounded border border-blue-100">
-            هر 1 <strong>{formData.title || "(واحد جدید)"}</strong> برابر است با{" "}
-            <strong>{formData.conversionFactor}</strong> واحد از{" "}
-            <strong>
-              {units.find((u) => u.id == formData.baseUnitId)?.title}
-            </strong>
-            .
+          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/30 rounded-lg text-sm">
+            <p className="text-blue-700 dark:text-blue-400">
+              <strong>نکته:</strong> اگر واحد پایه انتخاب کنید، این واحد به صورت
+              فرعی (تبدیل‌پذیر) خواهد بود.
+              <br />
+              <span className="text-xs opacity-75">
+                مثال: 1 {formData.title || "واحد جدید"} ={" "}
+                {formData.conversionFactor}{" "}
+                {units.find((u) => u.id == formData.baseUnitId)?.title ||
+                  "واحد پایه"}
+              </span>
+            </p>
           </div>
         )}
       </div>

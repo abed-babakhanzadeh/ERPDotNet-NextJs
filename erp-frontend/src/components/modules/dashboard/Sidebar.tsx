@@ -40,7 +40,7 @@ export default function Sidebar({
         )}
       >
         {/* Header - ارتفاع 32px مثل Header اصلی */}
-        <div className="flex h-8 items-center border-b border-border bg-primary px-2 justify-between gap-2">
+        <div className="flex h-12 items-center border-b border-border bg-primary px-2 justify-between gap-2">
           {/* دکمه toggle */}
           <button
             onClick={toggleCollapse}

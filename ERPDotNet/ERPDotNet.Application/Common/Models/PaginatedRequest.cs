@@ -3,7 +3,7 @@ namespace ERPDotNet.Application.Common.Models;
 public record PaginatedRequest
 {
     public int PageNumber { get; init; } = 1;
-    public int PageSize { get; init; } = 10;
+    public int PageSize { get; init; } = 30;
     
     public string? SortColumn { get; init; } 
     public bool SortDescending { get; init; } = false;

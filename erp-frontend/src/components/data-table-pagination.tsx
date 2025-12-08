@@ -98,7 +98,7 @@ export function DataTablePagination({
               <SelectValue placeholder={pagination.pageSize} />
             </SelectTrigger>
             <SelectContent side="top">
-              {[10, 20, 30, 50, 100].map((size) => (
+              {[10, 20, 30, 50, 100, 200].map((size) => (
                 <SelectItem key={size} value={`${size}`} className="text-xs">
                   {size}
                 </SelectItem>

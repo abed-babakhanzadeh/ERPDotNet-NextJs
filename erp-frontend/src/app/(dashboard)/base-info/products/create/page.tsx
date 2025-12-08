@@ -4,12 +4,26 @@ import { useState, useEffect, useMemo } from "react";
 import apiClient from "@/services/apiClient";
 import { toast } from "sonner";
 import { Unit } from "@/types/baseInfo";
-import { ArrowLeftRight, Loader2, Save, Trash2, X } from "lucide-react";
+import {
+  ArrowLeftRight,
+  Loader2,
+  Save,
+  Trash2,
+  X,
+  Package,
+  Plus,
+} from "lucide-react";
 import BaseFormLayout from "@/components/layout/BaseFormLayout";
 import { useTabs } from "@/providers/TabsProvider";
 import { useFormPersist } from "@/hooks/useFormPersist";
 import AutoForm, { FieldConfig } from "@/components/form/AutoForm";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function CreateProductPage() {
   const { closeTab, activeTabId } = useTabs();
@@ -95,11 +109,13 @@ export default function CreateProductPage() {
 
   const addConversionRow = () =>
     setConversions([...conversions, { alternativeUnitId: "", factor: 1 }]);
+
   const removeConversionRow = (index: number) => {
     const n = [...conversions];
     n.splice(index, 1);
     setConversions(n);
   };
+
   const updateConversionRow = (index: number, f: string, v: any) => {
     const n = [...conversions];
     n[index] = { ...n[index], [f]: v };
@@ -136,7 +152,6 @@ export default function CreateProductPage() {
         supplyType: Number(formData.supplyType),
         imagePath: imagePath,
         file: undefined,
-
         conversions: conversions
           .filter((c) => c.alternativeUnitId && c.factor > 0)
           .map((c) => ({
@@ -167,18 +182,19 @@ export default function CreateProductPage() {
       isLoading={loadingUnits}
       onSubmit={handleSubmit}
       formId={FORM_ID}
-      onCancel={() => closeTab(activeTabId)}
-      saveDisabled={submitting}
-      saveLabel={submitting ? "در حال ثبت..." : "ثبت کالا"}
-      saveIcon={
-        submitting ? (
-          <Loader2 size={14} className="animate-spin" />
-        ) : (
-          <Save size={14} />
-        )
-      }
+      isSubmitting={submitting}
     >
-      <div className="bg-card border rounded-lg p-4 md:p-6 shadow-sm">
+      {/* کارت اصلی اطلاعات */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
+        <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
+            <Package className="w-5 h-5 text-white" />
+          </div>
+          <h3 className="font-semibold text-base text-slate-800 dark:text-slate-200">
+            اطلاعات اصلی کالا
+          </h3>
+        </div>
+
         <AutoForm
           fields={formFields}
           data={formData}
@@ -190,75 +206,105 @@ export default function CreateProductPage() {
       </div>
 
       {/* بخش تبدیل واحدها */}
-      <div className="bg-card border rounded-lg p-3 md:p-4 mt-3 md:mt-4 shadow-sm">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
-            <ArrowLeftRight className="w-4 h-4 text-orange-500" />
-            واحدهای فرعی
-          </h3>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={addConversionRow}
-            className="h-6 text-[10px] px-2"
-          >
-            + افزودن واحد
-          </Button>
+      <div className="bg-white dark:bg-slate-900 border border-orange-200 dark:border-orange-900/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg">
+              <ArrowLeftRight className="w-4 h-4 text-white" />
+            </div>
+            <h3 className="font-semibold text-sm text-slate-800 dark:text-slate-200">
+              واحدهای فرعی
+            </h3>
+          </div>
+
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  onClick={addConversionRow}
+                  size="sm"
+                  className="h-8 gap-2 bg-gradient-to-l from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white shadow-sm"
+                >
+                  <Plus size={14} />
+                  <span className="text-xs">افزودن واحد</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>افزودن واحد فرعی جدید</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
-        <div className="space-y-2">
-          {conversions.map((row, index) => (
-            <div
-              key={index}
-              className="flex flex-wrap md:flex-nowrap items-center gap-2 bg-muted/30 p-2 rounded-lg border"
-            >
-              <select
-                className="flex-1 min-w-[120px] h-8 rounded-md border border-input bg-background px-2 text-xs"
-                value={row.alternativeUnitId}
-                onChange={(e) =>
-                  updateConversionRow(
-                    index,
-                    "alternativeUnitId",
-                    e.target.value
-                  )
-                }
-              >
-                <option value="">انتخاب واحد...</option>
-                {units
-                  .filter((u) => u.id != formData.unitId)
-                  .map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.title}
-                    </option>
-                  ))}
-              </select>
-              <span className="text-[10px] text-muted-foreground">=</span>
-              <input
-                type="number"
-                step="0.001"
-                placeholder="ضریب"
-                className="w-20 h-8 rounded-md border border-input bg-background px-2 text-center text-xs font-semibold"
-                value={row.factor}
-                onChange={(e) =>
-                  updateConversionRow(index, "factor", Number(e.target.value))
-                }
-              />
-              <span className="text-[10px] text-muted-foreground min-w-[50px]">
-                {units.find((u) => u.id == formData.unitId)?.title ||
-                  "واحد اصلی"}
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => removeConversionRow(index)}
-                className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded ml-auto md:ml-0"
-              >
-                <Trash2 size={14} />
-              </Button>
+        <div className="space-y-3">
+          {conversions.length === 0 ? (
+            <div className="text-center py-8 text-slate-400 text-sm">
+              <ArrowLeftRight className="w-8 h-8 mx-auto mb-2 opacity-30" />
+              <p>هنوز واحد فرعی تعریف نشده است</p>
             </div>
-          ))}
+          ) : (
+            conversions.map((row, index) => (
+              <div
+                key={index}
+                className="flex flex-wrap sm:flex-nowrap items-center gap-3 bg-gradient-to-l from-orange-50/50 to-amber-50/30 dark:from-orange-950/20 dark:to-amber-950/10 p-4 rounded-lg border border-orange-100 dark:border-orange-900/30 hover:border-orange-200 dark:hover:border-orange-800/50 transition-colors"
+              >
+                <select
+                  className="flex-1 min-w-[120px] h-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-sm focus:ring-2 focus:ring-orange-500/20 transition-all"
+                  value={row.alternativeUnitId}
+                  onChange={(e) =>
+                    updateConversionRow(
+                      index,
+                      "alternativeUnitId",
+                      e.target.value
+                    )
+                  }
+                >
+                  <option value="">انتخاب واحد...</option>
+                  {units
+                    .filter((u) => u.id != formData.unitId)
+                    .map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.title}
+                      </option>
+                    ))}
+                </select>
+
+                <span className="text-xs text-slate-400 font-bold">=</span>
+
+                <input
+                  type="number"
+                  step="0.001"
+                  placeholder="ضریب"
+                  className="w-24 h-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-center text-sm font-semibold focus:ring-2 focus:ring-orange-500/20 transition-all"
+                  value={row.factor}
+                  onChange={(e) =>
+                    updateConversionRow(index, "factor", Number(e.target.value))
+                  }
+                />
+
+                <span className="text-xs text-slate-500 min-w-[60px] font-medium">
+                  {units.find((u) => u.id == formData.unitId)?.title ||
+                    "واحد اصلی"}
+                </span>
+
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeConversionRow(index)}
+                        className="h-9 w-9 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors ml-auto sm:ml-0"
+                      >
+                        <Trash2 size={16} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>حذف این واحد</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </BaseFormLayout>

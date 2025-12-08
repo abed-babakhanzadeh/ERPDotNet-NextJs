@@ -3,16 +3,22 @@
 import React, { useMemo } from "react";
 import { Unit, ColumnConfig } from "@/types";
 import apiClient from "@/services/apiClient";
-import { Ruler, Plus, Check, X } from "lucide-react";
+import { Box, Plus, Ruler } from "lucide-react";
 import ProtectedPage from "@/components/ui/ProtectedPage";
 import PermissionGuard from "@/components/ui/PermissionGuard";
-import MasterDetailLayout from "@/components/ui/MasterDetailLayout";
 import { toast } from "sonner";
 import { DataTable } from "@/components/data-table";
 import { useServerDataTable } from "@/hooks/useServerDataTable";
 import { useTabs } from "@/providers/TabsProvider";
 import { Badge } from "@/components/ui/badge";
 import { useTabPrefetch } from "@/hooks/useTabPrefetch";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // --- تعریف Placeholder ها ---
 const PlaceholderWrapper: React.FC<{
@@ -22,10 +28,10 @@ const PlaceholderWrapper: React.FC<{
   icon?: any;
   actions?: React.ReactNode;
 }> = ({ children }) => <div>{children}</div>;
+
 const ProtectedPagePlaceholder = ProtectedPage || PlaceholderWrapper;
 const PermissionGuardPlaceholder =
   PermissionGuard || (({ children }) => <>{children}</>);
-const MasterDetailLayoutPlaceholder = MasterDetailLayout || PlaceholderWrapper;
 
 export default function UnitsPage() {
   const { addTab } = useTabs();
@@ -35,7 +41,7 @@ export default function UnitsPage() {
 
   const { tableProps, refresh } = useServerDataTable<Unit>({
     endpoint: "/Units/search",
-    initialPageSize: 10,
+    initialPageSize: 30,
   });
 
   // تعریف ستون‌ها با رندر صحیح
@@ -95,27 +101,47 @@ export default function UnitsPage() {
 
   // هندلر ویرایش
   const handleEdit = (row: Unit) => {
-    addTab(`جزئیات واحد: ${row.title}`, `/base-info/units/edit/${row.id}`);
+    addTab(`ویرایش ${row.title}`, `/base-info/units/edit/${row.id}`);
   };
 
   return (
     <ProtectedPagePlaceholder permission="BaseInfo.Units">
-      <MasterDetailLayoutPlaceholder
-        title="مدیریت واحدهای سنجش"
-        icon={Ruler}
-        actions={
+      {/* Container اصلی با ارتفاع کامل */}
+      <div className="flex flex-col h-full bg-background">
+        {/* Fixed Header - با رنگ‌بندی بهتر */}
+        <div className="sticky top-0 z-50 flex items-center justify-between border-b bg-gradient-to-l from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 backdrop-blur supports-[backdrop-filter]:bg-card/90 px-4 py-2.5 shadow-sm h-12">
+          <div className="flex items-center gap-3 overflow-hidden min-w-0">
+            {/* Header فشرده - ارتفاع ثابت */}
+            <div className="flex items-center justify-between h-8 mb-2 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <Ruler className="h-5 w-5 text-primary" />
+                <h1 className="text-sm font-semibold">مدیریت واحدها</h1>
+              </div>
+            </div>
+          </div>
           <PermissionGuardPlaceholder permission="BaseInfo.Units.Create">
-            <button
-              onClick={handleCreate}
-              className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition text-sm shadow-sm"
-            >
-              <Plus size={16} />
-              واحد جدید
-            </button>
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={handleCreate}
+                    size="sm"
+                    className="h-7 gap-1.5 md:gap-2"
+                  >
+                    <Plus size={14} />
+                    <span className="hidden sm:inline text-xs">واحد جدید</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-[10px] sm:hidden">
+                  واحد جدید
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </PermissionGuardPlaceholder>
-        }
-      >
-        <div className="page-content">
+        </div>
+
+        {/* DataTable - فضای باقیمانده */}
+        <div className="flex-1 min-h-0">
           <DataTable
             columns={columns}
             onEdit={(unit) => handleEdit(unit as Unit)}
@@ -123,7 +149,7 @@ export default function UnitsPage() {
             {...tableProps}
           />
         </div>
-      </MasterDetailLayoutPlaceholder>
+      </div>
     </ProtectedPagePlaceholder>
   );
 }
