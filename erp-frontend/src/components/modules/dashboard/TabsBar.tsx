@@ -41,9 +41,9 @@ const TabItem = memo(function TabItem({
   return (
     <div
       className={clsx(
-        "group flex items-center gap-1 px-2 h-6 text-[11px] font-medium rounded-t",
+        "group flex items-center gap-1 px-2 h-10 text-[12px] font-medium rounded-t",
         "transition-all duration-200 cursor-pointer min-w-fit max-w-[180px] select-none",
-        "relative border-b-2",
+        "relative border-2",
         "hover:bg-accent/50",
         isActive
           ? "text-foreground bg-card border-b-primary shadow-sm"
@@ -67,7 +67,7 @@ const TabItem = memo(function TabItem({
           )}
           title="بستن تب (یا Middle Click)"
         >
-          <X size={10} />
+          <X size={15} />
         </Button>
       )}
     </div>

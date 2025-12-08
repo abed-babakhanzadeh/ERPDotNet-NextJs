@@ -1,233 +1,210 @@
 "use client";
 
-import { useState, useEffect, use, useMemo } from "react";
+import { useState, useEffect, useMemo, use } from "react";
 import apiClient from "@/services/apiClient";
 import { toast } from "sonner";
-import { Unit } from "@/types";
-import { Loader2, Save, X, Edit } from "lucide-react";
+import { Unit } from "@/types/baseInfo";
+import { Ruler } from "lucide-react";
 import BaseFormLayout from "@/components/layout/BaseFormLayout";
 import { useTabs } from "@/providers/TabsProvider";
+import { useFormPersist } from "@/hooks/useFormPersist";
 import AutoForm, { FieldConfig } from "@/components/form/AutoForm";
-import { Button } from "@/components/ui/button";
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function UnitDetailsPage({ params }: PageProps) {
+export default function EditUnitPage({ params }: PageProps) {
   const { closeTab, activeTabId } = useTabs();
   const { id } = use(params);
+  const FORM_ID = "unit-edit-form";
 
   const [loadingData, setLoadingData] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-
   const [units, setUnits] = useState<Unit[]>([]);
   const [unit, setUnit] = useState<Unit | null>(null);
 
   const [formData, setFormData] = useState<any>({
     title: "",
     symbol: "",
-    precision: 0,
-    baseUnitId: "",
+    baseUnitId: null,
     conversionFactor: 1,
     isActive: true,
   });
 
+  const { clearStorage } = useFormPersist(
+    `unit-edit-${id}`,
+    formData,
+    setFormData
+  );
+
+  // بارگذاری داده‌ها
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [unitRes, listRes] = await Promise.all([
+        const [unitRes, unitsRes] = await Promise.all([
           apiClient.get<Unit>(`/Units/${id}`),
           apiClient.get<Unit[]>("/Units"),
         ]);
 
-        setUnit(unitRes.data);
-        setUnits(listRes.data);
+        const fetchedUnit = unitRes.data;
+        setUnit(fetchedUnit);
+        setUnits(unitsRes.data);
 
         setFormData({
-          title: unitRes.data.title,
-          symbol: unitRes.data.symbol,
-          precision: unitRes.data.precision,
-          baseUnitId: unitRes.data.baseUnitId
-            ? String(unitRes.data.baseUnitId)
-            : "",
-          conversionFactor: unitRes.data.conversionFactor,
-          isActive: unitRes.data.isActive,
+          title: fetchedUnit.title,
+          symbol: fetchedUnit.symbol,
+          baseUnitId: fetchedUnit.baseUnitId || null,
+          conversionFactor: fetchedUnit.conversionFactor || 1,
+          isActive: fetchedUnit.isActive ?? true,
         });
       } catch (error) {
-        toast.error("خطا در دریافت اطلاعات");
+        toast.error("خطا در دریافت اطلاعات واحد");
         closeTab(activeTabId);
       } finally {
         setLoadingData(false);
       }
     };
+
     if (id) fetchData();
   }, [id, activeTabId, closeTab]);
 
-  const toggleEditMode = () => {
-    if (isEditing) {
-      // Reset form on cancel
-      if (unit) {
-        setFormData({
-          title: unit.title,
-          symbol: unit.symbol,
-          precision: unit.precision,
-          baseUnitId: unit.baseUnitId ? String(unit.baseUnitId) : "",
-          conversionFactor: unit.conversionFactor,
-          isActive: unit.isActive,
-        });
-      }
-      setIsEditing(false);
-    } else {
-      setIsEditing(true);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      const payload = {
-        id: Number(id),
-        ...formData,
-        baseUnitId: formData.baseUnitId ? Number(formData.baseUnitId) : null,
-        conversionFactor: formData.baseUnitId
-          ? Number(formData.conversionFactor)
-          : 1,
-      };
-
-      await apiClient.put(`/Units/${id}`, payload);
-      toast.success("تغییرات ذخیره شد");
-
-      // آپدیت دیتای لوکال
-      setUnit((prev) => (prev ? { ...prev, ...payload } : null));
-      setIsEditing(false);
-    } catch (error: any) {
-      toast.error("خطا در ویرایش اطلاعات");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const formFields: FieldConfig[] = useMemo(() => {
-    const fields: FieldConfig[] = [
+  const formFields: FieldConfig[] = useMemo(
+    () => [
       {
         name: "title",
         label: "عنوان واحد",
         type: "text",
         required: true,
-        disabled: !isEditing,
+        placeholder: "مثال: کیلوگرم",
+        colSpan: 2,
       },
       {
         name: "symbol",
         label: "نماد",
         type: "text",
         required: true,
-        disabled: !isEditing,
-      },
-      {
-        name: "precision",
-        label: "تعداد اعشار",
-        type: "number",
-        required: true,
-        disabled: !isEditing,
-      },
-      {
-        name: "baseUnitId",
-        label: "واحد پایه",
-        type: "select",
-        disabled: !isEditing,
-        // فیلتر کردن خود واحد برای جلوگیری از چرخه (Unit cannot be its own base)
-        options: units
-          .filter((u) => u.id !== Number(id))
-          .map((u) => ({ label: `${u.title} (${u.symbol})`, value: u.id })),
+        placeholder: "مثال: kg",
+        colSpan: 1,
       },
       {
         name: "isActive",
-        label: "فعال است",
+        label: "واحد فعال است",
         type: "checkbox",
-        disabled: !isEditing,
+        colSpan: 1,
       },
-    ];
-
-    if (formData.baseUnitId) {
-      fields.splice(4, 0, {
+      {
+        name: "baseUnitId",
+        label: "واحد پایه (اختیاری)",
+        type: "select",
+        options: [
+          { label: "--- بدون واحد پایه ---", value: null }, // ⭐ گزینه خالی
+          ...units
+            .filter((u) => u.id !== Number(id))
+            .map((u) => ({ label: u.title, value: u.id })),
+        ],
+        placeholder: "انتخاب کنید...",
+        colSpan: 1,
+      },
+      {
         name: "conversionFactor",
         label: "ضریب تبدیل",
         type: "number",
-        required: true,
-        disabled: !isEditing,
-      });
-    }
-    return fields;
-  }, [units, formData.baseUnitId, isEditing, id]);
+        step: 0.001,
+        disabled: !formData.baseUnitId,
+        colSpan: 1,
+      },
+    ],
+    [units, formData.baseUnitId, id]
+  );
 
-  const FORM_ID = "edit-unit-form";
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!unit) return;
+
+    setSubmitting(true);
+
+    try {
+      const payload = {
+        id: unit.id,
+        ...formData,
+        baseUnitId: formData.baseUnitId ? Number(formData.baseUnitId) : null,
+        conversionFactor: formData.baseUnitId
+          ? Number(formData.conversionFactor)
+          : null,
+      };
+
+      await apiClient.put(`/Units/${unit.id}`, payload);
+      toast.success("واحد با موفقیت ویرایش شد");
+
+      clearStorage();
+      closeTab(activeTabId);
+    } catch (error: any) {
+      console.error(error);
+      const msg = error.response?.data?.errors
+        ? Object.values(error.response.data.errors).flat().join(" - ")
+        : "خطا در ویرایش واحد";
+      toast.error(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <BaseFormLayout
-      title={
-        isEditing
-          ? `ویرایش: ${unit?.title}`
-          : `جزئیات واحد: ${unit?.title || "..."}`
-      }
+      title={`ویرایش واحد: ${unit?.title || "..."}`}
       isLoading={loadingData}
-      onSubmit={isEditing ? handleSubmit : undefined}
+      isSubmitting={submitting}
+      onSubmit={handleSubmit}
+      onCancel={() => closeTab(activeTabId)}
       formId={FORM_ID}
-      onCancel={isEditing ? toggleEditMode : undefined}
-      headerActions={
-        !loadingData &&
-        (isEditing ? (
-          <>
-            <Button
-              variant="ghost"
-              onClick={toggleEditMode}
-              disabled={submitting}
-              className="h-9 gap-2"
-            >
-              <X size={16} /> انصراف
-            </Button>
-            <Button
-              type="submit"
-              form={FORM_ID}
-              disabled={submitting}
-              className="h-9 gap-2"
-            >
-              {submitting ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <Save size={16} />
-              )}
-              ذخیره
-            </Button>
-          </>
-        ) : (
-          <Button
-            onClick={toggleEditMode}
-            variant="outline"
-            className="h-9 gap-2 border-orange-200 text-orange-600 hover:bg-orange-50"
-          >
-            <Edit size={16} /> ویرایش اطلاعات
-          </Button>
-        ))
-      }
+      submitText="ذخیره تغییرات"
+      showActions={true}
     >
-      <div className="bg-card border rounded-xl p-6 shadow-sm">
+      {/* کارت اصلی */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
+        <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg">
+            <Ruler className="w-5 h-5 text-white" />
+          </div>
+          <h3 className="font-semibold text-base text-slate-800 dark:text-slate-200">
+            اطلاعات واحد سنجش
+          </h3>
+        </div>
+
         <AutoForm
           fields={formFields}
           data={formData}
-          onChange={(name: any, value: any) =>
+          onChange={(name, value) =>
             setFormData((prev: any) => ({ ...prev, [name]: value }))
           }
           loading={submitting}
         />
 
-        {/* نمایش پیام در حالت نمایش فقط اگر ضریب دارد */}
-        {unit?.baseUnitId && !isEditing && (
-          <div className="mt-4 text-sm text-muted-foreground">
-            هر 1 {unit.title} = {unit.conversionFactor}{" "}
-            {units.find((u) => u.id === unit.baseUnitId)?.title}
+        {/* راهنما */}
+        {formData.baseUnitId && (
+          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/30 rounded-lg text-sm">
+            <p className="text-blue-700 dark:text-blue-400">
+              <strong>نکته:</strong> اگر واحد پایه انتخاب کنید، این واحد به صورت
+              فرعی (تبدیل‌پذیر) خواهد بود.
+              <br />
+              <span className="text-xs opacity-75">
+                مثال: 1 {formData.title || "واحد جدید"} ={" "}
+                {formData.conversionFactor}{" "}
+                {units.find((u) => u.id == formData.baseUnitId)?.title ||
+                  "واحد پایه"}
+              </span>
+            </p>
+          </div>
+        )}
+
+        {/* هشدار اگر واحد در کالاها استفاده شده */}
+        {unit && (
+          <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-lg text-sm">
+            <p className="text-amber-700 dark:text-amber-400">
+              ⚠️ <strong>توجه:</strong> تغییر واحد پایه یا ضریب تبدیل ممکن است
+              بر کالاهای موجود تاثیر بگذارد.
+            </p>
           </div>
         )}
       </div>

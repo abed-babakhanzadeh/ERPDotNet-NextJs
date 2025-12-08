@@ -46,13 +46,15 @@ export default function DashboardLayout({
           isCollapsed={isCollapsed}
         />
 
-        {/* Main Container - بدون padding-top اضافی */}
-        <main className="flex-1 flex flex-col overflow-hidden mt-8">
-          {/* TabsBar - بلافاصله بعد از Header */}
-          <TabsBar />
+        {/* Main Container - pt-8 برای جا دادن Header */}
+        <main className="flex-1 pt-12 flex flex-col overflow-hidden">
+          {/* TabsBar - sticky در بالا */}
+          <div className="sticky pt-2 top-0 z-40 bg-background">
+            <TabsBar />
+          </div>
 
-          {/* Content Area */}
-          <div className="flex-1 min-h-0 overflow-auto bg-muted/5">
+          {/* Content Area - فضای باقیمانده با اسکرول */}
+          <div className="flex-1 min-h-0 overflow-auto bg-muted/5 p-1 md:p-1">
             {children}
           </div>
         </main>

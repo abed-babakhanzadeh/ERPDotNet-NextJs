@@ -30,25 +30,25 @@ export default function Header({ onMenuClick, isCollapsed }: HeaderProps) {
   };
 
   return (
-    <header className="fixed top-0 right-0 left-0 z-40 flex items-center justify-between border-b bg-card/98 backdrop-blur-md supports-[backdrop-filter]:bg-card/95 px-3 h-8 shadow-sm">
+    <header className="fixed top-0 right-0 left-0 z-40 flex items-center justify-between border-b bg-card/98 backdrop-blur-md supports-[backdrop-filter]:bg-card/95 px-3 h-12 shadow-sm">
       {/* Right Side - Logo & Menu */}
       <div className="flex items-center gap-2">
         <Button
           variant="ghost"
           size="icon"
           onClick={onMenuClick}
-          className="h-6 w-6 md:hidden hover:bg-accent/80 rounded transition-colors"
+          className="h-8 w-8 md:hidden hover:bg-accent/80 rounded transition-colors"
         >
           <Menu size={14} />
         </Button>
 
         <div className="flex items-center gap-1.5">
-          <div className="h-5 w-5 rounded bg-primary flex items-center justify-center">
+          <div className="h-8 w-8 rounded bg-primary flex items-center justify-center">
             <span className="text-[10px] font-bold text-primary-foreground">
               E
             </span>
           </div>
-          <span className="text-[11px] font-bold hidden sm:inline">
+          <span className="text-[0px] font-bold hidden sm:inline">
             ERP System
           </span>
         </div>
@@ -61,9 +61,9 @@ export default function Header({ onMenuClick, isCollapsed }: HeaderProps) {
           variant="ghost"
           size="icon"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="h-6 w-6 rounded hover:bg-accent/80 transition-colors"
+          className="h-8 w-8 rounded hover:bg-accent/80 transition-colors"
         >
-          {theme === "dark" ? <Sun size={13} /> : <Moon size={13} />}
+          {theme === "dark" ? <Sun size={22} /> : <Moon size={22} />}
         </Button>
 
         {/* Notifications */}
@@ -72,12 +72,12 @@ export default function Header({ onMenuClick, isCollapsed }: HeaderProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 rounded relative hover:bg-accent/80 transition-colors"
+              className="h-8 w-8 rounded relative hover:bg-accent/80 transition-colors"
             >
-              <Bell size={13} />
+              <Bell size={22} />
               <Badge
                 variant="destructive"
-                className="absolute -top-0.5 -left-0.5 h-3.5 w-3.5 p-0 flex items-center justify-center text-[8px]"
+                className="absolute -top-0.5 -left-0.5 h-3.5 w-3.5 p-0 flex items-center justify-center text-[12px]"
               >
                 3
               </Badge>
@@ -105,7 +105,7 @@ export default function Header({ onMenuClick, isCollapsed }: HeaderProps) {
           size="icon"
           className="h-6 w-6 rounded hover:bg-accent/80 transition-colors"
         >
-          <Settings size={13} />
+          <Settings size={22} />
         </Button>
 
         {/* User Menu */}
@@ -115,13 +115,13 @@ export default function Header({ onMenuClick, isCollapsed }: HeaderProps) {
               variant="ghost"
               className="h-6 px-1.5 gap-1 rounded hover:bg-accent/80 transition-colors"
             >
-              <Avatar className="h-5 w-5">
+              <Avatar className="h-8 w-8">
                 <AvatarImage src="/avatar.png" />
                 <AvatarFallback className="text-[10px] bg-primary/10">
                   ع
                 </AvatarFallback>
               </Avatar>
-              <span className="text-[11px] hidden sm:inline max-w-20 truncate">
+              <span className="text-[14px] hidden sm:inline max-w-20 truncate">
                 عابد
               </span>
             </Button>
