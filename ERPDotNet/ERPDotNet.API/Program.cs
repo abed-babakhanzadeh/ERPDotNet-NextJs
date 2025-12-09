@@ -107,10 +107,16 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// تغییرات CORS برای شبکه
 app.UseCors(policy =>
-    policy.WithOrigins("http://localhost:3000")
+    policy.WithOrigins(
+            "http://localhost:3000", 
+            "http://192.168.0.241:3000", 
+            "http://192.168.0.190:3000"
+          )
           .AllowAnyHeader()
-          .AllowAnyMethod());
+          .AllowAnyMethod()
+          .AllowCredentials());
 
 app.UseAuthentication();
 
