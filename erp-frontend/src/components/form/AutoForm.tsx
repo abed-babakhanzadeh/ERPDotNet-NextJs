@@ -27,7 +27,7 @@ export interface FieldConfig {
   required?: boolean;
   placeholder?: string;
   options?: Option[];
-  colSpan?: 1 | 2;
+  colSpan?: 1 | 2 | 3;
   disabled?: boolean;
   accept?: string;
 }

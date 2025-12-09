@@ -9,6 +9,7 @@
 **/appsettings.Development.json
 **/appsettings.local.json
 *.suo
+**/wwwroot/
 
 # =========================
 # نادیده گرفتن فایل‌های نکست جی‌اس (Frontend)
