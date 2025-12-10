@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ERPDotNet.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251128193731_AddPermissionToBOM2")]
-    partial class AddPermissionToBOM2
+    [Migration("20251210104407_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,6 +24,33 @@ namespace ERPDotNet.Infrastructure.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("ERPDotNet.Application.Modules.ProductEngineering.Queries.GetWhereUsed.WhereUsedRecursiveResult", b =>
+                {
+                    b.Property<int>("BomHeaderId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("UsageType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.ToTable((string)null);
+
+                    b.ToView(null, (string)null);
+                });
 
             modelBuilder.Entity("ERPDotNet.Domain.Common.AuditTrail", b =>
                 {
@@ -82,6 +109,9 @@ namespace ERPDotNet.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ImagePath")
                         .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
@@ -238,6 +268,12 @@ namespace ERPDotNet.Infrastructure.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("text");
 
+                    b.Property<decimal>("InputQuantity")
+                        .HasColumnType("numeric");
+
+                    b.Property<int>("InputUnitId")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
@@ -348,10 +384,19 @@ namespace ERPDotNet.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsMixAllowed")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime?>("LastModifiedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("LastModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("MaxMixPercentage")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("Note")
                         .HasColumnType("text");
 
                     b.Property<int>("Priority")
@@ -585,7 +630,7 @@ namespace ERPDotNet.Infrastructure.Migrations
                         new
                         {
                             Id = 2000,
-                            IsMenu = false,
+                            IsMenu = true,
                             Name = "ProductEngineering",
                             ParentId = 1,
                             Title = "مهندسی محصول"
@@ -593,7 +638,7 @@ namespace ERPDotNet.Infrastructure.Migrations
                         new
                         {
                             Id = 200,
-                            IsMenu = false,
+                            IsMenu = true,
                             Name = "ProductEngineering.BOM",
                             ParentId = 2000,
                             Title = "مدیریت BOM"
@@ -601,10 +646,20 @@ namespace ERPDotNet.Infrastructure.Migrations
                         new
                         {
                             Id = 201,
-                            IsMenu = false,
+                            IsMenu = true,
                             Name = "ProductEngineering.BOM.Create",
                             ParentId = 200,
-                            Title = "تعریف BOM"
+                            Title = "تعریف BOM",
+                            Url = "/product-engineering/boms"
+                        },
+                        new
+                        {
+                            Id = 202,
+                            IsMenu = true,
+                            Name = "ProductEngineering.BOM.Reports",
+                            ParentId = 200,
+                            Title = "گزارش BOM",
+                            Url = "/product-engineering/boms"
                         });
                 });
 
@@ -742,6 +797,11 @@ namespace ERPDotNet.Infrastructure.Migrations
                         {
                             RoleId = "1",
                             PermissionId = 201
+                        },
+                        new
+                        {
+                            RoleId = "1",
+                            PermissionId = 202
                         });
                 });
 

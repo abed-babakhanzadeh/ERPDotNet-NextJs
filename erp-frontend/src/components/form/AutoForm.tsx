@@ -17,7 +17,7 @@ export type FieldType =
 
 export interface Option {
   label: string;
-  value: string | number;
+  value: string | number | null; // <--- کلمه null اضافه شد
 }
 
 export interface FieldConfig {
@@ -132,7 +132,10 @@ export default function AutoForm({
                     {field.placeholder || "انتخاب کنید..."}
                   </option>
                   {field.options?.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
+                    <option
+                      key={String(opt.value)}
+                      value={opt.value ?? ""} // اگر نال بود، رشته خالی بگذار
+                    >
                       {opt.label}
                     </option>
                   ))}

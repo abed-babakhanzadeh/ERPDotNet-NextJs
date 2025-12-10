@@ -18,7 +18,7 @@
 **/.next/
 **/build/
 **/out/
-**/.env
-**/.env.local
+# **/.env
+# **/.env.local
 **/npm-debug.log*
 **/.DS_Store
