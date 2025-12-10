@@ -25,5 +25,32 @@ export const productsService = {
       Keyword: keyword
     });
     return response.data.items || response.data.data || [];
+  },
+
+  // متد ساخت با عکس
+  create: async (data: any, imageUri?: string) => {
+    const formData = new FormData();
+    
+    // اضافه کردن فیلدهای متنی
+    formData.append('Name', data.name);
+    formData.append('Code', data.code);
+    formData.append('SupplyTypeId', data.supplyTypeId.toString());
+    formData.append('UnitId', data.unitId.toString());
+    formData.append('IsActive', 'true');
+
+    // اضافه کردن فایل عکس
+    if (imageUri) {
+      const filename = imageUri.split('/').pop();
+      const match = /\.(\w+)$/.exec(filename || '');
+      const type = match ? `image/${match[1]}` : `image`;
+      
+      // @ts-ignore
+      formData.append('ImageFile', { uri: imageUri, name: filename, type });
+    }
+
+    const response = await api.post('/api/Products', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
   }
 };
