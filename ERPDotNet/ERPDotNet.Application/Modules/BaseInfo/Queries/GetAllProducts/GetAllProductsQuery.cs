@@ -83,31 +83,13 @@ public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, Pagina
                 (p.Code != null && p.Code.ToLower().Contains(searchLower)));
         }
 
-        // 4. سورت (بخش اصلاح شده)
-     var sortColumn = request.SortColumn;
+        // 4. سورت اصلاح شده (یکپارچه با اکستنشن متد)
+        var sortColumn = request.SortColumn;
 
-    if (!string.IsNullOrEmpty(sortColumn))
-    {
-        // مپینگ نام‌های DTO به نام‌های واقعی در Entity
-        if (sortColumn.Equals("UnitName", StringComparison.OrdinalIgnoreCase))
+        // حالت خاص: سورت روی لیست‌های تو در تو (که اکستنشن متد از آن پشتیبانی نمی‌کند)
+        if (string.Equals(sortColumn, "Conversions", StringComparison.OrdinalIgnoreCase) || 
+            string.Equals(sortColumn, "AlternativeUnitName", StringComparison.OrdinalIgnoreCase))
         {
-            sortColumn = "Unit.Title";
-        }
-        else if (sortColumn.Equals("SupplyTypeId", StringComparison.OrdinalIgnoreCase) 
-              || sortColumn.Equals("SupplyType", StringComparison.OrdinalIgnoreCase))
-        {
-            // در DTO ممکن است SupplyTypeId یا SupplyType باشد، اما در Entity فقط SupplyType (Enum) داریم
-            sortColumn = "SupplyType";
-        }
-        
-        // نکته مهم درباره "ستون فرعی" (Alternative Unit)
-        // اگر منظور شما از ستون فرعی، نام واحد جایگزین است، چون این یک لیست است (1 به چند)،
-        // سورت کردن روی آن پیچیده است. اما اگر بخواهید بر اساس "اولین واحد فرعی" سورت کنید:
-        if (sortColumn.Equals("Conversions", StringComparison.OrdinalIgnoreCase) || 
-            sortColumn.Equals("AlternativeUnitName", StringComparison.OrdinalIgnoreCase))
-        {
-            // روش اصلاح شده: ابتدا Select سپس FirstOrDefault
-            // این روش از خطای نال جلوگیری می‌کند و SQL بهینه‌تری تولید می‌کند
             if (request.SortDescending)
             {
                 query = query.OrderByDescending(p => p.UnitConversions
@@ -120,32 +102,53 @@ public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, Pagina
                                             .Select(c => c.AlternativeUnit!.Title)
                                             .FirstOrDefault());
             }
-  
         }
-    else
-    {
-        query = query.OrderByNatural("Code", false); 
-    }
-    }
+        else
+        {
+            // حالت استاندارد: استفاده از اکستنشن متد OrderByNatural
+            
+            // الف) مپینگ نام‌های DTO به مسیر Entity
+            if (string.Equals(sortColumn, "UnitName", StringComparison.OrdinalIgnoreCase))
+            {
+                sortColumn = "Unit.Title";
+            }
+            else if (string.Equals(sortColumn, "SupplyTypeId", StringComparison.OrdinalIgnoreCase) 
+                  || string.Equals(sortColumn, "SupplyType", StringComparison.OrdinalIgnoreCase))
+            {
+                sortColumn = "SupplyType";
+            }
 
-    // --- ادامه کد (Projection) ---
-    var dtoQuery = query.Select(p => new ProductDto(
-        p.Id,
-        p.Code,
-        p.Name,
-        p.UnitId,
-        p.Unit != null ? p.Unit.Title : "",
-        (int)p.SupplyType,
-        p.SupplyType.ToDisplay(),
-        p.ImagePath,
-        p.UnitConversions.Select(c => new ProductConversionDto(
-            c.Id,
-            c.AlternativeUnitId,
-            c.AlternativeUnit != null ? c.AlternativeUnit.Title : "",
-            c.Factor
-        )).ToList()
-    ));
+            // ب) اعمال سورت پیش‌فرض یا درخواستی
+            if (!string.IsNullOrEmpty(sortColumn))
+            {
+                // این متد خودش نزولی/صعودی، نال‌ها و سورت طبیعی (Collate) را هندل می‌کند
+                query = query.OrderByNatural(sortColumn, request.SortDescending);
+            }
+            else
+            {
+                // سورت پیش‌فرض روی کد
+                query = query.OrderByNatural("Code", false);
+            }
+        }
 
-    return await dtoQuery.ToPaginatedListAsync(request.PageNumber, request.PageSize, cancellationToken);
-}
+        // --- ادامه کد (Projection) ---
+        var dtoQuery = query.Select(p => new ProductDto(
+            p.Id,
+            p.Code,
+            p.Name,
+            p.UnitId,
+            p.Unit != null ? p.Unit.Title : "",
+            (int)p.SupplyType,
+            p.SupplyType.ToDisplay(),
+            p.ImagePath,
+            p.UnitConversions.Select(c => new ProductConversionDto(
+                c.Id,
+                c.AlternativeUnitId,
+                c.AlternativeUnit != null ? c.AlternativeUnit.Title : "",
+                c.Factor
+            )).ToList()
+        ));
+
+        return await dtoQuery.ToPaginatedListAsync(request.PageNumber, request.PageSize, cancellationToken);
+    }
 }
