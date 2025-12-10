@@ -4,7 +4,7 @@ import React, { useMemo, useState } from "react";
 import { ColumnConfig } from "@/types";
 import apiClient from "@/services/apiClient";
 import { toast } from "sonner";
-import { Plus, Eye, Pencil, Copy, Trash2, Network, Ruler } from "lucide-react";
+import { Plus, Eye, Pencil, Copy, Trash2, Network } from "lucide-react";
 
 // Components
 import ProtectedPage from "@/components/ui/ProtectedPage";
@@ -31,7 +31,6 @@ import { useServerDataTable } from "@/hooks/useServerDataTable";
 import { useTabs } from "@/providers/TabsProvider";
 import { useTabPrefetch } from "@/hooks/useTabPrefetch";
 
-// تایپ دادهای که از GetBOMsListQuery میاد
 interface BOMListDto {
   id: number;
   productName: string;
@@ -55,20 +54,16 @@ const PermissionGuardPlaceholder =
 export default function BOMsListPage() {
   const { addTab } = useTabs();
 
-  // استیت‌های مودال کپی
   const [copyModalOpen, setCopyModalOpen] = useState(false);
   const [selectedBOM, setSelectedBOM] = useState<BOMListDto | null>(null);
 
-  // Prefetch کردن صفحه ایجاد
   useTabPrefetch(["/product-engineering/boms/create"]);
 
-  // اتصال به کنترلر
   const { tableProps, refresh } = useServerDataTable<BOMListDto>({
     endpoint: "/BOMs/search",
     initialPageSize: 30,
   });
 
-  // --- تعریف ستون‌ها ---
   const columns: ColumnConfig[] = useMemo(
     () => [
       {
@@ -133,8 +128,6 @@ export default function BOMsListPage() {
     []
   );
 
-  // --- هندلرها ---
-
   const handleCreate = () => {
     addTab("تعریف BOM جدید", "/product-engineering/boms/create");
   };
@@ -183,12 +176,10 @@ export default function BOMsListPage() {
     }
   };
 
-  // --- رندر اکشن‌های سطری (آیکونی‌ها) ---
   const renderRowActions = (row: BOMListDto) => {
     return (
       <TooltipProvider delayDuration={0}>
         <div className="flex items-center gap-1">
-          {/* مشاهده */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -200,10 +191,9 @@ export default function BOMsListPage() {
                 <Eye size={14} />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>مشاهده جزئیات</TooltipContent>
+            <TooltipContent>مشاهده جزییات</TooltipContent>
           </Tooltip>
 
-          {/* ویرایش */}
           <PermissionGuardPlaceholder permission="ProductEngineering.BOM.Create">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -220,7 +210,6 @@ export default function BOMsListPage() {
             </Tooltip>
           </PermissionGuardPlaceholder>
 
-          {/* نسخه جدید */}
           <PermissionGuardPlaceholder permission="ProductEngineering.BOM.Create">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -237,7 +226,6 @@ export default function BOMsListPage() {
             </Tooltip>
           </PermissionGuardPlaceholder>
 
-          {/* دکمه درخت - بنفش */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -252,7 +240,6 @@ export default function BOMsListPage() {
             <TooltipContent>ساختار درختی</TooltipContent>
           </Tooltip>
 
-          {/* حذف */}
           <PermissionGuardPlaceholder permission="ProductEngineering.BOM.Create">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -273,7 +260,6 @@ export default function BOMsListPage() {
     );
   };
 
-  // --- رندر منوی راست کلیک ---
   const renderContextMenu = (row: BOMListDto, closeMenu: () => void) => {
     return (
       <>
@@ -285,7 +271,7 @@ export default function BOMsListPage() {
           className="gap-2 cursor-pointer"
         >
           <Eye className="w-4 h-4 text-blue-600" />
-          <span>مشاهده جزئیات</span>
+          <span>مشاهده جزییات</span>
         </DropdownMenuItem>
 
         <PermissionGuardPlaceholder permission="ProductEngineering.BOM.Create">
@@ -341,12 +327,9 @@ export default function BOMsListPage() {
 
   return (
     <ProtectedPagePlaceholder permission="ProductEngineering.BOM">
-      {/* Container اصلی با ارتفاع کامل */}
       <div className="flex flex-col h-full bg-background">
-        {/* Fixed Header - با رنگ‌بندی بهتر */}
         <div className="sticky top-0 z-50 flex items-center justify-between border-b bg-gradient-to-l from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 backdrop-blur supports-[backdrop-filter]:bg-card/90 px-4 py-2.5 shadow-sm h-12">
           <div className="flex items-center gap-3 overflow-hidden min-w-0">
-            {/* Header فشرده - ارتفاع ثابت */}
             <div className="flex items-center justify-between h-8 mb-2 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <Network className="h-5 w-5 text-primary" />
@@ -375,7 +358,6 @@ export default function BOMsListPage() {
           </PermissionGuardPlaceholder>
         </div>
 
-        {/* DataTable - فضای باقیمانده */}
         <div className="flex-1 min-h-0">
           <DataTable
             columns={columns}
@@ -385,13 +367,12 @@ export default function BOMsListPage() {
           />
         </div>
 
-        {/* مودال نسخه جدید */}
         {selectedBOM && (
           <NewVersionDialog
             open={copyModalOpen}
             onClose={() => {
               setCopyModalOpen(false);
-              refresh(); // رفرش لیست بعد از موفقیت
+              refresh();
             }}
             sourceBomId={selectedBOM.id}
             sourceVersion={selectedBOM.version}

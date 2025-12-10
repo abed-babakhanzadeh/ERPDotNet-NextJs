@@ -3,7 +3,7 @@
 import React, { useMemo } from "react";
 import { Unit, ColumnConfig } from "@/types";
 import apiClient from "@/services/apiClient";
-import { Box, Plus, Ruler } from "lucide-react";
+import { Plus, Ruler } from "lucide-react";
 import ProtectedPage from "@/components/ui/ProtectedPage";
 import PermissionGuard from "@/components/ui/PermissionGuard";
 import { toast } from "sonner";
@@ -20,7 +20,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-// --- تعریف Placeholder ها ---
 const PlaceholderWrapper: React.FC<{
   children: React.ReactNode;
   permission?: string;
@@ -36,7 +35,6 @@ const PermissionGuardPlaceholder =
 export default function UnitsPage() {
   const { addTab } = useTabs();
 
-  // prefetch عمومی برای فرم ایجاد واحد
   useTabPrefetch(["/base-info/units/create"]);
 
   const { tableProps, refresh } = useServerDataTable<Unit>({
@@ -44,7 +42,6 @@ export default function UnitsPage() {
     initialPageSize: 30,
   });
 
-  // تعریف ستون‌ها با رندر صحیح
   const columns: ColumnConfig[] = useMemo(
     () => [
       { key: "title", label: "عنوان واحد", type: "string" },
@@ -82,7 +79,6 @@ export default function UnitsPage() {
     []
   );
 
-  // هندلر حذف
   const handleDelete = async (row: Unit) => {
     if (!confirm(`آیا از حذف واحد "${row.title}" اطمینان دارید؟`)) return;
     try {
@@ -94,24 +90,19 @@ export default function UnitsPage() {
     }
   };
 
-  // هندلر ایجاد
   const handleCreate = () => {
     addTab("تعریف واحد جدید", "/base-info/units/create");
   };
 
-  // هندلر ویرایش
   const handleEdit = (row: Unit) => {
     addTab(`ویرایش ${row.title}`, `/base-info/units/edit/${row.id}`);
   };
 
   return (
     <ProtectedPagePlaceholder permission="BaseInfo.Units">
-      {/* Container اصلی با ارتفاع کامل */}
       <div className="flex flex-col h-full bg-background">
-        {/* Fixed Header - با رنگ‌بندی بهتر */}
         <div className="sticky top-0 z-50 flex items-center justify-between border-b bg-gradient-to-l from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 backdrop-blur supports-[backdrop-filter]:bg-card/90 px-4 py-2.5 shadow-sm h-12">
           <div className="flex items-center gap-3 overflow-hidden min-w-0">
-            {/* Header فشرده - ارتفاع ثابت */}
             <div className="flex items-center justify-between h-8 mb-2 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <Ruler className="h-5 w-5 text-primary" />
@@ -140,7 +131,6 @@ export default function UnitsPage() {
           </PermissionGuardPlaceholder>
         </div>
 
-        {/* DataTable - فضای باقیمانده */}
         <div className="flex-1 min-h-0">
           <DataTable
             columns={columns}

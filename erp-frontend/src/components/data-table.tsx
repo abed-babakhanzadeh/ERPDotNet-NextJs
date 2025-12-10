@@ -18,13 +18,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import {
-  MoreHorizontal,
-  Loader2,
-  CheckCircle2,
-  XCircle,
-  FilterX,
-} from "lucide-react";
+import { MoreHorizontal, CheckCircle2, XCircle, FilterX } from "lucide-react";
 import type {
   SortConfig,
   ColumnFilter as AdvancedColumnFilter,
@@ -207,9 +201,7 @@ export function DataTable<TData extends TableRow>({
   }, [globalFilter, columnFilters, advancedFilters]);
 
   return (
-    // Container اصلی با flex column و ارتفاع کامل
     <div className="flex flex-col h-full">
-      {/* Toolbar - ارتفاع ثابت */}
       <div className="flex-shrink-0 mb-3">
         <DataTableToolbar
           globalFilter={globalFilter}
@@ -222,9 +214,7 @@ export function DataTable<TData extends TableRow>({
         />
       </div>
 
-      {/* جدول - فضای باقیمانده */}
       <div className="flex-1 min-h-0 rounded-xl border border-border shadow-sm bg-card overflow-hidden flex flex-col">
-        {/* بخش اسکرول جدول */}
         <div className="flex-1 overflow-auto custom-scrollbar">
           <Table style={{ tableLayout: "fixed", width: "100%" }}>
             <TableHeader className="sticky top-0 z-20 bg-muted/80 backdrop-blur-sm">
@@ -293,25 +283,33 @@ export function DataTable<TData extends TableRow>({
 
             <TableBody>
               {isLoading ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length + 1}
-                    className="text-center"
-                    style={{ height: "calc(100vh - 300px)" }}
-                  >
-                    <div className="flex flex-col justify-center items-center gap-3 h-full">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-muted-foreground">
-                          در حال بارگذاری اطلاعات
-                        </p>
-                        <p className="text-xs text-muted-foreground/70">
-                          لطفاً صبر کنید...
-                        </p>
-                      </div>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                Array.from({ length: pagination.pageSize || 10 }).map(
+                  (_, index) => (
+                    <TableRow
+                      key={`skeleton-${index}`}
+                      className="border-b border-border h-7"
+                    >
+                      {columns.map((column) => (
+                        <TableCell
+                          key={column.key}
+                          style={{
+                            width: `${columnWidths[column.key]}px`,
+                            maxWidth: `${columnWidths[column.key]}px`,
+                          }}
+                          className="py-1.5 px-3"
+                        >
+                          <div className="h-5 bg-muted rounded animate-pulse" />
+                        </TableCell>
+                      ))}
+                      <TableCell
+                        className="no-print text-center"
+                        style={{ width: `${columnWidths.actions}px` }}
+                      >
+                        <div className="h-6 w-8 bg-muted rounded animate-pulse mx-auto" />
+                      </TableCell>
+                    </TableRow>
+                  )
+                )
               ) : data.length > 0 ? (
                 data.map((row, index) => (
                   <TableRow
@@ -440,6 +438,18 @@ export function DataTable<TData extends TableRow>({
           </Table>
         </div>
 
+        {/* نوار لودینگ زیر جدول */}
+        {isLoading && (
+          <div className="h-1 w-full bg-muted overflow-hidden flex-shrink-0">
+            <div
+              className="h-full bg-primary animate-loading-bar"
+              style={{
+                width: "40%",
+              }}
+            />
+          </div>
+        )}
+
         <DropdownMenu open={contextMenuOpen} onOpenChange={setContextMenuOpen}>
           <DropdownMenuTrigger asChild>
             <div
@@ -490,7 +500,6 @@ export function DataTable<TData extends TableRow>({
         </DropdownMenu>
       </div>
 
-      {/* Pagination - ارتفاع ثابت در پایین */}
       <div className="flex-shrink-0 mt-3">
         <DataTablePagination
           pagination={pagination}

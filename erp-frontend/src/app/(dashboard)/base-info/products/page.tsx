@@ -127,12 +127,9 @@ export default function ProductsPage() {
 
   return (
     <ProtectedPagePlaceholder permission="BaseInfo.Products">
-      {/* Container اصلی با ارتفاع کامل */}
       <div className="flex flex-col h-full bg-background">
-        {/* Fixed Header - با رنگ‌بندی بهتر */}
         <div className="sticky top-0 z-50 flex items-center justify-between border-b bg-gradient-to-l from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 backdrop-blur supports-[backdrop-filter]:bg-card/90 px-4 py-2.5 shadow-sm h-12">
           <div className="flex items-center gap-3 overflow-hidden min-w-0">
-            {/* Header فشرده - ارتفاع ثابت */}
             <div className="flex items-center justify-between h-8 mb-2 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <Box className="h-5 w-5 text-primary" />
@@ -161,7 +158,6 @@ export default function ProductsPage() {
           </PermissionGuardPlaceholder>
         </div>
 
-        {/* DataTable - فضای باقیمانده */}
         <div className="flex-1 min-h-0">
           <DataTable
             columns={columns}
