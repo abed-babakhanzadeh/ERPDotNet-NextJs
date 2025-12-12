@@ -12,6 +12,26 @@ export const metadata: Metadata = {
   description: "سیستم جامع مدیریت منابع سازمانی",
 };
 
+// --- این قطعه کد را اضافه کنید ---
+if (
+  typeof window !== "undefined" &&
+  typeof window.crypto !== "undefined" &&
+  typeof window.crypto.randomUUID === "undefined"
+) {
+  // اگر مرورگر این تابع را نداشت (چون روی HTTP هستیم)، ما یک نسخه دستی برایش می‌سازیم
+  window.crypto.randomUUID = () => {
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+      /[xy]/g,
+      function (c) {
+        var r = (Math.random() * 16) | 0,
+          v = c == "x" ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      }
+    ) as `${string}-${string}-${string}-${string}-${string}`;
+  };
+}
+// -------------------------------
+
 export default function RootLayout({
   children,
 }: Readonly<{

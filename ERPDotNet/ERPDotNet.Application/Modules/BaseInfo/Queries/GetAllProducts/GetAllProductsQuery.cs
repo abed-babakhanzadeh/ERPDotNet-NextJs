@@ -41,40 +41,50 @@ public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, Pagina
         _context = context;
     }
 
-    public async Task<PaginatedResult<ProductDto>> Handle(GetAllProductsQuery request, CancellationToken cancellationToken)
+public async Task<PaginatedResult<ProductDto>> Handle(GetAllProductsQuery request, CancellationToken cancellationToken)
     {
         var query = _context.Products
             .AsNoTracking()
-            .Include(p => p.Unit) // حتما باید اینکلود باشد تا Unit.Title کار کند
+            .Include(p => p.Unit)
             .AsQueryable();
 
-        // --- فیلترهای خاص ---
-        var unitNameFilter = request.Filters?.FirstOrDefault(f => f.PropertyName.Equals("unitName", StringComparison.OrdinalIgnoreCase));
-        if (unitNameFilter != null && !string.IsNullOrEmpty(unitNameFilter.Value))
+        // --- اصلاح نام فیلترها برای تطابق با Entity ---
+        // به جای فیلتر کردن دستی، فقط نام پراپرتی را عوض می‌کنیم تا اکستنشن متد بفهمد کجاست
+        if (request.Filters != null)
         {
-            query = query.Where(p => p.Unit != null && p.Unit.Title.Contains(unitNameFilter.Value));
-            request.Filters?.Remove(unitNameFilter);
-        }
-        
-        var supplyTypeFilter = request.Filters?.FirstOrDefault(f => f.PropertyName.Equals("supplyType", StringComparison.OrdinalIgnoreCase));
-        if (supplyTypeFilter != null && !string.IsNullOrEmpty(supplyTypeFilter.Value))
-        {
-            var matchingEnumValues = Enum.GetValues(typeof(ProductSupplyType))
-                                         .Cast<ProductSupplyType>()
-                                         .Where(e => e.ToDisplay().Contains(supplyTypeFilter.Value, StringComparison.OrdinalIgnoreCase))
-                                         .ToList();
-            if(matchingEnumValues.Any())
+            var unitNameFilter = request.Filters.FirstOrDefault(f => f.PropertyName.Equals("unitName", StringComparison.OrdinalIgnoreCase));
+            if (unitNameFilter != null)
             {
-                query = query.Where(p => matchingEnumValues.Contains(p.SupplyType));
+                // مپ کردن نام فرانت (unitName) به مسیر دیتابیس (Unit.Title)
+                unitNameFilter.PropertyName = "Unit.Title";
             }
-            
-            request.Filters?.Remove(supplyTypeFilter);
-        }
-        // --- پایان فیلترهای خاص ---
 
+            // برای SupplyType چون Enum است و نیاز به هندل کردن خاص دارد، فعلاً لاجیک دستی شما را نگه داشتم
+            // اما اگر بخواهید منفی‌ها روی آن کار کند باید لاجیک پیچیده‌تری بنویسید.
+            // فعلاً تمرکز روی unitName بود که "شامل نباشد" کار نمی‌کرد.
+            var supplyTypeFilter = request.Filters.FirstOrDefault(f => f.PropertyName.Equals("supplyType", StringComparison.OrdinalIgnoreCase));
+            if (supplyTypeFilter != null && !string.IsNullOrEmpty(supplyTypeFilter.Value))
+            {
+                 // اینجا چون تبدیل Enum به String داریم، هندل کردنش در اکستنشن سخت است.
+                 // فعلاً همین‌طور بماند، اما بدانید که SupplyType فعلاً فقط "شامل" را ساپورت می‌کند.
+                 // اگر خواستید این را هم درست کنیم بگویید.
+                var matchingEnumValues = Enum.GetValues(typeof(ProductSupplyType))
+                                             .Cast<ProductSupplyType>()
+                                             .Where(e => e.ToDisplay().Contains(supplyTypeFilter.Value, StringComparison.OrdinalIgnoreCase))
+                                             .ToList();
+                if(matchingEnumValues.Any())
+                {
+                    query = query.Where(p => matchingEnumValues.Contains(p.SupplyType));
+                }
+                request.Filters.Remove(supplyTypeFilter);
+            }
+        }
+        // --- پایان اصلاح ---
+
+        // حالا ApplyDynamicFilters اجرا می‌شود و چون نام "Unit.Title" شده، خودش Contains یا NotContains را می‌فهمد
         query = query.ApplyDynamicFilters(request.Filters);
 
-        // جستجوی case-insensitive
+        // جستجوی کلی
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
         {
             var searchLower = request.SearchTerm.ToLower();
@@ -83,10 +93,9 @@ public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, Pagina
                 (p.Code != null && p.Code.ToLower().Contains(searchLower)));
         }
 
-        // 4. سورت اصلاح شده (یکپارچه با اکستنشن متد)
+        // سورت
         var sortColumn = request.SortColumn;
 
-        // حالت خاص: سورت روی لیست‌های تو در تو (که اکستنشن متد از آن پشتیبانی نمی‌کند)
         if (string.Equals(sortColumn, "Conversions", StringComparison.OrdinalIgnoreCase) || 
             string.Equals(sortColumn, "AlternativeUnitName", StringComparison.OrdinalIgnoreCase))
         {
@@ -105,9 +114,6 @@ public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, Pagina
         }
         else
         {
-            // حالت استاندارد: استفاده از اکستنشن متد OrderByNatural
-            
-            // الف) مپینگ نام‌های DTO به مسیر Entity
             if (string.Equals(sortColumn, "UnitName", StringComparison.OrdinalIgnoreCase))
             {
                 sortColumn = "Unit.Title";
@@ -118,20 +124,16 @@ public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, Pagina
                 sortColumn = "SupplyType";
             }
 
-            // ب) اعمال سورت پیش‌فرض یا درخواستی
             if (!string.IsNullOrEmpty(sortColumn))
             {
-                // این متد خودش نزولی/صعودی، نال‌ها و سورت طبیعی (Collate) را هندل می‌کند
                 query = query.OrderByNatural(sortColumn, request.SortDescending);
             }
             else
             {
-                // سورت پیش‌فرض روی کد
                 query = query.OrderByNatural("Code", false);
             }
         }
 
-        // --- ادامه کد (Projection) ---
         var dtoQuery = query.Select(p => new ProductDto(
             p.Id,
             p.Code,

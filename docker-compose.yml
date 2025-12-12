@@ -10,7 +10,7 @@ services:
       - POSTGRES_PASSWORD=poolasa@123
       - POSTGRES_DB=ERP_DB
     ports:
-      - "5488:5432" # دسترسی از ویندوز با پورت 5488
+      - "5435:5432" # دسترسی از ویندوز با پورت 5488
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -53,7 +53,7 @@ services:
       # بک‌اند داخل شبکه داکر با نام سرویس شناخته می‌شود
       - API_URL=http://backend:5000
       # اما مرورگر موبایل شما بک‌اند را با آی‌پی سیستم می‌شناسد
-      - NEXT_PUBLIC_API_URL=http://192.168.0.190:5000
+      - NEXT_PUBLIC_API_URL=http://${HOST_IP}:5000
     ports:
       - "3000:3000"
 

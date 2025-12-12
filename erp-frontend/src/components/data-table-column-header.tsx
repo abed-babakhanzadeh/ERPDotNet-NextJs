@@ -48,6 +48,20 @@ interface DataTableColumnHeaderProps {
   onFilterChange: (newFilter: ColumnFilter | null) => void;
 }
 
+// تابع کمکی برای تولید آی‌دی (جایگزین crypto.randomUUID)
+// این تابع چک می‌کند اگر crypto در دسترس نبود، از روش جایگزین استفاده کند
+function generateUniqueId() {
+  if (
+    typeof window !== "undefined" &&
+    window.crypto &&
+    window.crypto.randomUUID
+  ) {
+    return window.crypto.randomUUID();
+  }
+  // Fallback برای حالت‌های غیر امن (HTTP)
+  return Date.now().toString(36) + Math.random().toString(36).substring(2);
+}
+
 // عملگرهای کامل برای فیلتر پیشرفته
 const filterOperators = {
   string: [
@@ -175,7 +189,7 @@ export function FilterPopoverContent({
   onClear: () => void;
 }) {
   const defaultCondition: FilterCondition = {
-    id: crypto.randomUUID(),
+    id: generateUniqueId(), // تغییر: استفاده از تابع جدید
     operator: filterOperators[column.type][0].value,
     value: "",
   };
@@ -198,7 +212,7 @@ export function FilterPopoverContent({
     setConditions((prev) => [
       ...prev,
       {
-        id: crypto.randomUUID(),
+        id: generateUniqueId(), // تغییر: استفاده از تابع جدید
         operator: filterOperators[column.type][0].value,
         value: "",
       },
