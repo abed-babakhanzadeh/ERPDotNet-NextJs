@@ -133,7 +133,7 @@ export function TableLookupCombobox<T extends LookupOption>({
           disabled={disabled}
           className="w-full justify-between text-right"
         >
-          <div className="flex items-center gap-2 flex-1">
+          <div className="flex items-center gap-2 flex-1 overflow-hidden">
             <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
             <div className="flex-1 text-right truncate">
               {selectedItem ? (
@@ -144,7 +144,7 @@ export function TableLookupCombobox<T extends LookupOption>({
                     .join(" - ")}
                 </span>
               ) : (
-                <span className="text-muted-foreground text-sm">
+                <span className="text-muted-foreground text-sm truncate block">
                   {placeholder}
                 </span>
               )}
@@ -152,7 +152,7 @@ export function TableLookupCombobox<T extends LookupOption>({
           </div>
           {selectedItem && (
             <X
-              className="h-4 w-4 opacity-50 hover:opacity-100 shrink-0"
+              className="h-4 w-4 opacity-50 hover:opacity-100 shrink-0 mr-1"
               onClick={handleClear}
             />
           )}
@@ -160,7 +160,10 @@ export function TableLookupCombobox<T extends LookupOption>({
       </PopoverTrigger>
 
       <PopoverContent
-        className="p-0 !w-auto !min-w-[480px] max-w-[90vw]"
+        // --- تغییرات اصلی اینجاست ---
+        // 1. عرض در موبایل: w-[90vw] (۹۰ درصد عرض صفحه)
+        // 2. عرض در دسکتاپ: sm:w-auto و sm:min-w-[480px]
+        className="p-0 w-[90vw] sm:w-auto sm:min-w-[480px] max-w-[95vw]"
         align="end"
         side="bottom"
         sideOffset={8}
@@ -172,6 +175,7 @@ export function TableLookupCombobox<T extends LookupOption>({
             value={searchTerm}
             onChange={(e) => handleSearch(e.target.value)}
             className="text-right"
+            // autoFocus ممکن است در موبایل کیبورد را باز کند و صفحه بپرد، گاهی برداشتنش UX بهتری دارد
             autoFocus
           />
         </div>
@@ -181,6 +185,7 @@ export function TableLookupCombobox<T extends LookupOption>({
           <div
             className="grid text-right"
             style={{
+              // گرید در موبایل هم بر اساس درصد کار می‌کند، پس مشکلی نخواهد داشت
               gridTemplateColumns: columns
                 .map((c) => c.width || "1fr")
                 .join(" "),
@@ -199,14 +204,12 @@ export function TableLookupCombobox<T extends LookupOption>({
         </div>
 
         {/* Table Body */}
-        <ScrollArea className="h-[400px]">
+        <ScrollArea className="h-[300px] sm:h-[400px]">
           {loading ? (
-            // حالت ۱: در حال بارگذاری
-            <div className="flex justify-center items-center p-4 h-[400px]">
+            <div className="flex justify-center items-center p-4 h-[300px] sm:h-[400px]">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           ) : filteredItems.length > 0 ? (
-            // حالت ۲: نمایش لیست (اگر رکوردی وجود دارد)
             <div className="divide-y divide-border">
               {filteredItems.map((item) => (
                 <button
@@ -242,13 +245,10 @@ export function TableLookupCombobox<T extends LookupOption>({
               ))}
             </div>
           ) : (
-            // حالت ۳: هیچ رکوردی نیست
-            <div className="flex flex-col justify-center items-center p-4 text-muted-foreground text-sm h-[400px] gap-2">
-              {/* اگر سرچ خالی است اما آیتمی هم نداریم (هنوز سرچ نشده) */}
+            <div className="flex flex-col justify-center items-center p-4 text-muted-foreground text-sm h-[300px] sm:h-[400px] gap-2">
               {!searchTerm && items.length === 0 ? (
                 <span>برای مشاهده نتایج تایپ کنید...</span>
               ) : (
-                // اگر سرچ شده و نتیجه‌ای نیست
                 <span>هیچ رکوردی با این مشخصات یافت نشد</span>
               )}
             </div>

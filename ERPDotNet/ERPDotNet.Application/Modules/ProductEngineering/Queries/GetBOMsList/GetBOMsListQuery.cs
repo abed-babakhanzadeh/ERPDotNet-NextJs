@@ -15,7 +15,8 @@ public record BOMListDto(
     string Title,
     string Type,
     string Status,
-    bool IsActive
+    bool IsActive,
+    string FromDate
 );
 
 [Cached(timeToLiveSeconds: 300, "BOMs")]
@@ -60,6 +61,7 @@ public class GetBOMsListHandler : IRequestHandler<GetBOMsListQuery, PaginatedRes
                     "type" => "Type",
                     "status" => "Status",
                     "isActive" => "IsActive",
+                    "fromDate" => "FromDate",
                     _ => filter.PropertyName
                 };
             }
@@ -77,6 +79,7 @@ public class GetBOMsListHandler : IRequestHandler<GetBOMsListQuery, PaginatedRes
             "type" => "Type",
             "status" => "Status",
             "isActive" => "IsActive",
+            "fromDate" => "FromDate",
             _ => request.SortColumn
         };
 
@@ -108,7 +111,8 @@ public class GetBOMsListHandler : IRequestHandler<GetBOMsListQuery, PaginatedRes
             x.Title,
             x.Type.ToDisplay(),
             x.Status.ToDisplay(),
-            x.IsActive
+            x.IsActive,
+            x.FromDate.ToShortDateString() // <--- تبدیل تاریخ به رشته
         )).ToList();
 
         return new PaginatedResult<BOMListDto>(dtos, totalCount, request.PageNumber, request.PageSize);

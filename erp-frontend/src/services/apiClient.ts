@@ -4,7 +4,7 @@ import axios from "axios";
 // ما /api را اینجا اضافه می‌کنیم تا در فایل env فقط آدرس سرور باشد
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
   ? `${process.env.NEXT_PUBLIC_API_URL}/api`
-  : "http://localhost:5249/api";
+  : "http://localhost:5000/api";
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,

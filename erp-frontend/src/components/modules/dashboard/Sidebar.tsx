@@ -39,9 +39,8 @@ export default function Sidebar({
           "w-64"
         )}
       >
-        {/* Header - ارتفاع 32px مثل Header اصلی */}
+        {/* Header */}
         <div className="flex h-12 items-center border-b border-border bg-primary px-2 justify-between gap-2">
-          {/* دکمه toggle */}
           <button
             onClick={toggleCollapse}
             className="hidden md:flex h-6 w-6 items-center justify-center rounded bg-primary-foreground/20 hover:bg-primary-foreground/30 text-primary-foreground transition-all duration-200 hover:scale-110 order-last"
@@ -54,7 +53,6 @@ export default function Sidebar({
             )}
           </button>
 
-          {/* عنوان */}
           <div className="flex items-center gap-1.5 flex-1">
             {isCollapsed ? (
               <div className="h-5 w-5 rounded bg-primary-foreground/20 flex items-center justify-center">
@@ -76,7 +74,6 @@ export default function Sidebar({
             )}
           </div>
 
-          {/* بستن موبایل */}
           <button
             onClick={onClose}
             className="text-primary-foreground md:hidden h-6 w-6 flex items-center justify-center rounded hover:bg-primary-foreground/20"
@@ -95,6 +92,8 @@ export default function Sidebar({
                   item={item}
                   isCollapsed={isCollapsed}
                   onCollapsedIconClick={toggleCollapse}
+                  // تغییر: پاس دادن تابع بستن به عنوان onItemClick
+                  onItemClick={onClose}
                 />
               ))}
             </nav>

@@ -3,7 +3,14 @@
 import React, { useState, useMemo, useEffect } from "react";
 import apiClient from "@/services/apiClient";
 import { toast } from "sonner";
-import { Layers, ArrowRight, Search, FileSearch, Network } from "lucide-react";
+import {
+  Layers,
+  ArrowRight,
+  Search,
+  FileSearch,
+  Network,
+  Eye,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { TableLookupCombobox } from "@/components/ui/TableLookupCombobox";
@@ -18,10 +25,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 import VisualTreeDialog from "./VisualTreeDialog";
 import { cn } from "@/lib/utils";
-// ایمپورت هوک ذخیره‌سازی
 import { useFormPersist } from "@/hooks/useFormPersist";
 
 interface ProductLookupDto {
@@ -46,13 +56,12 @@ interface WhereUsedDto {
 
 type ReportMode = "direct" | "multi" | "endItems";
 
-// تعریف یک اینترفیس برای استیت کلی صفحه
 interface PageState {
   selectedProductId: number | null;
   reportMode: ReportMode;
   data: WhereUsedDto[];
   totalCount: number;
-  productOptions: ProductLookupDto[]; // اضافه شد
+  productOptions: ProductLookupDto[];
 }
 
 export default function WhereUsedPage() {
@@ -65,7 +74,6 @@ export default function WhereUsedPage() {
   const initialProductName = searchParams.get("productName") || "";
   const initialProductCode = searchParams.get("productCode") || "";
 
-  // --- تجمیع Stateها در یک آبجکت برای کارکرد صحیح useFormPersist ---
   const [reportState, setReportState] = useState<PageState>({
     selectedProductId: initialProductId,
     reportMode: "direct",
@@ -90,18 +98,13 @@ export default function WhereUsedPage() {
 
   const [productLoading, setProductLoading] = useState(false);
 
-  // --- اتصال به LocalStorage ---
-  // این هوک به صورت خودکار تغییرات reportState را ذخیره و هنگام لود بازیابی می‌کند
   useFormPersist("where-used-page-state", reportState, setReportState);
 
-  // --- هندل کردن پارامترهای URL ---
-  // اگر کاربر با لینک خاصی (مثلاً از BOM Form) آمد، آن را جایگزین دیتای ذخیره شده کن
   useEffect(() => {
     if (initialProductId) {
       setReportState((prev) => ({
         ...prev,
         selectedProductId: initialProductId,
-        // اگر کالا عوض شده، آپشن‌های کامبوباکس را هم آپدیت کن تا نامش نمایش داده شود
         productOptions: initialProductName
           ? [
               {
@@ -112,7 +115,6 @@ export default function WhereUsedPage() {
             ]
           : prev.productOptions,
       }));
-      // بلافاصله فچ کن
       fetchReport(initialProductId, reportState.reportMode);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -127,7 +129,6 @@ export default function WhereUsedPage() {
         searchTerm: term,
       });
       const newOptions = res.data.items || [];
-      // آپدیت در reportState
       setReportState((prev) => ({
         ...prev,
         productOptions: newOptions,
@@ -137,7 +138,6 @@ export default function WhereUsedPage() {
     }
   };
 
-  // تابع فچ که حالا مستقل از استیت کار می‌کند (برای رفع مشکل closure)
   const fetchReport = async (prodId: number | null, mode: ReportMode) => {
     if (!prodId) return;
     setLoading(true);
@@ -155,11 +155,9 @@ export default function WhereUsedPage() {
 
       const mappedItems = (res.data.items || []).map((item: any) => ({
         ...item,
-        // ساخت آیدی یکتا برای کلید جدول
         id: (item.bomId || item.bomHeaderId) + "_" + Math.random(),
       }));
 
-      // آپدیت استیت کلی
       setReportState((prev) => ({
         ...prev,
         data: mappedItems,
@@ -176,7 +174,6 @@ export default function WhereUsedPage() {
     fetchReport(reportState.selectedProductId, reportState.reportMode);
   };
 
-  // وقتی مود گزارش عوض می‌شود، اگر کالایی انتخاب شده باشد، دوباره فچ کن
   const handleModeChange = (newMode: ReportMode) => {
     setReportState((prev) => ({ ...prev, reportMode: newMode }));
     if (reportState.selectedProductId) {
@@ -260,6 +257,35 @@ export default function WhereUsedPage() {
   const handleOpenVisualTree = (row: WhereUsedDto) => {
     setSelectedTreeRow(row);
     setTreeDialogOpen(true);
+  };
+
+  // --- رندر منوی راست کلیک ---
+  const renderContextMenu = (row: WhereUsedDto, closeMenu: () => void) => {
+    return (
+      <>
+        <DropdownMenuItem
+          onClick={() => {
+            handleOpenBOM(row);
+            closeMenu();
+          }}
+          className="gap-2 cursor-pointer"
+        >
+          <Layers className="w-4 h-4 text-blue-600" />
+          <span>مشاهده فرم BOM</span>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem
+          onClick={() => {
+            handleOpenVisualTree(row);
+            closeMenu();
+          }}
+          className="gap-2 cursor-pointer"
+        >
+          <Network className="w-4 h-4 text-purple-600" />
+          <span>مشاهده در درخت محصول</span>
+        </DropdownMenuItem>
+      </>
+    );
   };
 
   return (
@@ -372,6 +398,8 @@ export default function WhereUsedPage() {
             onColumnFilterChange={() => {}}
             onClearAllFilters={() => {}}
             isLoading={loading}
+            // اضافه کردن منوی راست کلیک
+            renderContextMenu={renderContextMenu}
             renderRowActions={(row) => (
               <TooltipProvider delayDuration={0}>
                 <div className="flex items-center gap-1 justify-center min-w-fit">

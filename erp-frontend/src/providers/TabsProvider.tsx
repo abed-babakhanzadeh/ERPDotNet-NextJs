@@ -138,9 +138,6 @@ function TabsProviderContent({ children }: { children: ReactNode }) {
     (title: string, url: string) => {
       // ابتدا صفحه هدف را prefetch می‌کنیم تا سریع‌تر باز شود
       try {
-        // در App Router متد prefetch وجود دارد
-        // اگر به هر دلیلی در محیطی در دسترس نبود، خطا را نادیده می‌گیریم
-        // @ts-expect-error: prefetch در نوع Router ممکن است تعریف نشده باشد
         router.prefetch?.(url);
       } catch (e) {
         // prefetch اختیاری است، خطا را لاگ نمی‌کنیم که تجربه کاربر خراب نشود

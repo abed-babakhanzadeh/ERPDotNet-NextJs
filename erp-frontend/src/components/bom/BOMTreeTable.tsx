@@ -1,370 +1,284 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
 import {
   ChevronDown,
-  ChevronRight,
+  ChevronLeft,
   Box,
-  Package,
-  Boxes,
-  Circle,
-  Factory,
+  Layers,
+  Component,
   AlertTriangle,
-  Cpu,
-  Sparkles,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 
 export interface BOMTreeNodeDto {
   key: string;
-  bomId: number | null;
   productId: number;
   productName: string;
   productCode: string;
-  unitName: string;
   quantity: number;
   totalQuantity: number;
   wastePercentage: number;
-  type: string;
-  isRecursive: boolean;
-  children: BOMTreeNodeDto[];
+  unitName: string;
+  type?: string;
+  children?: BOMTreeNodeDto[];
 }
 
 interface BOMTreeTableProps {
   data: BOMTreeNodeDto;
 }
 
-export default function BOMTreeTable({ data }: BOMTreeTableProps) {
-  return (
-    <div className="h-full flex flex-col bg-white">
-      {/* هدر جدول */}
-      <div className="sticky top-0 z-20 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-b-4 border-blue-500 shadow-xl">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="text-sm">
-                <th className="p-4 text-right font-bold text-white w-[40%]">
-                  <div className="flex items-center gap-3">
-                    <div className="p-1.5 bg-blue-500/20 rounded-lg">
-                      <Boxes className="w-5 h-5 text-blue-400" />
-                    </div>
-                    <span className="text-base">ساختار محصول</span>
-                  </div>
-                </th>
-                <th className="p-4 text-right font-bold text-white w-[10%]">
-                  <div className="flex items-center gap-2">
-                    <Factory className="w-4 h-4 text-purple-400" />
-                    نوع
-                  </div>
-                </th>
-                <th className="p-4 text-center font-bold text-white w-[10%]">
-                  <div className="flex items-center justify-center gap-2">
-                    <Package className="w-4 h-4 text-green-400" />
-                    واحد
-                  </div>
-                </th>
-                <th className="p-4 text-center font-bold text-white w-[12%]">
-                  <div className="flex items-center justify-center gap-2">
-                    <Cpu className="w-4 h-4 text-cyan-400" />
-                    مقدار پایه
-                  </div>
-                </th>
-                <th className="p-4 text-center font-bold text-white w-[10%]">
-                  <div className="flex items-center justify-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-400" />
-                    ضایعات
-                  </div>
-                </th>
-                <th className="p-4 text-center font-bold text-white w-[12%]">
-                  <div className="flex items-center justify-center gap-2">
-                    <Sparkles className="w-4 h-4 text-yellow-400" />
-                    تعداد کل
-                  </div>
-                </th>
-              </tr>
-            </thead>
-          </table>
-        </div>
-      </div>
+interface FlatNode extends BOMTreeNodeDto {
+  level: number;
+  hasChildren: boolean;
+  path: string;
+  parentPath: string;
+}
 
-      {/* بدنه جدول */}
-      <div className="flex-1 overflow-auto">
-        <table className="w-full text-sm">
-          <tbody>
-            <TreeRow node={data} level={0} isRoot={true} />
+export default function BOMTreeTable({ data }: BOMTreeTableProps) {
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(
+    new Set(["root"])
+  );
+
+  const flatData = useMemo(() => {
+    const result: FlatNode[] = [];
+
+    const traverse = (
+      node: BOMTreeNodeDto,
+      level: number,
+      path: string,
+      parentPath: string
+    ) => {
+      const hasChildren = !!node.children && node.children.length > 0;
+
+      result.push({
+        ...node,
+        level,
+        hasChildren,
+        path,
+        parentPath,
+      });
+
+      if (hasChildren) {
+        node.children!.forEach((child, index) => {
+          traverse(child, level + 1, `${path}-${index}`, path);
+        });
+      }
+    };
+
+    traverse(data, 0, "root", "");
+    return result;
+  }, [data]);
+
+  React.useEffect(() => {
+    const allPaths = new Set<string>();
+    flatData.forEach((node) => {
+      if (node.hasChildren) allPaths.add(node.path);
+    });
+    setExpandedPaths(allPaths);
+  }, [flatData]);
+
+  const toggleExpand = (path: string) => {
+    setExpandedPaths((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
+      return next;
+    });
+  };
+
+  const getLevelStyle = (level: number) => {
+    const colors = [
+      "bg-slate-800 text-white border-slate-900", // Level 0
+      "bg-blue-100 text-blue-700 border-blue-200",
+      "bg-indigo-100 text-indigo-700 border-indigo-200",
+      "bg-purple-100 text-purple-700 border-purple-200",
+      "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200",
+      "bg-pink-100 text-pink-700 border-pink-200",
+      "bg-rose-100 text-rose-700 border-rose-200",
+      "bg-orange-100 text-orange-700 border-orange-200",
+      "bg-amber-100 text-amber-700 border-amber-200",
+      "bg-lime-100 text-lime-700 border-lime-200",
+      "bg-emerald-100 text-emerald-700 border-emerald-200",
+    ];
+    return colors[Math.min(level, 10)];
+  };
+
+  const getLevelIcon = (level: number, hasChildren: boolean) => {
+    if (level === 0) return <Box className="w-3.5 h-3.5" />;
+    if (hasChildren) return <Layers className="w-3.5 h-3.5" />;
+    return <Component className="w-3.5 h-3.5" />;
+  };
+
+  const isVisible = (node: FlatNode) => {
+    if (node.level === 0) return true;
+    let currentPath = node.parentPath;
+    while (currentPath) {
+      if (!expandedPaths.has(currentPath)) return false;
+      const lastDash = currentPath.lastIndexOf("-");
+      if (lastDash === -1) {
+        if (currentPath === "root" && !expandedPaths.has("root")) return false;
+        break;
+      }
+      currentPath = currentPath.substring(0, lastDash);
+    }
+    if (currentPath === "root" && !expandedPaths.has("root")) return false;
+    return true;
+  };
+
+  return (
+    <div className="flex flex-col h-full w-full" dir="rtl">
+      <div className="overflow-auto flex-1 custom-scrollbar">
+        <table className="w-full text-sm border-collapse min-w-[900px]">
+          {/* --- هدر جدول (اصلاح شده: مات کردن پس‌زمینه) --- */}
+          <thead className="bg-muted/90 backdrop-blur-md sticky top-0 z-10 text-xs font-medium text-muted-foreground border-b shadow-sm supports-[backdrop-filter]:bg-muted/60">
+            <tr>
+              <th className="px-4 py-3 text-right w-[40%]">ساختار محصول</th>
+              <th className="px-4 py-3 text-right w-[10%]">نوع</th>
+              <th className="px-4 py-3 text-left w-[12%] font-mono">
+                کد محصول
+              </th>
+              <th className="px-4 py-3 text-center w-[10%]">مقدار پایه</th>
+              <th className="px-4 py-3 text-center w-[8%]">ضایعات</th>
+              <th className="px-4 py-3 text-center w-[12%]">تعداد کل</th>
+              <th className="px-4 py-3 text-center w-[8%]">واحد</th>
+            </tr>
+          </thead>
+
+          {/* --- بدنه جدول --- */}
+          <tbody className="divide-y divide-border bg-white dark:bg-card">
+            {flatData.map((row) => {
+              if (!isVisible(row)) return null;
+
+              const isExpanded = expandedPaths.has(row.path);
+
+              return (
+                <tr
+                  key={row.path}
+                  className="hover:bg-muted/30 transition-colors group"
+                >
+                  {/* ستون ساختار محصول */}
+                  <td className="px-4 py-2 relative">
+                    <div
+                      className="flex items-center"
+                      style={{ paddingRight: `${row.level * 28}px` }}
+                    >
+                      {/* خط راهنما */}
+                      {row.level > 0 && (
+                        <div
+                          className="absolute right-0 top-0 bottom-0 border-r border-dashed border-slate-200"
+                          style={{ right: `${row.level * 28 - 14}px` }}
+                        />
+                      )}
+
+                      {/* دکمه باز/بسته */}
+                      <button
+                        onClick={() => toggleExpand(row.path)}
+                        disabled={!row.hasChildren}
+                        className={cn(
+                          "w-5 h-5 flex items-center justify-center ml-1 rounded hover:bg-slate-200 text-slate-500 transition-colors",
+                          !row.hasChildren && "invisible"
+                        )}
+                      >
+                        {isExpanded ? (
+                          <ChevronDown size={14} />
+                        ) : (
+                          <ChevronLeft size={14} />
+                        )}
+                      </button>
+
+                      {/* بج سطح و نام */}
+                      <div className="flex items-center gap-2 py-1">
+                        <div
+                          className={cn(
+                            "flex items-center justify-center w-6 h-6 rounded-md border shadow-sm flex-shrink-0 transition-all cursor-default select-none",
+                            getLevelStyle(row.level)
+                          )}
+                        >
+                          <span className="text-[10px] font-bold font-mono">
+                            {row.level}
+                          </span>
+                        </div>
+
+                        <div
+                          className={cn(
+                            "flex items-center gap-1.5",
+                            row.level === 0
+                              ? "font-bold text-slate-800"
+                              : "text-slate-700"
+                          )}
+                        >
+                          {getLevelIcon(row.level, row.hasChildren)}
+                          <span className="truncate" title={row.productName}>
+                            {row.productName}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* ستون نوع */}
+                  <td className="px-4 py-2 text-right">
+                    <span className="text-[11px] text-muted-foreground bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      {row.type || (row.hasChildren ? "ساختنی" : "خریدنی")}
+                    </span>
+                  </td>
+
+                  {/* ستون کد محصول */}
+                  <td className="px-4 py-2 text-left">
+                    <span className="font-mono text-[11px] text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                      {row.productCode}
+                    </span>
+                  </td>
+
+                  {/* ستون مقدار پایه */}
+                  <td className="px-4 py-2 text-center">
+                    <div className="font-mono font-medium text-slate-700 dir-ltr inline-block text-xs">
+                      {Number(row.quantity).toLocaleString()}
+                    </div>
+                  </td>
+
+                  {/* ستون ضایعات */}
+                  <td className="px-4 py-2 text-center">
+                    {row.wastePercentage > 0 ? (
+                      <div className="flex items-center justify-center gap-1">
+                        <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                          {row.wastePercentage}%
+                        </span>
+                        <AlertTriangle className="w-3 h-3 text-amber-500" />
+                      </div>
+                    ) : (
+                      <span className="text-slate-300 text-[10px]">-</span>
+                    )}
+                  </td>
+
+                  {/* ستون تعداد کل (انفجار) */}
+                  <td className="px-4 py-2 text-center">
+                    <div
+                      className={cn(
+                        "font-mono font-bold text-xs px-2 py-1 rounded shadow-sm dir-ltr inline-block min-w-[60px]",
+                        getLevelStyle(row.level)
+                      )}
+                    >
+                      {Number(row.totalQuantity).toLocaleString()}
+                    </div>
+                  </td>
+
+                  {/* ستون واحد */}
+                  <td className="px-4 py-2 text-center">
+                    <span className="text-[11px] text-muted-foreground">
+                      {row.unitName}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
     </div>
-  );
-}
-
-function TreeRow({
-  node,
-  level,
-  isRoot = false,
-}: {
-  node: BOMTreeNodeDto;
-  level: number;
-  isRoot?: boolean;
-}) {
-  const [expanded, setExpanded] = useState(true);
-  const hasChildren = node.children && node.children.length > 0;
-
-  const handleToggle = () => {
-    if (!hasChildren) return;
-    setExpanded(!expanded);
-  };
-
-  // آیکون مناسب: برای زیرمجموعه Boxes، برای برگ Circle
-  const getNodeIcon = () => {
-    if (isRoot) return Box;
-    if (hasChildren) return Boxes;
-    return Circle;
-  };
-
-  // رنگ‌بندی متفاوت برای هر سطح
-  const getLevelStyle = () => {
-    const styles = [
-      {
-        bg: "from-blue-500 to-blue-600",
-        bgLight: "bg-blue-50/60",
-        border: "border-blue-300",
-        text: "text-blue-700",
-        icon: "text-blue-600",
-      },
-      {
-        bg: "from-purple-500 to-purple-600",
-        bgLight: "bg-purple-50/60",
-        border: "border-purple-300",
-        text: "text-purple-700",
-        icon: "text-purple-600",
-      },
-      {
-        bg: "from-emerald-500 to-emerald-600",
-        bgLight: "bg-emerald-50/60",
-        border: "border-emerald-300",
-        text: "text-emerald-700",
-        icon: "text-emerald-600",
-      },
-      {
-        bg: "from-amber-500 to-amber-600",
-        bgLight: "bg-amber-50/60",
-        border: "border-amber-300",
-        text: "text-amber-700",
-        icon: "text-amber-600",
-      },
-      {
-        bg: "from-cyan-500 to-cyan-600",
-        bgLight: "bg-cyan-50/60",
-        border: "border-cyan-300",
-        text: "text-cyan-700",
-        icon: "text-cyan-600",
-      },
-    ];
-    return styles[Math.min(level, styles.length - 1)];
-  };
-
-  const NodeIcon = getNodeIcon();
-  const levelStyle = getLevelStyle();
-  const indentPadding = level * 36;
-
-  // تعیین رنگ بج نوع
-  const getTypeBadgeClass = () => {
-    switch (node.type) {
-      case "ماده اولیه":
-        return "bg-slate-100 text-slate-700 border-slate-300";
-      case "نیمه ساخته":
-        return "bg-amber-100 text-amber-700 border-amber-300";
-      default:
-        return "bg-blue-100 text-blue-700 border-blue-300";
-    }
-  };
-
-  return (
-    <>
-      <tr
-        className={cn(
-          "group transition-all duration-300 border-b border-slate-200",
-          isRoot
-            ? "bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100"
-            : `${levelStyle.bgLight} hover:bg-opacity-100`,
-          "hover:shadow-md"
-        )}
-      >
-        {/* ستون ساختار محصول */}
-        <td className="p-3 relative">
-          <div
-            className="flex items-center gap-3 select-none"
-            style={{ paddingRight: `${indentPadding}px` }}
-          >
-            {/* نوار رنگی سطح */}
-            {level > 0 && (
-              <div
-                className={cn(
-                  "absolute right-0 top-0 bottom-0 w-1 transition-all duration-200",
-                  `bg-gradient-to-b ${levelStyle.bg}`
-                )}
-              />
-            )}
-
-            {/* دکمه باز/بسته */}
-            <button
-              onClick={handleToggle}
-              disabled={!hasChildren}
-              className={cn(
-                "p-1.5 rounded-lg transition-all duration-200 border",
-                hasChildren
-                  ? "hover:bg-slate-100 border-slate-300 hover:border-slate-400 active:scale-95"
-                  : "opacity-0 cursor-default border-transparent"
-              )}
-            >
-              <div
-                className={cn(
-                  "transition-transform duration-200",
-                  expanded ? "rotate-0" : "-rotate-90"
-                )}
-              >
-                <ChevronRight className="w-4 h-4 text-slate-600" />
-              </div>
-            </button>
-
-            {/* آیکون نود */}
-            <div
-              className={cn(
-                "p-2.5 rounded-lg transition-all duration-200 border-2",
-                isRoot
-                  ? "bg-gradient-to-br from-blue-500 to-indigo-600 border-blue-400 shadow-md"
-                  : hasChildren
-                  ? `bg-gradient-to-br ${levelStyle.bg} ${levelStyle.border} shadow-sm`
-                  : `bg-white ${levelStyle.border} shadow-sm`,
-                "group-hover:shadow-md"
-              )}
-            >
-              <NodeIcon
-                className={cn(
-                  "w-4 h-4 transition-all duration-200",
-                  isRoot || hasChildren ? "text-white" : levelStyle.icon
-                )}
-              />
-            </div>
-
-            {/* اطلاعات محصول */}
-            <div className="flex flex-col min-w-0 flex-1">
-              <span
-                className={cn(
-                  "font-semibold truncate",
-                  isRoot
-                    ? "text-base text-blue-900"
-                    : `text-sm ${levelStyle.text}`
-                )}
-              >
-                {node.productName}
-              </span>
-              <span
-                className={cn(
-                  "text-[11px] font-mono text-slate-600 bg-slate-100 px-2 py-0.5 rounded mt-1 w-fit border border-slate-200"
-                )}
-              >
-                {node.productCode}
-              </span>
-            </div>
-          </div>
-        </td>
-
-        {/* ستون نوع */}
-        <td className="p-3">
-          <Badge
-            variant="outline"
-            className={cn(
-              "font-medium text-[11px] border",
-              getTypeBadgeClass()
-            )}
-          >
-            {node.type}
-          </Badge>
-        </td>
-
-        {/* ستون واحد */}
-        <td className="p-3 text-center">
-          <span className="text-xs font-medium text-slate-700 bg-slate-100 px-3 py-1 rounded-md border border-slate-200">
-            {node.unitName}
-          </span>
-        </td>
-
-        {/* ستون مقدار پایه */}
-        <td className="p-3 text-center">
-          <span
-            className={cn(
-              "font-mono font-semibold text-sm px-3 py-1.5 rounded-lg inline-block min-w-[60px] border",
-              isRoot
-                ? "bg-blue-500 text-white border-blue-400 shadow-sm"
-                : "bg-slate-50 text-slate-800 border-slate-300"
-            )}
-          >
-            {isRoot ? "1" : Number(node.quantity || 0).toLocaleString()}
-          </span>
-        </td>
-
-        {/* ستون ضایعات */}
-        <td className="p-3 text-center">
-          {node.wastePercentage > 0 ? (
-            <div className="flex items-center justify-center gap-1.5">
-              <span className="text-xs font-semibold text-red-700 bg-red-100 px-2 py-1 rounded-md border border-red-300">
-                {node.wastePercentage}%
-              </span>
-              <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
-            </div>
-          ) : (
-            <span className="text-slate-400 text-sm">—</span>
-          )}
-        </td>
-
-        {/* ستون تعداد کل */}
-        <td className="p-3 text-center">
-          <span
-            className={cn(
-              "font-mono font-bold text-sm px-3 py-1.5 rounded-lg inline-block min-w-[70px] border-2 shadow-sm",
-              `bg-gradient-to-br ${levelStyle.bg} text-white ${levelStyle.border}`
-            )}
-          >
-            {Number(node.totalQuantity || 0).toLocaleString()}
-          </span>
-        </td>
-      </tr>
-
-      {/* رندر فرزندان با انیمیشن نرم */}
-      {hasChildren && (
-        <tr
-          className={cn(
-            "transition-all duration-300 ease-in-out",
-            expanded ? "opacity-100" : "opacity-0 h-0"
-          )}
-        >
-          <td colSpan={6} className="p-0">
-            <div
-              className={cn(
-                "transition-all duration-300 ease-in-out overflow-hidden",
-                expanded ? "max-h-[10000px]" : "max-h-0"
-              )}
-            >
-              <table className="w-full">
-                <tbody>
-                  {node.children.map((child) => (
-                    <TreeRow
-                      key={child.key}
-                      node={child}
-                      level={level + 1}
-                      isRoot={false}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </td>
-        </tr>
-      )}
-    </>
   );
 }

@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.OpenApi;
+using Microsoft.EntityFrameworkCore; // این خط برای MigrateAsync ضروری است
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
@@ -20,7 +21,6 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 #region 1. Configuration & Secrets
-// دریافت تنظیمات ضروری
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = Encoding.UTF8.GetBytes(jwtSettings["Secret"] 
     ?? throw new InvalidOperationException("JWT Secret is missing in appsettings.json"));
@@ -29,16 +29,13 @@ var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
     ?? throw new InvalidOperationException("Redis connection string is missing.");
 #endregion
 
-#region 2. Infrastructure Layer (Database, Redis, Identity)
-// ثبت سرویس‌های لایه اینفراستراکچر (شامل DbContext و Interceptors)
+#region 2. Infrastructure Layer
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
-// Identity Configuration
 builder.Services.AddIdentity<User, IdentityRole>()
     .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
 
-// Redis (Direct Connection & Cache)
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp => 
     ConnectionMultiplexer.Connect(redisConnectionString));
 
@@ -48,11 +45,9 @@ builder.Services.AddStackExchangeRedisCache(options =>
 });
 #endregion
 
-#region 3. Application Layer (MediatR, Services)
-// ثبت سرویس‌های لایه اپلیکیشن (MediatR و Behavior ها)
+#region 3. Application Layer
 builder.Services.AddApplicationServices();
 
-// ثبت سرویس‌های خاص
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<ICacheService, RedisCacheService>();
@@ -60,11 +55,10 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IFileService, FileService>();
 #endregion
 
-#region 4. Presentation Layer (API, Auth, Swagger)
+#region 4. Presentation Layer
 builder.Services.AddControllers();
 builder.Services.AddHttpContextAccessor();
 
-// Authentication & JWT
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -84,14 +78,49 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// OpenAPI (Swagger/Scalar)
 builder.Services.AddOpenApi("v1", options =>
 {
     options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
 });
+
+// تنظیم CORS اصلاح شده برای شبکه
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        b => b.AllowAnyMethod()
+              .AllowAnyHeader()
+              .SetIsOriginAllowed(origin => true) // اجازه به همه آی‌پی‌ها (موبایل، تبلت، ویندوز)
+              .AllowCredentials());
+});
 #endregion
 
 var app = builder.Build();
+
+// =========================================================
+// تغییر جدید: اعمال مایگریشن‌ها هنگام استارت
+// =========================================================
+#region 6. Automatic Database Migration
+// using (var scope = app.Services.CreateScope())
+// {
+//     var services = scope.ServiceProvider;
+//     try
+//     {
+//         var context = services.GetRequiredService<AppDbContext>();
+//         // اگر دیتابیس وجود نداشته باشد می‌سازد و اگر تغییراتی باشد اعمال می‌کند
+//         if (context.Database.IsRelational())
+//         {
+//             await context.Database.MigrateAsync();
+//         }
+//     }
+//     catch (Exception ex)
+//     {
+//         var logger = services.GetRequiredService<ILogger<Program>>();
+//         logger.LogError(ex, "An error occurred while migrating the database.");
+//         // در محیط داکر ممکن است دیتابیس هنوز آماده نباشد، لاگ کردن حیاتی است
+//     }
+// }
+#endregion
+// =========================================================
 
 #region 5. Middleware Pipeline
 if (app.Environment.IsDevelopment())
@@ -107,31 +136,18 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// تغییرات CORS برای شبکه
-app.UseCors(policy =>
-    policy.WithOrigins(
-            "http://localhost:3000", 
-            "http://192.168.0.241:3000", 
-            "http://192.168.0.190:3000"
-          )
-          .AllowAnyHeader()
-          .AllowAnyMethod()
-          .AllowCredentials());
+app.UseCors("AllowAll");
 
 app.UseAuthentication();
-
 app.UseStaticFiles();
 app.UseAuthorization();
 
 app.MapControllers();
-
 #endregion
 
-app.Run();
+app.Run(); // یا await app.RunAsync();
 
-// =========================================================
-// Helpers
-// =========================================================
+// Helpers... (بدون تغییر)
 internal sealed class BearerSecuritySchemeTransformer : IOpenApiDocumentTransformer
 {
     private readonly IAuthenticationSchemeProvider _authenticationSchemeProvider;

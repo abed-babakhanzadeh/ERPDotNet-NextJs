@@ -9,14 +9,16 @@ interface Props {
   isCollapsed: boolean;
   level?: number;
   onCollapsedIconClick?: () => void;
+  // تغییر: اضافه کردن پراپ جدید
+  onItemClick?: () => void;
 }
 
-// Wrapper component برای اطمینان از اینکه useTabs کانتکست آماده است
 export default function SidebarItemWrapper({
   item,
   isCollapsed,
   level = 0,
   onCollapsedIconClick,
+  onItemClick, // دریافت پراپ
 }: Props) {
   return (
     <Suspense fallback={null}>
@@ -25,6 +27,8 @@ export default function SidebarItemWrapper({
         isCollapsed={isCollapsed}
         level={level}
         onCollapsedIconClick={onCollapsedIconClick}
+        // تغییر: ارسال پراپ به فرزند
+        onItemClick={onItemClick}
       />
     </Suspense>
   );

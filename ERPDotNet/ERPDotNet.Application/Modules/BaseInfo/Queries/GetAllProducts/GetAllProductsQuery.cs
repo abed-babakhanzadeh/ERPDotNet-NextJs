@@ -41,40 +41,50 @@ public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, Pagina
         _context = context;
     }
 
-    public async Task<PaginatedResult<ProductDto>> Handle(GetAllProductsQuery request, CancellationToken cancellationToken)
+public async Task<PaginatedResult<ProductDto>> Handle(GetAllProductsQuery request, CancellationToken cancellationToken)
     {
         var query = _context.Products
             .AsNoTracking()
-            .Include(p => p.Unit) // حتما باید اینکلود باشد تا Unit.Title کار کند
+            .Include(p => p.Unit)
             .AsQueryable();
 
-        // --- فیلترهای خاص ---
-        var unitNameFilter = request.Filters?.FirstOrDefault(f => f.PropertyName.Equals("unitName", StringComparison.OrdinalIgnoreCase));
-        if (unitNameFilter != null && !string.IsNullOrEmpty(unitNameFilter.Value))
+        // --- اصلاح نام فیلترها برای تطابق با Entity ---
+        // به جای فیلتر کردن دستی، فقط نام پراپرتی را عوض می‌کنیم تا اکستنشن متد بفهمد کجاست
+        if (request.Filters != null)
         {
-            query = query.Where(p => p.Unit != null && p.Unit.Title.Contains(unitNameFilter.Value));
-            request.Filters?.Remove(unitNameFilter);
-        }
-        
-        var supplyTypeFilter = request.Filters?.FirstOrDefault(f => f.PropertyName.Equals("supplyType", StringComparison.OrdinalIgnoreCase));
-        if (supplyTypeFilter != null && !string.IsNullOrEmpty(supplyTypeFilter.Value))
-        {
-            var matchingEnumValues = Enum.GetValues(typeof(ProductSupplyType))
-                                         .Cast<ProductSupplyType>()
-                                         .Where(e => e.ToDisplay().Contains(supplyTypeFilter.Value, StringComparison.OrdinalIgnoreCase))
-                                         .ToList();
-            if(matchingEnumValues.Any())
+            var unitNameFilter = request.Filters.FirstOrDefault(f => f.PropertyName.Equals("unitName", StringComparison.OrdinalIgnoreCase));
+            if (unitNameFilter != null)
             {
-                query = query.Where(p => matchingEnumValues.Contains(p.SupplyType));
+                // مپ کردن نام فرانت (unitName) به مسیر دیتابیس (Unit.Title)
+                unitNameFilter.PropertyName = "Unit.Title";
             }
-            
-            request.Filters?.Remove(supplyTypeFilter);
-        }
-        // --- پایان فیلترهای خاص ---
 
+            // برای SupplyType چون Enum است و نیاز به هندل کردن خاص دارد، فعلاً لاجیک دستی شما را نگه داشتم
+            // اما اگر بخواهید منفی‌ها روی آن کار کند باید لاجیک پیچیده‌تری بنویسید.
+            // فعلاً تمرکز روی unitName بود که "شامل نباشد" کار نمی‌کرد.
+            var supplyTypeFilter = request.Filters.FirstOrDefault(f => f.PropertyName.Equals("supplyType", StringComparison.OrdinalIgnoreCase));
+            if (supplyTypeFilter != null && !string.IsNullOrEmpty(supplyTypeFilter.Value))
+            {
+                 // اینجا چون تبدیل Enum به String داریم، هندل کردنش در اکستنشن سخت است.
+                 // فعلاً همین‌طور بماند، اما بدانید که SupplyType فعلاً فقط "شامل" را ساپورت می‌کند.
+                 // اگر خواستید این را هم درست کنیم بگویید.
+                var matchingEnumValues = Enum.GetValues(typeof(ProductSupplyType))
+                                             .Cast<ProductSupplyType>()
+                                             .Where(e => e.ToDisplay().Contains(supplyTypeFilter.Value, StringComparison.OrdinalIgnoreCase))
+                                             .ToList();
+                if(matchingEnumValues.Any())
+                {
+                    query = query.Where(p => matchingEnumValues.Contains(p.SupplyType));
+                }
+                request.Filters.Remove(supplyTypeFilter);
+            }
+        }
+        // --- پایان اصلاح ---
+
+        // حالا ApplyDynamicFilters اجرا می‌شود و چون نام "Unit.Title" شده، خودش Contains یا NotContains را می‌فهمد
         query = query.ApplyDynamicFilters(request.Filters);
 
-        // جستجوی case-insensitive
+        // جستجوی کلی
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
         {
             var searchLower = request.SearchTerm.ToLower();
@@ -83,31 +93,12 @@ public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, Pagina
                 (p.Code != null && p.Code.ToLower().Contains(searchLower)));
         }
 
-        // 4. سورت (بخش اصلاح شده)
-     var sortColumn = request.SortColumn;
+        // سورت
+        var sortColumn = request.SortColumn;
 
-    if (!string.IsNullOrEmpty(sortColumn))
-    {
-        // مپینگ نام‌های DTO به نام‌های واقعی در Entity
-        if (sortColumn.Equals("UnitName", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(sortColumn, "Conversions", StringComparison.OrdinalIgnoreCase) || 
+            string.Equals(sortColumn, "AlternativeUnitName", StringComparison.OrdinalIgnoreCase))
         {
-            sortColumn = "Unit.Title";
-        }
-        else if (sortColumn.Equals("SupplyTypeId", StringComparison.OrdinalIgnoreCase) 
-              || sortColumn.Equals("SupplyType", StringComparison.OrdinalIgnoreCase))
-        {
-            // در DTO ممکن است SupplyTypeId یا SupplyType باشد، اما در Entity فقط SupplyType (Enum) داریم
-            sortColumn = "SupplyType";
-        }
-        
-        // نکته مهم درباره "ستون فرعی" (Alternative Unit)
-        // اگر منظور شما از ستون فرعی، نام واحد جایگزین است، چون این یک لیست است (1 به چند)،
-        // سورت کردن روی آن پیچیده است. اما اگر بخواهید بر اساس "اولین واحد فرعی" سورت کنید:
-        if (sortColumn.Equals("Conversions", StringComparison.OrdinalIgnoreCase) || 
-            sortColumn.Equals("AlternativeUnitName", StringComparison.OrdinalIgnoreCase))
-        {
-            // روش اصلاح شده: ابتدا Select سپس FirstOrDefault
-            // این روش از خطای نال جلوگیری می‌کند و SQL بهینه‌تری تولید می‌کند
             if (request.SortDescending)
             {
                 query = query.OrderByDescending(p => p.UnitConversions
@@ -120,32 +111,46 @@ public class GetAllProductsHandler : IRequestHandler<GetAllProductsQuery, Pagina
                                             .Select(c => c.AlternativeUnit!.Title)
                                             .FirstOrDefault());
             }
-  
         }
-    else
-    {
-        query = query.OrderByNatural("Code", false); 
-    }
-    }
+        else
+        {
+            if (string.Equals(sortColumn, "UnitName", StringComparison.OrdinalIgnoreCase))
+            {
+                sortColumn = "Unit.Title";
+            }
+            else if (string.Equals(sortColumn, "SupplyTypeId", StringComparison.OrdinalIgnoreCase) 
+                  || string.Equals(sortColumn, "SupplyType", StringComparison.OrdinalIgnoreCase))
+            {
+                sortColumn = "SupplyType";
+            }
 
-    // --- ادامه کد (Projection) ---
-    var dtoQuery = query.Select(p => new ProductDto(
-        p.Id,
-        p.Code,
-        p.Name,
-        p.UnitId,
-        p.Unit != null ? p.Unit.Title : "",
-        (int)p.SupplyType,
-        p.SupplyType.ToDisplay(),
-        p.ImagePath,
-        p.UnitConversions.Select(c => new ProductConversionDto(
-            c.Id,
-            c.AlternativeUnitId,
-            c.AlternativeUnit != null ? c.AlternativeUnit.Title : "",
-            c.Factor
-        )).ToList()
-    ));
+            if (!string.IsNullOrEmpty(sortColumn))
+            {
+                query = query.OrderByNatural(sortColumn, request.SortDescending);
+            }
+            else
+            {
+                query = query.OrderByNatural("Code", false);
+            }
+        }
 
-    return await dtoQuery.ToPaginatedListAsync(request.PageNumber, request.PageSize, cancellationToken);
-}
+        var dtoQuery = query.Select(p => new ProductDto(
+            p.Id,
+            p.Code,
+            p.Name,
+            p.UnitId,
+            p.Unit != null ? p.Unit.Title : "",
+            (int)p.SupplyType,
+            p.SupplyType.ToDisplay(),
+            p.ImagePath,
+            p.UnitConversions.Select(c => new ProductConversionDto(
+                c.Id,
+                c.AlternativeUnitId,
+                c.AlternativeUnit != null ? c.AlternativeUnit.Title : "",
+                c.Factor
+            )).ToList()
+        ));
+
+        return await dtoQuery.ToPaginatedListAsync(request.PageNumber, request.PageSize, cancellationToken);
+    }
 }

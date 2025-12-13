@@ -30,35 +30,37 @@ public class GetAllUnitsHandler : IRequestHandler<GetAllUnitsQuery, PaginatedRes
         _context = context;
     }
 
-    public async Task<PaginatedResult<UnitDto>> Handle(GetAllUnitsQuery request, CancellationToken cancellationToken)
+public async Task<PaginatedResult<UnitDto>> Handle(GetAllUnitsQuery request, CancellationToken cancellationToken)
     {
         var query = _context.Units
             .AsNoTracking()
-            .Include(u => u.BaseUnit) // برای دسترسی به BaseUnit.Title ضروری است
+            .Include(u => u.BaseUnit)
             .AsQueryable();
 
-        // 1. اعمال جستجوی کلی
+        // 1. جستجوی کلی
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
         {
             query = query.Where(u => u.Title.Contains(request.SearchTerm) || u.Symbol.Contains(request.SearchTerm));
         }
         
-        // 2. هندل کردن فیلتر خاص BaseUnitName (همچنان لازم است چون نام پراپرتی متفاوت است)
-        var baseUnitNameFilter = request.Filters?.FirstOrDefault(f => f.PropertyName.Equals("BaseUnitName", StringComparison.OrdinalIgnoreCase));
-        if (baseUnitNameFilter != null && !string.IsNullOrEmpty(baseUnitNameFilter.Value))
+        // 2. اصلاح نام فیلتر BaseUnitName (مپینگ به Entity)
+        if (request.Filters != null)
         {
-            query = query.Where(u => u.BaseUnit != null && u.BaseUnit.Title.Contains(baseUnitNameFilter.Value));
-            request.Filters?.Remove(baseUnitNameFilter);
+            var baseUnitNameFilter = request.Filters.FirstOrDefault(f => f.PropertyName.Equals("BaseUnitName", StringComparison.OrdinalIgnoreCase));
+            if (baseUnitNameFilter != null)
+            {
+                // فقط نام پراپرتی را عوض می‌کنیم و می‌گذاریم در لیست بماند
+                // تا ApplyDynamicFilters نوع عملیات (مثلاً notContains) را روی آن اعمال کند
+                baseUnitNameFilter.PropertyName = "BaseUnit.Title";
+            }
         }
 
-        // 3. اعمال بقیه فیلترهای داینامیک
+        // 3. اعمال فیلترهای داینامیک (حالا BaseUnit.Title را می‌شناسد و عملیات را درست انجام می‌دهد)
         query = query.ApplyDynamicFilters(request.Filters);
 
-        // 4. مرتب‌سازی (بخش اصلاح شده)
+        // 4. مرتب‌سازی
         var sortColumn = request.SortColumn;
 
-        // مپ کردن نام ستون DTO به مسیر Entity
-        // چون OrderByNatural روی Entity کار می‌کند، باید نام دقیق مسیر را بداند
         if (string.Equals(sortColumn, "BaseUnitName", StringComparison.OrdinalIgnoreCase))
         {
             sortColumn = "BaseUnit.Title";
@@ -66,16 +68,14 @@ public class GetAllUnitsHandler : IRequestHandler<GetAllUnitsQuery, PaginatedRes
 
         if (!string.IsNullOrEmpty(sortColumn))
         {
-            // حالا OrderByNatural خودش تشخیص می‌دهد که این مسیر Nullable است و نال‌ها را به انتها می‌فرستد
             query = query.OrderByNatural(sortColumn, request.SortDescending);
         }
         else
         {
-            // سورت پیش‌فرض
             query = query.OrderByNatural("Id", false);
         }
 
-        // 5. پروجکشن به DTO
+        // 5. پروجکشن
         var dtoQuery = query.Select(x => new UnitDto(
             x.Id, 
             x.Title, 
@@ -87,7 +87,7 @@ public class GetAllUnitsHandler : IRequestHandler<GetAllUnitsQuery, PaginatedRes
             x.BaseUnit != null ? x.BaseUnit.Title : null
         ));
 
-        // 6. خروجی صفحه‌بندی شده
         return await dtoQuery.ToPaginatedListAsync(request.PageNumber, request.PageSize, cancellationToken);
     }
+
 }

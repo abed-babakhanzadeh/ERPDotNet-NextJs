@@ -109,8 +109,17 @@ export default function ProductsPage() {
     addTab("تعریف کالای جدید", "/base-info/products/create");
   };
 
+  // --- هندلر مشاهده (فقط نمایش) ---
+  const handleView = (row: Product) => {
+    addTab(`جزئیات ${row.name}`, `/base-info/products/edit/${row.id}`);
+  };
+
+  // --- هندلر ویرایش (نمایش + حالت ادیت) ---
   const handleEdit = (row: Product) => {
-    addTab(`ویرایش ${row.name}`, `/base-info/products/edit/${row.id}`);
+    addTab(
+      `ویرایش ${row.name}`,
+      `/base-info/products/edit/${row.id}?mode=edit`
+    );
   };
 
   const handleDelete = async (row: Product) => {
@@ -127,19 +136,13 @@ export default function ProductsPage() {
 
   return (
     <ProtectedPagePlaceholder permission="BaseInfo.Products">
-      {/* Container اصلی با ارتفاع کامل */}
-      <div className="flex flex-col h-full bg-background">
-        {/* Fixed Header - با رنگ‌بندی بهتر */}
-        <div className="sticky top-0 z-50 flex items-center justify-between border-b bg-gradient-to-l from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 backdrop-blur supports-[backdrop-filter]:bg-card/90 px-4 py-2.5 shadow-sm h-12">
-          <div className="flex items-center gap-3 overflow-hidden min-w-0">
-            {/* Header فشرده - ارتفاع ثابت */}
-            <div className="flex items-center justify-between h-8 mb-2 flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <Box className="h-5 w-5 text-primary" />
-                <h1 className="text-sm font-semibold">مدیریت کالاها</h1>
-              </div>
-            </div>
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex items-center justify-between px-3 md:px-4 h-9 border-b bg-muted/50 shrink-0">
+          <div className="flex items-center gap-2">
+            <Box className="h-4 w-4 text-primary" />
+            <h1 className="text-sm font-semibold">مدیریت کالاها</h1>
           </div>
+
           <PermissionGuardPlaceholder permission="BaseInfo.Products.Create">
             <TooltipProvider delayDuration={200}>
               <Tooltip>
@@ -161,11 +164,12 @@ export default function ProductsPage() {
           </PermissionGuardPlaceholder>
         </div>
 
-        {/* DataTable - فضای باقیمانده */}
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-hidden">
           <DataTable
             columns={columns}
-            onEdit={(product) => handleEdit(product as Product)}
+            // پاس دادن متدهای جدید
+            onView={handleView}
+            onEdit={handleEdit}
             onDelete={handleDelete}
             {...tableProps}
           />
