@@ -19,6 +19,7 @@ public record UpdateBOMCommand : IRequest<bool>
     
     public DateTime FromDate { get; set; }
     public DateTime? ToDate { get; set; }
+    public bool IsActive { get; set; }
     
     // لیست اقلام جدید (کاملاً جایگزین قبلی‌ها می‌شود)
     public List<BOMDetailInputDto> Details { get; set; } = new();
@@ -64,6 +65,7 @@ public class UpdateBOMHandler : IRequestHandler<UpdateBOMCommand, bool>
         bom.Title = request.Title;
         bom.Version = request.Version;
         bom.Type = request.Type;
+        bom.IsActive = request.IsActive;
         
         // اصلاح تاریخ UTC (حیاتی برای PostgreSQL)
         bom.FromDate = request.FromDate.Kind == DateTimeKind.Utc 

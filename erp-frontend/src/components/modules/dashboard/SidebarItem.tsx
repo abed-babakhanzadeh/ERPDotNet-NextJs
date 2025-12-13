@@ -13,6 +13,8 @@ interface Props {
   isCollapsed: boolean;
   level?: number;
   onCollapsedIconClick?: () => void;
+  // تغییر: اضافه کردن پراپ
+  onItemClick?: () => void;
 }
 
 export default function SidebarItem({
@@ -20,6 +22,7 @@ export default function SidebarItem({
   isCollapsed,
   level = 0,
   onCollapsedIconClick,
+  onItemClick, // دریافت پراپ
 }: Props) {
   if (!item) return null;
 
@@ -48,13 +51,17 @@ export default function SidebarItem({
     if (item.href) {
       e.preventDefault();
       addTab(item.title, item.href);
+
+      // تغییر: بستن سایدبار بعد از کلیک روی لینک
+      if (onItemClick) {
+        onItemClick();
+      }
     }
   };
 
-  // رنگ‌های دینامیک برای سطح‌های مختلف
   const getLevelColors = () => {
     const colors = [
-      // سطح 0 - سبز روشن (Primary)
+      // سطح 0
       {
         bg: "bg-gradient-to-r from-emerald-50 to-emerald-100/50",
         bgHover: "hover:from-emerald-100 hover:to-emerald-200/60",
@@ -64,7 +71,7 @@ export default function SidebarItem({
           "bg-gradient-to-r from-emerald-100 to-emerald-200/70 shadow-sm ring-1 ring-emerald-300/50",
         icon: "text-emerald-600",
       },
-      // سطح 1 - آبی
+      // سطح 1
       {
         bg: "bg-blue-50/70",
         bgHover: "hover:bg-blue-100/80",
@@ -73,7 +80,7 @@ export default function SidebarItem({
         bgActive: "bg-blue-100/90 shadow-sm",
         icon: "text-blue-600",
       },
-      // سطح 2 - بنفش
+      // سطح 2
       {
         bg: "bg-purple-50/70",
         bgHover: "hover:bg-purple-100/80",
@@ -82,7 +89,7 @@ export default function SidebarItem({
         bgActive: "bg-purple-100/90 shadow-sm",
         icon: "text-purple-600",
       },
-      // سطح 3 - رز
+      // سطح 3
       {
         bg: "bg-pink-50/70",
         bgHover: "hover:bg-pink-100/80",
@@ -144,15 +151,12 @@ export default function SidebarItem({
   // منوی کشویی
   const handleMenuClick = (e: React.MouseEvent) => {
     if (isCollapsed && level === 0) {
-      // فقط برای level 0 (root items) در حالت collapsed
       e.preventDefault();
       onCollapsedIconClick?.();
     } else if (isCollapsed && level > 0) {
-      // برای nested items در حالت collapsed، باز کن منو
       e.preventDefault();
       setIsOpen(!isOpen);
     } else {
-      // در حالت عادی، toggle کن
       setIsOpen(!isOpen);
     }
   };
@@ -195,7 +199,6 @@ export default function SidebarItem({
             )}
           />
         )}
-        {/* برای collapsed و level > 0، چاق‌تر شو */}
         {isCollapsed && level > 0 && item.submenu && (
           <ChevronDown
             size={16}
@@ -230,6 +233,8 @@ export default function SidebarItem({
                 isCollapsed={isCollapsed}
                 level={isCollapsed ? 0 : level + 1}
                 onCollapsedIconClick={onCollapsedIconClick}
+                // تغییر: پاس دادن onItemClick به صورت بازگشتی به فرزندان
+                onItemClick={onItemClick}
               />
             ))}
           </div>

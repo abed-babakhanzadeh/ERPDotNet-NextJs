@@ -17,6 +17,7 @@ public record CreateBOMCommand : IRequest<int>
     public BOMType Type { get; set; } = BOMType.Manufacturing;
     public DateTime FromDate { get; set; } = DateTime.UtcNow;
     public DateTime? ToDate { get; set; }
+    public bool IsActive { get; set; } = true;
 
     // لیست مواد اولیه (دیتیل)
     public List<BOMDetailInputDto> Details { get; set; } = new();
@@ -126,7 +127,7 @@ public class CreateBOMHandler : IRequestHandler<CreateBOMCommand, int>
             ToDate = utcToDate,     // استفاده از متغیر UTC شده (فیلد جدید)
             
             Status = BOMStatus.Active, 
-            IsActive = true
+            IsActive = request.IsActive
         };
 
         // 2. افزودن دیتیل‌ها و جایگزین‌ها

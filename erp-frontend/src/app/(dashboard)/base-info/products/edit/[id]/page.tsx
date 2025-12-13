@@ -9,12 +9,11 @@ import {
   ArrowLeftRight,
   Trash2,
   Edit,
+  Eye,
   ZoomIn,
   Loader2,
   Save,
   X,
-  Package,
-  Plus,
 } from "lucide-react";
 import BaseFormLayout from "@/components/layout/BaseFormLayout";
 import { useTabs } from "@/providers/TabsProvider";
@@ -22,12 +21,7 @@ import { useFormPersist } from "@/hooks/useFormPersist";
 import AutoForm, { FieldConfig } from "@/components/form/AutoForm";
 import { Button } from "@/components/ui/button";
 import ImageViewerModal from "@/components/ui/ImageViewerModal";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { useSearchParams } from "next/navigation"; // اضافه شده
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -36,11 +30,17 @@ interface PageProps {
 export default function ProductDetailsPage({ params }: PageProps) {
   const { closeTab, activeTabId } = useTabs();
   const { id } = use(params);
+  const searchParams = useSearchParams(); // اضافه شده برای دریافت کوئری
   const FORM_ID = "product-edit-form";
 
+  // --- States ---
   const [loadingData, setLoadingData] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+
+  // بررسی پارامتر mode=edit در URL برای تعیین وضعیت اولیه
+  const [isEditing, setIsEditing] = useState(
+    searchParams.get("mode") === "edit"
+  );
   const [showImageModal, setShowImageModal] = useState(false);
 
   const [units, setUnits] = useState<Unit[]>([]);
@@ -55,7 +55,6 @@ export default function ProductDetailsPage({ params }: PageProps) {
     isActive: true,
     file: null,
   });
-
   const [conversions, setConversions] = useState<any[]>([]);
   const [isImageDeleted, setIsImageDeleted] = useState(false);
 
@@ -65,6 +64,7 @@ export default function ProductDetailsPage({ params }: PageProps) {
     setFormData
   );
 
+  // --- Fetch Data ---
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -103,6 +103,7 @@ export default function ProductDetailsPage({ params }: PageProps) {
     if (id) fetchData();
   }, [id, activeTabId, closeTab]);
 
+  // --- Handlers ---
   const toggleEditMode = () => {
     if (isEditing) {
       setIsEditing(false);
@@ -117,13 +118,11 @@ export default function ProductDetailsPage({ params }: PageProps) {
       ...conversions,
       { id: 0, alternativeUnitId: "", factor: 1 },
     ]);
-
   const removeConversionRow = (index: number) => {
     const n = [...conversions];
     n.splice(index, 1);
     setConversions(n);
   };
-
   const updateConversionRow = (index: number, f: string, v: any) => {
     const n = [...conversions];
     n[index] = { ...n[index], [f]: v };
@@ -134,7 +133,6 @@ export default function ProductDetailsPage({ params }: PageProps) {
     e.preventDefault();
     if (!product) return;
     setSubmitting(true);
-
     try {
       let finalImagePath: string | null | undefined = product.imagePath;
       if (isImageDeleted) finalImagePath = null;
@@ -167,6 +165,7 @@ export default function ProductDetailsPage({ params }: PageProps) {
       toast.success("تغییرات ذخیره شد");
 
       clearStorage();
+
       setProduct({
         ...product,
         ...payload,
@@ -185,6 +184,7 @@ export default function ProductDetailsPage({ params }: PageProps) {
   const BACKEND_URL =
     process.env.NEXT_PUBLIC_API_URL || "http://localhost:5249";
 
+  // --- Fields ---
   const formFields: FieldConfig[] = useMemo(
     () => [
       {
@@ -261,51 +261,47 @@ export default function ProductDetailsPage({ params }: PageProps) {
       isLoading={loadingData}
       onSubmit={isEditing ? handleSubmit : undefined}
       formId={FORM_ID}
-      isSubmitting={submitting}
       onCancel={isEditing ? toggleEditMode : undefined}
       headerActions={
-        !loadingData && (
-          <>
-            {!isEditing ? (
-              <Button
-                onClick={toggleEditMode}
-                variant="outline"
-                className="gap-2 h-8 border-orange-200 text-orange-600 hover:bg-orange-50 hover:text-orange-700 dark:border-orange-800 dark:text-orange-400"
-              >
-                <Edit size={16} />
-                <span className="hidden sm:inline text-xs">ویرایش</span>
-              </Button>
-            ) : null}
-          </>
-        )
+        !loadingData && !isEditing ? (
+          // فقط وقتی در حالت مشاهده هستیم دکمه ویرایش را نشان بده
+          <Button
+            onClick={toggleEditMode}
+            variant="outline"
+            className="gap-2 border-orange-200 text-orange-600 hover:bg-orange-50 hover:text-orange-700 h-9"
+          >
+            <Edit size={16} />
+            <span className="hidden sm:inline">ویرایش اطلاعات</span>
+            <span className="sm:hidden">ویرایش</span>
+          </Button>
+        ) : undefined // در حالت ویرایش هیچی پاس نده تا خود فرم دکمه‌های پیش‌فرض را بسازد
       }
     >
-      {/* کارت اصلی اطلاعات */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
-        {/* بخش نمایش عکس */}
+      {/* اضافه کردن کلاس‌های Tailwind برای اورراید کردن کرسر پیش‌فرض disabled 
+        این کلاس‌ها روی تمام inputها و selectهای داخل این دیو اعمال می‌شوند
+      */}
+      <div className="bg-card border rounded-lg p-6 shadow-sm [&_input:disabled]:cursor-default [&_textarea:disabled]:cursor-default [&_select:disabled]:cursor-default [&_input:disabled]:opacity-80 [&_textarea:disabled]:opacity-80 [&_select:disabled]:opacity-80">
         {product?.imagePath && !isImageDeleted && (
-          <div className="mb-6 flex items-start gap-4 p-4 bg-gradient-to-l from-blue-50/50 to-purple-50/30 dark:from-blue-950/20 dark:to-purple-950/10 rounded-lg border border-blue-100 dark:border-blue-900/30">
+          <div className="mb-6 flex items-start gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
             <div
               className="relative group cursor-zoom-in"
               onClick={() => setShowImageModal(true)}
             >
-              <div className="w-24 h-24 rounded-lg overflow-hidden border-2 border-blue-200 dark:border-blue-800 bg-white shadow-md hover:shadow-lg transition-shadow">
+              <div className="w-24 h-24 rounded overflow-hidden border bg-white shadow-sm">
                 <img
                   src={`${BACKEND_URL}${product.imagePath}`}
                   alt="Current"
                   className="w-full h-full object-cover"
                 />
               </div>
-              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center rounded-lg">
-                <ZoomIn className="text-white drop-shadow-lg" size={24} />
+              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center rounded">
+                <ZoomIn className="text-white" size={24} />
               </div>
             </div>
 
             <div className="flex flex-col gap-2 pt-1">
-              <div className="text-sm text-slate-600 dark:text-slate-400">
-                <p className="font-medium text-slate-800 dark:text-slate-200">
-                  تصویر محصول
-                </p>
+              <div className="text-sm text-muted-foreground">
+                <p className="font-medium text-foreground">تصویر محصول</p>
                 <p className="text-xs opacity-70">
                   برای بزرگنمایی روی تصویر کلیک کنید.
                 </p>
@@ -314,7 +310,7 @@ export default function ProductDetailsPage({ params }: PageProps) {
                 <Button
                   variant="destructive"
                   size="sm"
-                  className="h-7 text-xs w-fit gap-1.5"
+                  className="h-7 text-xs w-fit gap-1"
                   onClick={() => setIsImageDeleted(true)}
                   type="button"
                 >
@@ -326,26 +322,17 @@ export default function ProductDetailsPage({ params }: PageProps) {
         )}
 
         {isImageDeleted && isEditing && (
-          <div className="mb-6 p-3 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded-lg border border-red-200 dark:border-red-900/30 text-sm flex items-center justify-between">
+          <div className="mb-6 p-3 bg-destructive/10 text-destructive rounded-lg border border-destructive/20 text-sm flex items-center justify-between">
             <span>تصویر حذف خواهد شد.</span>
             <button
               type="button"
               onClick={() => setIsImageDeleted(false)}
-              className="underline text-xs hover:no-underline"
+              className="underline text-xs"
             >
               بازگردانی
             </button>
           </div>
         )}
-
-        <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
-          <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
-            <Package className="w-5 h-5 text-white" />
-          </div>
-          <h3 className="font-semibold text-base text-slate-800 dark:text-slate-200">
-            اطلاعات اصلی کالا
-          </h3>
-        </div>
 
         <AutoForm
           fields={visibleFields}
@@ -357,113 +344,85 @@ export default function ProductDetailsPage({ params }: PageProps) {
         />
       </div>
 
-      {/* واحدهای فرعی */}
-      <div className="bg-white dark:bg-slate-900 border border-orange-200 dark:border-orange-900/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow relative">
+      <div className="bg-card border rounded-lg p-4 mt-4 shadow-sm relative [&_input:disabled]:cursor-default [&_select:disabled]:cursor-default [&_input:disabled]:opacity-80 [&_select:disabled]:opacity-80">
         {!isEditing && (
-          <div className="absolute inset-0 z-10 bg-slate-50/10 dark:bg-slate-950/10 cursor-not-allowed rounded-xl" />
+          // حذف cursor-default از اینجا چون می‌خواهیم رفتار طبیعی داشته باشد و فقط جلوی کلیک گرفته شود
+          <div className="absolute inset-0 z-10 bg-transparent" />
         )}
 
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg">
-              <ArrowLeftRight className="w-4 h-4 text-white" />
-            </div>
-            <h3 className="font-semibold text-sm text-slate-800 dark:text-slate-200">
-              واحدهای فرعی
-            </h3>
-          </div>
-
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
+            <ArrowLeftRight className="w-4 h-4 text-orange-500" />
+            واحدهای فرعی
+          </h3>
           {isEditing && (
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    onClick={addConversionRow}
-                    size="sm"
-                    className="h-8 gap-2 bg-gradient-to-l from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white shadow-sm"
-                  >
-                    <Plus size={14} />
-                    <span className="text-xs">افزودن واحد</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>افزودن واحد فرعی جدید</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <button
+              type="button"
+              onClick={addConversionRow}
+              className="text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-md hover:bg-primary/20 transition"
+            >
+              + افزودن واحد
+            </button>
           )}
         </div>
 
         <div className="space-y-3">
-          {conversions.length === 0 ? (
-            <div className="text-center py-8 text-slate-400 text-sm">
-              <ArrowLeftRight className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              <p>بدون واحد فرعی</p>
-            </div>
-          ) : (
-            conversions.map((row, index) => (
-              <div
-                key={index}
-                className="flex flex-wrap sm:flex-nowrap items-center gap-3 bg-gradient-to-l from-orange-50/50 to-amber-50/30 dark:from-orange-950/20 dark:to-amber-950/10 p-4 rounded-lg border border-orange-100 dark:border-orange-900/30 hover:border-orange-200 dark:hover:border-orange-800/50 transition-colors"
+          {conversions.map((row, index) => (
+            <div
+              key={index}
+              className="flex flex-wrap sm:flex-nowrap items-center gap-3 bg-muted/30 p-3 rounded-lg border"
+            >
+              <select
+                disabled={!isEditing}
+                className="flex-1 min-w-[120px] h-9 rounded-md border border-input bg-background px-3 text-sm"
+                value={row.alternativeUnitId}
+                onChange={(e) =>
+                  updateConversionRow(
+                    index,
+                    "alternativeUnitId",
+                    e.target.value
+                  )
+                }
               >
-                <select
-                  disabled={!isEditing}
-                  className="flex-1 min-w-[120px] h-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-sm disabled:opacity-70 focus:ring-2 focus:ring-orange-500/20 transition-all"
-                  value={row.alternativeUnitId}
-                  onChange={(e) =>
-                    updateConversionRow(
-                      index,
-                      "alternativeUnitId",
-                      e.target.value
-                    )
-                  }
+                <option value="">انتخاب واحد...</option>
+                {units
+                  .filter((u) => u.id != formData.unitId)
+                  .map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.title}
+                    </option>
+                  ))}
+              </select>
+              <span className="text-xs text-muted-foreground">=</span>
+              <input
+                disabled={!isEditing}
+                type="number"
+                className="w-24 h-9 rounded-md border border-input bg-background px-3 text-center text-sm font-semibold"
+                value={row.factor}
+                onChange={(e) =>
+                  updateConversionRow(index, "factor", Number(e.target.value))
+                }
+              />
+              <span className="text-xs text-muted-foreground min-w-[60px]">
+                {units.find((u) => u.id == formData.unitId)?.title ||
+                  "واحد اصلی"}
+              </span>
+
+              {isEditing && (
+                <button
+                  type="button"
+                  onClick={() => removeConversionRow(index)}
+                  className="h-9 w-9 flex items-center justify-center text-destructive hover:bg-destructive/10 rounded-md transition ml-auto sm:ml-0"
                 >
-                  <option value="">انتخاب واحد...</option>
-                  {units
-                    .filter((u) => u.id != formData.unitId)
-                    .map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.title}
-                      </option>
-                    ))}
-                </select>
-
-                <span className="text-xs text-slate-400 font-bold">=</span>
-
-                <input
-                  disabled={!isEditing}
-                  type="number"
-                  className="w-24 h-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-center text-sm font-semibold disabled:opacity-70 focus:ring-2 focus:ring-orange-500/20 transition-all"
-                  value={row.factor}
-                  onChange={(e) =>
-                    updateConversionRow(index, "factor", Number(e.target.value))
-                  }
-                />
-
-                <span className="text-xs text-slate-500 min-w-[60px] font-medium">
-                  {units.find((u) => u.id == formData.unitId)?.title ||
-                    "واحد اصلی"}
-                </span>
-
-                {isEditing && (
-                  <TooltipProvider delayDuration={200}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeConversionRow(index)}
-                          className="h-9 w-9 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors ml-auto sm:ml-0"
-                        >
-                          <Trash2 size={16} />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>حذف این واحد</TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-              </div>
-            ))
+                  <Trash2 size={16} />
+                </button>
+              )}
+            </div>
+          ))}
+          {conversions.length === 0 && (
+            <div className="text-xs text-muted-foreground text-center py-2">
+              بدون واحد فرعی
+            </div>
           )}
         </div>
       </div>

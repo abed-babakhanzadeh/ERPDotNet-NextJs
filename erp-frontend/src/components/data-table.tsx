@@ -18,7 +18,22 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, CheckCircle2, XCircle, FilterX } from "lucide-react";
+import {
+  MoreHorizontal,
+  CheckCircle2,
+  XCircle,
+  FilterX,
+  Eye,
+  Pencil,
+  Trash2,
+} from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"; // ایمپورت تولتیپ
+
 import type {
   SortConfig,
   ColumnFilter as AdvancedColumnFilter,
@@ -40,6 +55,13 @@ type PaginationState = {
 interface TableRow {
   id: number | string;
   [key: string]: any;
+}
+
+// تعریف اینترفیس دسترسی‌ها
+export interface DataTablePermissions {
+  view?: boolean;
+  edit?: boolean;
+  delete?: boolean;
 }
 
 interface DataTableProps<TData extends TableRow> {
@@ -68,8 +90,14 @@ interface DataTableProps<TData extends TableRow> {
   renderRowActions?: (row: TData) => React.ReactNode;
   renderContextMenu?: (row: TData, closeMenu: () => void) => React.ReactNode;
 
+  onView?: (row: TData) => void;
   onEdit?: (row: TData) => void;
   onDelete?: (row: TData) => void;
+
+  // پراپ جدید برای کنترل دقیق دسترسی‌ها
+  permissions?: DataTablePermissions;
+
+  onRowDoubleClick?: (row: TData) => void;
   onRefresh?: () => void;
 }
 
@@ -92,8 +120,12 @@ export function DataTable<TData extends TableRow>({
   onSortChange,
   renderRowActions,
   renderContextMenu,
+  onView,
   onEdit,
   onDelete,
+  // مقادیر پیش‌فرض دسترسی true است مگر اینکه خلافش ارسال شود
+  permissions = { view: true, edit: true, delete: true },
+  onRowDoubleClick,
   onRefresh,
 }: DataTableProps<TData>) {
   const [contextMenuOpen, setContextMenuOpen] = React.useState(false);
@@ -141,6 +173,14 @@ export function DataTable<TData extends TableRow>({
     setSelectedRowId(row.id);
   };
 
+  const handleRowDoubleClick = (row: TData) => {
+    if (onRowDoubleClick) {
+      onRowDoubleClick(row);
+    } else if (onView && permissions.view) {
+      onView(row);
+    }
+  };
+
   const handleContextMenu = (e: React.MouseEvent, row: TData) => {
     e.preventDefault();
     setSelectedRowId(row.id);
@@ -179,13 +219,10 @@ export function DataTable<TData extends TableRow>({
 
   const activeFiltersCount = React.useMemo(() => {
     let count = 0;
-
     if (globalFilter) count++;
-
     Object.values(columnFilters).forEach((val) => {
       if (val) count++;
     });
-
     advancedFilters.forEach((filter) => {
       if (
         filter.conditions.some((c) => {
@@ -196,7 +233,6 @@ export function DataTable<TData extends TableRow>({
         count++;
       }
     });
-
     return count;
   }, [globalFilter, columnFilters, advancedFilters]);
 
@@ -247,6 +283,7 @@ export function DataTable<TData extends TableRow>({
                     </TableHead>
                   </Resizable>
                 ))}
+                {/* ستون عملیات */}
                 <TableHead
                   className="no-print text-center sticky top-0 z-10 bg-muted/90 text-muted-foreground font-semibold h-9"
                   style={{ width: `${columnWidths.actions}px` }}
@@ -315,13 +352,21 @@ export function DataTable<TData extends TableRow>({
                   <TableRow
                     key={row.id || index}
                     onClick={() => handleRowClick(row)}
+                    onDoubleClick={() => handleRowDoubleClick(row)}
                     onContextMenu={(e) => handleContextMenu(e, row)}
                     className={cn(
-                      "cursor-pointer border-b border-border transition-colors h-7",
-                      "hover:bg-muted/40",
+                      "cursor-pointer border-b border-border transition-colors h-9",
+
+                      // ۱. حالت انتخاب شده (بالاترین اولویت)
                       selectedRowId === row.id
-                        ? "!bg-orange-100 dark:!bg-orange-900/40 text-orange-900 dark:text-orange-100 hover:!bg-orange-200 dark:hover:!bg-orange-900/50"
-                        : "hover:bg-muted/50"
+                        ? "!bg-orange-100 dark:!bg-orange-900/40 text-orange-900 dark:text-orange-100 hover:!bg-orange-200"
+                        : // ۲. حالت غیرفعال (isActive === false)
+                        // از !bg-gray-100 استفاده می‌کنیم تا رنگ hover پیش‌فرض را خنثی کند
+                        // grayscale باعث می‌شود کل آیکون‌ها و متون سیاه و سفید شوند
+                        row.isActive === false
+                        ? "!bg-slate-100 dark:!bg-slate-900 text-muted-foreground/60 grayscale-[1] hover:!bg-slate-200 dark:hover:!bg-slate-800"
+                        : // ۳. حالت عادی
+                          "hover:bg-muted/50"
                     )}
                   >
                     {columns.map((column) => (
@@ -369,47 +414,73 @@ export function DataTable<TData extends TableRow>({
                       className="no-print text-center"
                       style={{ width: `${columnWidths.actions}px` }}
                     >
-                      {renderRowActions ? (
-                        <div
-                          className="flex items-center justify-center gap-1"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {renderRowActions(row)}
-                        </div>
-                      ) : (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              className="h-6 w-6 p-0 flex justify-center items-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            align="end"
-                            className="bg-popover border-border w-48"
+                      {/* اینجا تغییر کرد: استفاده از آیکون‌های پایه به جای سه نقطه */}
+                      <TooltipProvider delayDuration={0}>
+                        {renderRowActions ? (
+                          <div
+                            className="flex items-center justify-center gap-1"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            {onEdit && (
-                              <DropdownMenuItem
-                                onClick={() => onEdit(row)}
-                                className="cursor-pointer"
-                              >
-                                <span className="text-sm">ویرایش</span>
-                              </DropdownMenuItem>
+                            {renderRowActions(row)}
+                          </div>
+                        ) : (
+                          <div
+                            className="flex items-center justify-center gap-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {/* دکمه مشاهده */}
+                            {permissions.view && onView && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                                    onClick={() => onView(row)}
+                                  >
+                                    <Eye size={14} />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>مشاهده جزئیات</TooltipContent>
+                              </Tooltip>
                             )}
-                            {onEdit && onDelete && <DropdownMenuSeparator />}
-                            {onDelete && (
-                              <DropdownMenuItem
-                                onClick={() => onDelete(row)}
-                                className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
-                              >
-                                <span className="text-sm">حذف</span>
-                              </DropdownMenuItem>
+
+                            {/* دکمه ویرایش */}
+                            {permissions.edit && onEdit && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                                    onClick={() => onEdit(row)}
+                                  >
+                                    <Pencil size={14} />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>ویرایش</TooltipContent>
+                              </Tooltip>
                             )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+
+                            {/* دکمه حذف */}
+                            {permissions.delete && onDelete && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() => onDelete(row)}
+                                  >
+                                    <Trash2 size={14} />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>حذف</TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                        )}
+                      </TooltipProvider>
                     </TableCell>
                   </TableRow>
                 ))
@@ -438,7 +509,6 @@ export function DataTable<TData extends TableRow>({
           </Table>
         </div>
 
-        {/* نوار لودینگ زیر جدول */}
         {isLoading && (
           <div className="h-1 w-full bg-muted overflow-hidden flex-shrink-0">
             <div
@@ -450,6 +520,7 @@ export function DataTable<TData extends TableRow>({
           </div>
         )}
 
+        {/* منوی راست کلیک */}
         <DropdownMenu open={contextMenuOpen} onOpenChange={setContextMenuOpen}>
           <DropdownMenuTrigger asChild>
             <div
@@ -462,36 +533,56 @@ export function DataTable<TData extends TableRow>({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="start"
+            style={{ direction: "rtl" }} // اضافه کردن جهت RTL برای کانتنت منو
             onCloseAutoFocus={(e) => e.preventDefault()}
-            className="bg-popover border-border min-w-[180px]"
+            className="bg-popover border-border min-w-[160px]"
           >
             {contextMenuRow && renderContextMenu ? (
               renderContextMenu(contextMenuRow, closeContextMenu)
             ) : (
+              // --- منوی راست کلیک پیش‌فرض با اصلاح RTL ---
               <>
-                {contextMenuRow && onEdit && (
+                {contextMenuRow && onView && permissions.view && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      onView(contextMenuRow!);
+                      closeContextMenu();
+                    }}
+                    // استفاده از flex-row و justify-start برای اطمینان از قرارگیری آیکون در راست
+                    className="flex flex-row items-center justify-start gap-2 cursor-pointer text-right"
+                  >
+                    <Eye className="w-4 h-4 text-blue-600" />
+                    <span>مشاهده جزئیات</span>
+                  </DropdownMenuItem>
+                )}
+
+                {contextMenuRow && onEdit && permissions.edit && (
                   <DropdownMenuItem
                     onClick={() => {
                       onEdit(contextMenuRow!);
                       closeContextMenu();
                     }}
-                    className="cursor-pointer"
+                    className="flex flex-row items-center justify-start gap-2 cursor-pointer text-right"
                   >
-                    ویرایش
+                    <Pencil className="w-4 h-4 text-emerald-600" />
+                    <span>ویرایش</span>
                   </DropdownMenuItem>
                 )}
-                {contextMenuRow && onEdit && onDelete && (
+
+                {(onView || onEdit) && onDelete && permissions.delete && (
                   <DropdownMenuSeparator />
                 )}
-                {contextMenuRow && onDelete && (
+
+                {contextMenuRow && onDelete && permissions.delete && (
                   <DropdownMenuItem
                     onClick={() => {
                       onDelete(contextMenuRow!);
                       closeContextMenu();
                     }}
-                    className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
+                    className="flex flex-row items-center justify-start gap-2 text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer text-right"
                   >
-                    حذف
+                    <Trash2 className="w-4 h-4" />
+                    <span>حذف</span>
                   </DropdownMenuItem>
                 )}
               </>

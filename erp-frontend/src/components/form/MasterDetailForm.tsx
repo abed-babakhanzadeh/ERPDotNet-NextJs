@@ -13,13 +13,16 @@ export interface MasterDetailTab {
 
 interface MasterDetailFormProps {
   title: string;
+  // محتوای هدر: اگر شامل دکمه باشد، مسئولیت تکرار با والد است.
+  // پیشنهاد: در اینجا فقط فیلدهای اطلاعاتی اصلی (Master) را بگذارید.
   headerContent: ReactNode;
   tabs: MasterDetailTab[];
   isLoading?: boolean;
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmit?: (e: React.FormEvent) => void;
   onCancel?: () => void;
   submitting?: boolean;
   formId?: string;
+  // این دکمه‌ها به هدر BaseLayout می‌روند
   headerActions?: ReactNode;
 }
 
@@ -42,15 +45,17 @@ export default function MasterDetailForm({
       onCancel={onCancel}
       isSubmitting={submitting}
       formId={formId}
+      // اگر دکمه‌های سفارشی دارید اینجا پاس دهید، در غیر این صورت BaseFormLayout دکمه‌های پیش‌فرض را نمایش می‌دهد
       headerActions={headerActions}
     >
       <div className="flex flex-col gap-3 h-full">
-        {/* 1. Header Section - فشرده‌تر */}
+        {/* 1. Header Section */}
+        {/* این بخش فقط باید شامل فیلدها باشد، نه دکمه‌های عملیات */}
         <div className="bg-card border rounded-lg p-3 shadow-sm" dir="rtl">
           {headerContent}
         </div>
 
-        {/* 2. Details Section (Tabs) - فشرده‌تر */}
+        {/* 2. Details Section (Tabs) */}
         <div className="flex-1 bg-card border rounded-lg shadow-sm overflow-hidden flex flex-col">
           <Tabs
             defaultValue={tabs[0]?.key}

@@ -6,10 +6,10 @@ import { toast } from "sonner";
 import {
   Layers,
   FileText,
-  Save,
+  // Save, // حذف شد (توسط BaseFormLayout مدیریت می‌شود)
   Pencil,
-  X,
-  Loader2,
+  // X, // حذف شد (توسط BaseFormLayout مدیریت می‌شود)
+  // Loader2, // حذف شد
   CopyPlus,
   Network,
   FileSearch,
@@ -29,8 +29,14 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription, // <--- اضافه شد برای رفع وارنینگ
+  DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"; // اضافه شده برای موبایل
 import SubstitutesDialog, { SubstituteRow } from "./SubstitutesDialog";
 
 // Hooks & Providers
@@ -68,6 +74,7 @@ interface BOMHeaderState {
   type: number;
   fromDate: string;
   toDate?: string;
+  isActive: boolean;
 }
 
 interface UnitOption {
@@ -113,6 +120,7 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
     type: 1,
     fromDate: new Date().toISOString().split("T")[0],
     toDate: undefined,
+    isActive: true, // <--- پیش‌فرض true
   });
 
   const [details, setDetails] = useState<BOMRow[]>([]);
@@ -140,6 +148,7 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
   }, [mode, bomId]);
 
   const safeCloseTab = () => {
+    // تابع کمکی برای بستن تب با کمی تاخیر جهت جلوگیری از تداخل
     setTimeout(() => {
       closeTab(activeTabId);
     }, 0);
@@ -188,11 +197,11 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
         title: data.title || "",
         version: data.version,
         type: data.typeId,
-        // اینجا هم تاریخ را به فرمت استاندارد تبدیل می‌کنیم
         fromDate: data.fromDate
           ? data.fromDate.split("T")[0]
           : new Date().toISOString().split("T")[0],
         toDate: data.toDate ? data.toDate.split("T")[0] : undefined,
+        isActive: data.isActive ?? true,
       });
 
       const initialProductOption = {
@@ -253,7 +262,6 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
     }
   };
 
-  // ... (سایر توابع مثل mapTemplateToRows, searchProductsApi و ... بدون تغییر)
   const mapTemplateToRows = async (serverDetails: any[]): Promise<BOMRow[]> => {
     return await Promise.all(
       serverDetails.map(async (d: any) => {
@@ -364,6 +372,13 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
   const headerFields: FieldConfig[] = useMemo(
     () => [
       {
+        name: "isActive",
+        label: "فرمول فعال است",
+        type: "checkbox",
+        disabled: isReadOnly,
+        colSpan: 1, // یا بسته به لی‌اوت شما
+      },
+      {
         name: "version",
         label: "نسخه",
         type: "text",
@@ -377,7 +392,7 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
         type: "text",
         required: true,
         disabled: isReadOnly,
-        colSpan: 1,
+        colSpan: 2,
       },
       {
         name: "type",
@@ -604,20 +619,13 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
     [details, gridProductOptions, gridLoading, isReadOnly]
   );
 
-  // --- اصلاح نهایی: تابع فرمت‌دهی تاریخ به ISO YYYY-MM-DD ---
   const formatDateToISO = (dateValue: string | undefined) => {
     if (!dateValue) return new Date().toISOString().split("T")[0];
-
-    // اگر از قبل فرمت ISO بود (مثلا 2025-12-07)
     if (dateValue.includes("-") && dateValue.length === 10) return dateValue;
-
-    // تلاش برای تبدیل تاریخ‌های دیگر به ISO
     const d = new Date(dateValue);
     if (!isNaN(d.getTime())) {
       return d.toISOString().split("T")[0];
     }
-
-    // فال‌بک به تاریخ امروز
     return new Date().toISOString().split("T")[0];
   };
 
@@ -637,7 +645,6 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
     setSubmitting(true);
 
     try {
-      // 1. اصلاح تاریخ‌ها
       const safeFromDate = formatDateToISO(headerData.fromDate);
       const cleanToDate =
         headerData.toDate && headerData.toDate.trim() !== ""
@@ -672,17 +679,16 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
         };
       });
 
-      // 2. ساخت Payload نهایی
       const payload: any = {
         title: headerData.title || "",
         version: headerData.version || "1.0",
         type: Number(headerData.type) || 1,
-        fromDate: safeFromDate, // <--- از مقدار فرمت شده استفاده می‌کنیم
-        toDate: cleanToDate, // <--- از مقدار فرمت شده استفاده می‌کنیم
+        fromDate: safeFromDate,
+        toDate: cleanToDate,
+        isActive: headerData.isActive,
         details: cleanDetails,
       };
 
-      // اضافه کردن ID برای متد ویرایش (مهم: در لاگ قبلی شما ID نبود)
       if (mode === "edit" && bomId) {
         payload.id = Number(bomId);
       }
@@ -729,7 +735,8 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
   };
 
   const headerContent = (
-    <div className="space-y-4">
+    // تغییرات: اضافه کردن کلاس‌های [&_...] برای تغییر استایل فیلدهای غیرفعال
+    <div className="space-y-4 [&_input:disabled]:cursor-default [&_select:disabled]:cursor-default [&_textarea:disabled]:cursor-default [&_input:disabled]:opacity-85 [&_select:disabled]:opacity-85 [&_textarea:disabled]:opacity-85">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="space-y-2 col-span-1 md:col-span-2">
           <label className="text-sm font-medium flex gap-1">
@@ -767,136 +774,149 @@ export default function BOMForm({ mode, bomId }: BOMFormProps) {
 
   return (
     <>
-      <MasterDetailForm
-        title={
-          mode === "create"
-            ? "ایجاد BOM"
-            : mode === "view"
-            ? `مشاهده BOM: ${headerData.version}`
-            : `ویرایش BOM: ${headerData.version}`
-        }
-        onSubmit={handleSubmit}
-        formId="bom-form"
-        submitting={submitting}
-        isLoading={loadingData}
-        headerContent={headerContent}
-        headerActions={
-          <>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={safeCloseTab}
-              disabled={submitting}
-              className="h-9 gap-2"
-            >
-              <X size={16} /> انصراف
-            </Button>
+      <TooltipProvider>
+        <MasterDetailForm
+          title={
+            mode === "create"
+              ? "ایجاد BOM"
+              : mode === "view"
+              ? `مشاهده BOM: ${headerData.version}`
+              : `ویرایش BOM: ${headerData.version}`
+          }
+          // ارسال onSubmit و onCancel فقط در حالت‌های غیر مشاهده
+          // این کار باعث می‌شود دکمه‌های پیش‌فرض BaseFormLayout به درستی کنترل شوند
+          onSubmit={isReadOnly ? undefined : handleSubmit}
+          onCancel={isReadOnly ? undefined : safeCloseTab}
+          formId="bom-form"
+          submitting={submitting}
+          isLoading={loadingData}
+          headerContent={headerContent}
+          headerActions={
+            <div className="flex items-center gap-2">
+              {/* دکمه ساختار درختی (در حالت مشاهده و ویرایش) */}
+              {(mode === "view" || mode === "edit") && bomId && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-9 text-purple-700 border-purple-200 hover:bg-purple-50 flex items-center gap-2"
+                      onClick={() =>
+                        addTab(
+                          `درخت محصول`,
+                          `/product-engineering/boms/tree/${bomId}`
+                        )
+                      }
+                    >
+                      <Network size={16} />
+                      <span className="hidden sm:inline">ساختار درختی</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>مشاهده ساختار درختی</TooltipContent>
+                </Tooltip>
+              )}
 
-            {(mode === "view" || mode === "edit") && bomId && (
-              <Button
-                type="button"
-                variant="outline"
-                className="h-9 gap-2 text-purple-700 border-purple-200 hover:bg-purple-50"
-                onClick={() =>
-                  addTab(
-                    `درخت محصول`,
-                    `/product-engineering/boms/tree/${bomId}`
-                  )
-                }
-              >
-                <Network size={16} /> ساختار درختی
-              </Button>
-            )}
+              {/* دکمه فراخوانی از الگو (فقط ایجاد و ویرایش با دسترسی) */}
+              {(mode === "create" || (mode === "edit" && canEdit)) && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setTemplateDialogOpen(true)}
+                      disabled={submitting}
+                      className="h-9 text-blue-700 border-blue-200 hover:bg-blue-50 flex items-center gap-2"
+                    >
+                      <CopyPlus size={16} />
+                      <span className="hidden sm:inline">فراخوانی از الگو</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>کپی اقلام از یک فرمول دیگر</TooltipContent>
+                </Tooltip>
+              )}
 
-            {(mode === "create" || (mode === "edit" && canEdit)) && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setTemplateDialogOpen(true)}
-                disabled={submitting}
-                className="h-9 gap-2 text-blue-700 border-blue-200 hover:bg-blue-50"
-              >
-                <CopyPlus size={16} /> فراخوانی از الگو
-              </Button>
-            )}
+              {/* دکمه رفتن به حالت ویرایش (فقط در حالت مشاهده) */}
+              {mode === "view" && canEdit && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleGoToEdit}
+                      className="h-9 bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2"
+                    >
+                      <Pencil size={16} />
+                      <span className="hidden sm:inline">ویرایش</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>ویرایش اطلاعات</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+          }
+          tabs={[
+            {
+              key: "materials",
+              label: "مواد اولیه و قطعات",
+              icon: Layers,
+              content: (
+                // تغییرات: اضافه کردن wrapper برای اصلاح نشانگر موس در جدول
+                <div className="h-full [&_input:disabled]:cursor-default [&_select:disabled]:cursor-default [&_input:disabled]:opacity-100 [&_select:disabled]:opacity-100">
+                  <EditableGrid<BOMRow>
+                    columns={detailColumns}
+                    data={details}
+                    onChange={setDetails}
+                    readOnly={isReadOnly}
+                    permissions={{
+                      view: true,
+                      edit: !isReadOnly,
+                      delete: !isReadOnly,
+                      add: !isReadOnly,
+                    }}
+                    onAddRow={
+                      isReadOnly
+                        ? undefined
+                        : () => ({
+                            id: Math.random().toString(36).substr(2, 9),
+                            childProductId: null,
+                            quantity: 0,
+                            inputQuantity: 0,
+                            inputUnitId: 0,
+                            baseUnitId: 0,
+                            unitName: "-",
+                            unitOptions: [],
+                            wastePercentage: 0,
+                            substitutes: [],
+                          })
+                    }
+                  />
+                </div>
+              ),
+            },
+            {
+              key: "notes",
+              label: "توضیحات",
+              icon: FileText,
+              content: (
+                <div className="p-4 [&_textarea:disabled]:cursor-default [&_textarea:disabled]:opacity-85">
+                  <label className="block text-sm font-medium mb-2">
+                    یادداشت فنی
+                  </label>
+                  <textarea
+                    disabled={isReadOnly}
+                    className="w-full border rounded-md p-2 min-h-[100px] disabled:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    placeholder="توضیحات مهندسی..."
+                  />
+                </div>
+              ),
+            },
+          ]}
+        />
+      </TooltipProvider>
 
-            {mode === "view" && canEdit && (
-              <Button
-                type="button"
-                onClick={handleGoToEdit}
-                className="h-9 gap-2 bg-emerald-600 hover:bg-emerald-700"
-              >
-                <Pencil size={16} /> ویرایش
-              </Button>
-            )}
-
-            {(mode === "create" || mode === "edit") && (
-              <Button
-                type="submit"
-                form="bom-form"
-                disabled={submitting}
-                className="h-9 gap-2"
-              >
-                {submitting ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Save size={16} />
-                )}
-                {mode === "create" ? "ثبت فرمول" : "ذخیره تغییرات"}
-              </Button>
-            )}
-          </>
-        }
-        tabs={[
-          {
-            key: "materials",
-            label: "مواد اولیه و قطعات",
-            icon: Layers,
-            content: (
-              <EditableGrid<BOMRow>
-                columns={detailColumns}
-                data={details}
-                onChange={setDetails}
-                readOnly={isReadOnly}
-                onAddRow={
-                  isReadOnly
-                    ? undefined
-                    : () => ({
-                        id: Math.random().toString(36).substr(2, 9),
-                        childProductId: null,
-                        quantity: 0,
-                        inputQuantity: 0,
-                        inputUnitId: 0,
-                        baseUnitId: 0,
-                        unitName: "-",
-                        unitOptions: [],
-                        wastePercentage: 0,
-                        substitutes: [],
-                      })
-                }
-              />
-            ),
-          },
-          {
-            key: "notes",
-            label: "توضیحات",
-            icon: FileText,
-            content: (
-              <div className="p-4">
-                <label className="block text-sm font-medium mb-2">
-                  یادداشت فنی
-                </label>
-                <textarea
-                  disabled={isReadOnly}
-                  className="w-full border rounded-md p-2 min-h-[100px] disabled:bg-muted"
-                  placeholder="توضیحات مهندسی..."
-                />
-              </div>
-            ),
-          },
-        ]}
-      />
-
+      {/* مودال‌ها تغییری نکردند */}
       {activeRowIndex !== null && (
         <SubstitutesDialog
           open={dialogOpen}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -16,8 +16,13 @@ import {
   Component,
   AlertCircle,
   Sparkles,
+  ZoomIn,
+  ZoomOut,
+  Maximize,
+  Move,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface BOMTreeNode {
   key: string;
@@ -49,12 +54,24 @@ export default function VisualTreeDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // --- States for Zoom & Pan ---
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!open || !bomId) return;
 
     setLoading(true);
     setError(null);
     setData(null);
+    // Reset zoom/pan on open
+    setScale(1);
+    setPosition({ x: 0, y: 0 });
 
     apiClient
       .get(`/BOMs/${bomId}/tree`)
@@ -69,11 +86,73 @@ export default function VisualTreeDialog({
       .finally(() => setLoading(false));
   }, [open, bomId]);
 
+  // --- Fit to Screen Logic ---
+  const handleFitToScreen = () => {
+    if (!containerRef.current || !contentRef.current) return;
+
+    const contentWidth = contentRef.current.offsetWidth;
+    const contentHeight = contentRef.current.offsetHeight;
+    const containerWidth = containerRef.current.offsetWidth;
+    const containerHeight = containerRef.current.offsetHeight;
+
+    if (contentWidth === 0 || contentHeight === 0) return;
+
+    // محاسبه اسکیل مناسب با در نظر گرفتن پدینگ
+    const scaleX = (containerWidth - 100) / contentWidth;
+    const scaleY = (containerHeight - 100) / contentHeight;
+
+    // انتخاب کوچکترین اسکیل برای جا شدن کامل
+    const newScale = Math.min(scaleX, scaleY, 1);
+
+    setScale(newScale);
+    setPosition({ x: 0, y: 0 }); // مرکز کردن (چون flex center داریم)
+  };
+
+  // Run Fit to Screen when data loads
+  useEffect(() => {
+    if (data && !loading) {
+      // Small timeout to allow DOM to render with correct dimensions
+      const timer = setTimeout(() => {
+        handleFitToScreen();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [data, loading]);
+
+  // --- Mouse Events for Panning ---
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    const newX = e.clientX - dragStart.x;
+    const newY = e.clientY - dragStart.y;
+    setPosition({ x: newX, y: newY });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // --- Wheel Event for Zooming ---
+  const handleWheel = (e: React.WheelEvent) => {
+    // e.stopPropagation();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    const newScale = Math.max(0.1, Math.min(5, scale + delta));
+    setScale(newScale);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl w-[95vw] h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
-        {/* Header با گرادیانت زیبا */}
-        <DialogHeader className="px-6 py-5 border-b bg-gradient-to-r from-purple-50 via-blue-50 to-indigo-50 relative overflow-hidden">
+      {/* تغییر عرض: max-w-[85vw] برای جلوگیری از رفتن زیر سایدبار 
+         استایل: گردی گوشه‌ها و سایه حفظ شد
+      */}
+      <DialogContent className="max-w-[75vw] w-full h-[90vh] flex flex-col p-0 gap-0 overflow-hidden border-none shadow-2xl rounded-xl">
+        {/* Header با استایل زیبای قبلی */}
+        <DialogHeader className="px-6 py-5 border-b bg-gradient-to-r from-purple-50 via-blue-50 to-indigo-50 relative overflow-hidden z-20 flex-shrink-0">
           <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] -z-10" />
           <DialogTitle className="flex items-center gap-3 text-xl">
             <div className="p-2 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg shadow-lg">
@@ -92,13 +171,59 @@ export default function VisualTreeDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* محتوای اصلی */}
+        {/* Toolbar شناور برای کنترل زوم */}
+        <div className="absolute top-24 right-8 z-30 flex flex-col gap-2 bg-white/90 backdrop-blur border rounded-lg p-1.5 shadow-xl ring-1 ring-slate-900/5">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setScale((s) => Math.min(s + 0.2, 5))}
+            title="بزرگنمایی"
+          >
+            <ZoomIn className="w-5 h-5 text-slate-700" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setScale((s) => Math.max(s - 0.2, 0.1))}
+            title="کوچک‌نمایی"
+          >
+            <ZoomOut className="w-5 h-5 text-slate-700" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleFitToScreen}
+            title="Fit to Screen"
+          >
+            <Maximize className="w-5 h-5 text-slate-700" />
+          </Button>
+        </div>
+
+        {/* Canvas اصلی */}
         <div
-          className="flex-1 overflow-auto bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/30 p-8 relative"
+          ref={containerRef}
+          className={cn(
+            "flex-1 relative overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/30",
+            isDragging ? "cursor-grabbing" : "cursor-grab"
+          )}
           dir="ltr"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onWheel={handleWheel}
         >
-          {/* پترن پس‌زمینه */}
-          <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] opacity-40" />
+          {/* پترن پس‌زمینه با حرکت Pan */}
+          <div
+            className="absolute inset-0 pointer-events-none opacity-40"
+            style={{
+              backgroundImage: "radial-gradient(#e5e7eb 1px, transparent 1px)", // بازگشت به پترن ظریف قبلی
+              backgroundSize: "16px 16px",
+              transform: `translate(${position.x % 16}px, ${
+                position.y % 16
+              }px)`,
+            }}
+          />
 
           {loading ? (
             <div className="flex h-full items-center justify-center flex-col gap-3 text-muted-foreground relative z-10">
@@ -111,9 +236,6 @@ export default function VisualTreeDialog({
               <span className="text-lg font-medium">
                 در حال ترسیم نمودار...
               </span>
-              <span className="text-sm text-muted-foreground">
-                لطفاً صبور باشید
-              </span>
             </div>
           ) : error ? (
             <div className="flex h-full items-center justify-center flex-col gap-3 relative z-10">
@@ -123,17 +245,22 @@ export default function VisualTreeDialog({
               <span className="text-lg font-semibold text-red-700">
                 {error}
               </span>
-              <span className="text-sm text-red-600">
-                لطفاً دوباره تلاش کنید
-              </span>
             </div>
           ) : data ? (
-            <div className="min-w-fit flex justify-center pb-10 relative z-10">
-              <TreeNode
-                node={data}
-                highlightId={highlightProductId}
-                level={0}
-              />
+            <div
+              className="w-full h-full flex items-center justify-center origin-center transition-transform duration-75 ease-out will-change-transform"
+              style={{
+                transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+              }}
+            >
+              {/* کانتینر محتوا برای محاسبه سایز */}
+              <div ref={contentRef} className="inline-block p-20">
+                <TreeNode
+                  node={data}
+                  highlightId={highlightProductId}
+                  level={0}
+                />
+              </div>
             </div>
           ) : (
             <div className="flex h-full items-center justify-center text-muted-foreground relative z-10">
@@ -145,27 +272,29 @@ export default function VisualTreeDialog({
           )}
         </div>
 
-        {/* Footer با راهنما */}
-        <div className="px-6 py-3 border-t bg-slate-50 flex items-center justify-between text-xs text-muted-foreground">
+        {/* Footer */}
+        <div className="px-6 py-3 border-t bg-slate-50 flex items-center justify-between text-xs text-muted-foreground flex-shrink-0 z-20">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 shadow-sm" />
-              <span>قطعه مورد نظر</span>
+              <span>قطعه مورد نظر (چشمک‌زن)</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-white border-2 border-slate-300 shadow-sm" />
               <span>سایر قطعات</span>
             </div>
           </div>
-          <span className="text-slate-400">
-            برای بستن، خارج از پنجره کلیک کنید
-          </span>
+          <div className="flex items-center gap-2">
+            <Move className="w-3.5 h-3.5" />
+            <span>درگ برای جابجایی • اسکرول برای زوم</span>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
 
+// --- TreeNode: بازگشت کامل به استایل‌های قبلی ---
 const TreeNode = ({
   node,
   highlightId,
@@ -181,7 +310,7 @@ const TreeNode = ({
 
   return (
     <div className="flex flex-col items-center">
-      {/* کارت محصول */}
+      {/* کارت محصول با تمام افکت‌های قبلی */}
       <div
         className={cn(
           "relative flex flex-col items-center justify-center rounded-xl px-5 py-4 min-w-[160px] transition-all duration-500 z-10 backdrop-blur-sm",
@@ -192,7 +321,7 @@ const TreeNode = ({
             : "bg-white/90 border-2 border-slate-200 shadow-lg hover:shadow-xl hover:scale-105 hover:border-blue-300"
         )}
       >
-        {/* آیکون با انیمیشن */}
+        {/* آیکون با انیمیشن و رنگ‌بندی قبلی */}
         <div
           className={cn(
             "mb-3 p-2 rounded-lg transition-all duration-300",
@@ -254,7 +383,7 @@ const TreeNode = ({
         )}
       </div>
 
-      {/* خط اتصال عمودی */}
+      {/* خط اتصال عمودی با گرادیانت */}
       {hasChildren && (
         <div
           className={cn(
@@ -272,7 +401,7 @@ const TreeNode = ({
       {/* فرزندان */}
       {hasChildren && (
         <div className="flex gap-10 relative pt-2">
-          {/* خط افقی اتصال */}
+          {/* خط افقی اتصال با فید شدن */}
           {node.children.length > 1 && (
             <div
               className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-slate-300 to-transparent"
