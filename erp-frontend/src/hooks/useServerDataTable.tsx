@@ -2,10 +2,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import apiClient from "@/services/apiClient";
 import { toast } from "sonner";
-import { SortConfig, ColumnFilter as AdvancedColumnFilter } from "@/types"; // مسیر تایپ‌های خود را چک کنید
+import { SortConfig, ColumnFilter as AdvancedColumnFilter } from "@/types";
 
 interface UseServerDataTableProps {
-  endpoint: string; // مثلا "/Products/search"
+  endpoint: string;
   initialPageSize?: number;
 }
 
@@ -14,7 +14,7 @@ export function useServerDataTable<TData>(props: UseServerDataTableProps) {
 
   // --- States ---
   const [data, setData] = useState<TData[]>([]);
-  const [rowCount, setRowCount] = useState(0);
+  const [rowCount, setRowCount] = useState(0); // این همان TotalCount است
   const [isLoading, setIsLoading] = useState(true);
 
   const [pagination, setPagination] = useState({
@@ -34,7 +34,6 @@ export function useServerDataTable<TData>(props: UseServerDataTableProps) {
 
   // --- Fetch Logic ---
   const fetchData = useCallback(async () => {
-    // کنسل کردن درخواست قبلی
     if (abortControllerRef.current) abortControllerRef.current.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
@@ -42,7 +41,6 @@ export function useServerDataTable<TData>(props: UseServerDataTableProps) {
     setIsLoading(true);
 
     try {
-      // تبدیل فیلترها به فرمت بک‌اند
       const advancedFilterPayload = advancedFilters.flatMap((f) =>
         f.conditions
           .filter((c) => c.value !== "" && c.value !== null)
@@ -50,7 +48,7 @@ export function useServerDataTable<TData>(props: UseServerDataTableProps) {
             PropertyName: f.key,
             Operation: c.operator,
             Value: String(c.value),
-            Logic: f.logic, // <--- این فیلد حیاتی است (and/or)
+            Logic: f.logic,
           }))
       );
 
@@ -77,6 +75,7 @@ export function useServerDataTable<TData>(props: UseServerDataTableProps) {
 
       if (response?.data?.items) {
         setData(response.data.items);
+        // اینجا مقدار توتال را از بک‌اند می‌گیریم
         setRowCount(response.data.totalCount);
       } else {
         setData([]);
@@ -100,17 +99,10 @@ export function useServerDataTable<TData>(props: UseServerDataTableProps) {
     columnFilters,
   ]);
 
-  // --- Effects ---
-  // Debounce برای جستجوی کلی می‌تواند اینجا یا در کامپوننت UI هندل شود.
-  // برای سادگی فعلا فرض می‌کنیم globalFilter دیبونس شده از بیرون نمی‌آید و مستقیم تغییر می‌کند.
-  // (بهتر است هوک useDebounce را برای globalFilter در اینجا اعمال کنید)
-
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // --- Handlers ---
-  // این هندلرها را می‌سازیم تا مستقیماً به DataTable پاس دهیم
   const handleGlobalFilterChange = (value: string) => {
     setPagination((p) => ({ ...p, pageIndex: 0 }));
     setGlobalFilter(value);
@@ -141,9 +133,7 @@ export function useServerDataTable<TData>(props: UseServerDataTableProps) {
     setPagination((p) => ({ ...p, pageIndex: 0 }));
   };
 
-  // --- Return ---
   return {
-    // Props مناسب برای DataTable
     tableProps: {
       data,
       rowCount,
@@ -161,9 +151,9 @@ export function useServerDataTable<TData>(props: UseServerDataTableProps) {
       onPaginationChange: setPagination,
       onSortChange: setSorting,
     },
-    // توابع کمکی برای استفاده در صفحه (مثل ریلود بعد از ادیت)
     refresh: fetchData,
-    // دسترسی مستقیم به داده‌ها اگر نیاز شد
     data,
+    // تغییر جدید: اضافه کردن totalCount به خروجی اصلی
+    totalCount: rowCount,
   };
 }

@@ -1,7 +1,14 @@
 "use client";
 
-import React from "react";
-import { Loader2, ArrowRight, Save, X } from "lucide-react";
+import React, { useState } from "react";
+import {
+  Loader2,
+  ArrowRight,
+  Save,
+  X,
+  Maximize2,
+  Minimize2,
+} from "lucide-react"; // اضافه شدن آیکون‌ها
 import { Button } from "@/components/ui/button";
 import { useTabs } from "@/providers/TabsProvider";
 import {
@@ -10,6 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils"; // اضافه شدن cn
 
 interface BaseFormLayoutProps {
   title: string;
@@ -37,6 +45,8 @@ export default function BaseFormLayout({
   formId = "base-form-id",
 }: BaseFormLayoutProps) {
   const { closeTab, activeTabId } = useTabs();
+  // --- استیت جدید برای تمام صفحه ---
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const handleCancel = () => {
     if (onCancel) {
@@ -47,8 +57,14 @@ export default function BaseFormLayout({
   };
 
   return (
-    <div className="flex flex-col h-full bg-background">
-      {/* Fixed Header - با رنگ‌بندی بهتر */}
+    <div
+      className={cn(
+        "flex flex-col h-full bg-background transition-all duration-300",
+        // در حالت تمام صفحه، z-index بالا می‌گیرد و فیکس می‌شود
+        isFullscreen ? "fixed inset-0 z-[100]" : "relative"
+      )}
+    >
+      {/* Fixed Header */}
       <div className="sticky top-0 z-50 flex items-center justify-between border-b bg-gradient-to-l from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 backdrop-blur supports-[backdrop-filter]:bg-card/90 px-4 py-2.5 shadow-sm h-12">
         <div className="flex items-center gap-3 overflow-hidden min-w-0">
           <TooltipProvider delayDuration={300}>
@@ -81,6 +97,28 @@ export default function BaseFormLayout({
         {/* Action Buttons */}
         <TooltipProvider delayDuration={200}>
           <div className="flex items-center gap-2 shrink-0">
+            {/* دکمه جدید: تمام صفحه */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsFullscreen(!isFullscreen)}
+                  className="h-8 w-8 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600"
+                >
+                  {isFullscreen ? (
+                    <Minimize2 size={16} />
+                  ) : (
+                    <Maximize2 size={16} />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-[10px] sm:hidden">
+                {isFullscreen ? "خروج از تمام صفحه" : "تمام صفحه"}
+              </TooltipContent>
+            </Tooltip>
+
+            {/* دکمه‌های سفارشی */}
             {headerActions}
 
             {showActions && onSubmit && (
@@ -156,17 +194,19 @@ export default function BaseFormLayout({
             <p className="text-sm font-medium">در حال بارگذاری...</p>
           </div>
         ) : (
-          <div className="p-4 md:p-6 w-full">
+          <div className="p-4 md:p-6 w-full h-full">
+            {" "}
+            {/* h-full added */}
             {onSubmit ? (
               <form
                 id={formId}
                 onSubmit={onSubmit}
-                className="flex flex-col gap-4"
+                className="flex flex-col gap-4 h-full" // h-full added
               >
                 {children}
               </form>
             ) : (
-              <div className="flex flex-col gap-4">{children}</div>
+              <div className="flex flex-col gap-4 h-full">{children}</div> // h-full added
             )}
           </div>
         )}
