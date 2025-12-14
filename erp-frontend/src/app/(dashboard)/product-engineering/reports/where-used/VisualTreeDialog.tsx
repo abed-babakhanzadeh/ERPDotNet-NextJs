@@ -57,8 +57,15 @@ export default function VisualTreeDialog({
   // --- States for Zoom & Pan ---
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
+
+  // Mouse Drag State
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  // Touch Pinch/Drag State
+  const [lastPinchDistance, setLastPinchDistance] = useState<number | null>(
+    null
+  );
 
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -69,7 +76,6 @@ export default function VisualTreeDialog({
     setLoading(true);
     setError(null);
     setData(null);
-    // Reset zoom/pan on open
     setScale(1);
     setPosition({ x: 0, y: 0 });
 
@@ -86,7 +92,6 @@ export default function VisualTreeDialog({
       .finally(() => setLoading(false));
   }, [open, bomId]);
 
-  // --- Fit to Screen Logic ---
   const handleFitToScreen = () => {
     if (!containerRef.current || !contentRef.current) return;
 
@@ -97,21 +102,17 @@ export default function VisualTreeDialog({
 
     if (contentWidth === 0 || contentHeight === 0) return;
 
-    // محاسبه اسکیل مناسب با در نظر گرفتن پدینگ
     const scaleX = (containerWidth - 100) / contentWidth;
     const scaleY = (containerHeight - 100) / contentHeight;
 
-    // انتخاب کوچکترین اسکیل برای جا شدن کامل
     const newScale = Math.min(scaleX, scaleY, 1);
 
     setScale(newScale);
-    setPosition({ x: 0, y: 0 }); // مرکز کردن (چون flex center داریم)
+    setPosition({ x: 0, y: 0 });
   };
 
-  // Run Fit to Screen when data loads
   useEffect(() => {
     if (data && !loading) {
-      // Small timeout to allow DOM to render with correct dimensions
       const timer = setTimeout(() => {
         handleFitToScreen();
       }, 300);
@@ -119,7 +120,7 @@ export default function VisualTreeDialog({
     }
   }, [data, loading]);
 
-  // --- Mouse Events for Panning ---
+  // --- Mouse Events (Desktop) ---
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsDragging(true);
@@ -137,21 +138,67 @@ export default function VisualTreeDialog({
     setIsDragging(false);
   };
 
-  // --- Wheel Event for Zooming ---
   const handleWheel = (e: React.WheelEvent) => {
-    // e.stopPropagation();
     const delta = e.deltaY > 0 ? -0.1 : 0.1;
     const newScale = Math.max(0.1, Math.min(5, scale + delta));
     setScale(newScale);
   };
 
+  // --- Touch Events (Mobile) ---
+
+  // محاسبه فاصله بین دو انگشت
+  const getTouchDistance = (touches: React.TouchList) => {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      // حالت حرکت (Pan) با یک انگشت
+      setIsDragging(true);
+      setDragStart({
+        x: e.touches[0].clientX - position.x,
+        y: e.touches[0].clientY - position.y,
+      });
+    } else if (e.touches.length === 2) {
+      // حالت زوم (Pinch) با دو انگشت
+      const dist = getTouchDistance(e.touches);
+      setLastPinchDistance(dist);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    // جلوگیری از اسکرول شدن صفحه مرورگر هنگام کار با نمودار
+    // e.preventDefault() اینجا ممکن است اخطار passive event بدهد،
+    // بهتر است در css با touch-action: none کنترل شود (که در پایین اعمال کردیم)
+
+    if (e.touches.length === 1 && isDragging) {
+      // انجام حرکت
+      const newX = e.touches[0].clientX - dragStart.x;
+      const newY = e.touches[0].clientY - dragStart.y;
+      setPosition({ x: newX, y: newY });
+    } else if (e.touches.length === 2 && lastPinchDistance) {
+      // انجام زوم
+      const newDist = getTouchDistance(e.touches);
+      const zoomFactor = newDist / lastPinchDistance;
+      // محدود کردن سرعت زوم و بازه زوم
+      const newScale = Math.min(Math.max(scale * zoomFactor, 0.1), 5);
+
+      setScale(newScale);
+      setLastPinchDistance(newDist);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    setLastPinchDistance(null);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      {/* تغییر عرض: max-w-[85vw] برای جلوگیری از رفتن زیر سایدبار 
-         استایل: گردی گوشه‌ها و سایه حفظ شد
-      */}
-      <DialogContent className="max-w-[75vw] w-full h-[90vh] flex flex-col p-0 gap-0 overflow-hidden border-none shadow-2xl rounded-xl">
-        {/* Header با استایل زیبای قبلی */}
+      <DialogContent className="max-w-[85vw] w-full h-[90vh] flex flex-col p-0 gap-0 overflow-hidden border-none shadow-2xl rounded-xl">
+        {/* Header */}
         <DialogHeader className="px-6 py-5 border-b bg-gradient-to-r from-purple-50 via-blue-50 to-indigo-50 relative overflow-hidden z-20 flex-shrink-0">
           <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] -z-10" />
           <DialogTitle className="flex items-center gap-3 text-xl">
@@ -171,7 +218,7 @@ export default function VisualTreeDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Toolbar شناور برای کنترل زوم */}
+        {/* Toolbar */}
         <div className="absolute top-24 right-8 z-30 flex flex-col gap-2 bg-white/90 backdrop-blur border rounded-lg p-1.5 shadow-xl ring-1 ring-slate-900/5">
           <Button
             variant="ghost"
@@ -199,25 +246,31 @@ export default function VisualTreeDialog({
           </Button>
         </div>
 
-        {/* Canvas اصلی */}
+        {/* Canvas */}
         <div
           ref={containerRef}
           className={cn(
             "flex-1 relative overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/30",
             isDragging ? "cursor-grabbing" : "cursor-grab"
           )}
+          style={{ touchAction: "none" }} // مهم: جلوگیری از اسکرول مرورگر در موبایل
           dir="ltr"
+          // Mouse Events
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
           onWheel={handleWheel}
+          // Touch Events (New)
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         >
-          {/* پترن پس‌زمینه با حرکت Pan */}
+          {/* Background Pattern */}
           <div
             className="absolute inset-0 pointer-events-none opacity-40"
             style={{
-              backgroundImage: "radial-gradient(#e5e7eb 1px, transparent 1px)", // بازگشت به پترن ظریف قبلی
+              backgroundImage: "radial-gradient(#e5e7eb 1px, transparent 1px)",
               backgroundSize: "16px 16px",
               transform: `translate(${position.x % 16}px, ${
                 position.y % 16
@@ -253,7 +306,6 @@ export default function VisualTreeDialog({
                 transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
               }}
             >
-              {/* کانتینر محتوا برای محاسبه سایز */}
               <div ref={contentRef} className="inline-block p-20">
                 <TreeNode
                   node={data}
@@ -277,7 +329,7 @@ export default function VisualTreeDialog({
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 shadow-sm" />
-              <span>قطعه مورد نظر (چشمک‌زن)</span>
+              <span>قطعه مورد نظر</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-white border-2 border-slate-300 shadow-sm" />
@@ -286,7 +338,10 @@ export default function VisualTreeDialog({
           </div>
           <div className="flex items-center gap-2">
             <Move className="w-3.5 h-3.5" />
-            <span>درگ برای جابجایی • اسکرول برای زوم</span>
+            <span className="hidden sm:inline">
+              درگ برای جابجایی • اسکرول برای زوم
+            </span>
+            <span className="sm:hidden">لمس برای حرکت • دو انگشت برای زوم</span>
           </div>
         </div>
       </DialogContent>
@@ -294,7 +349,6 @@ export default function VisualTreeDialog({
   );
 }
 
-// --- TreeNode: بازگشت کامل به استایل‌های قبلی ---
 const TreeNode = ({
   node,
   highlightId,
@@ -310,7 +364,6 @@ const TreeNode = ({
 
   return (
     <div className="flex flex-col items-center">
-      {/* کارت محصول با تمام افکت‌های قبلی */}
       <div
         className={cn(
           "relative flex flex-col items-center justify-center rounded-xl px-5 py-4 min-w-[160px] transition-all duration-500 z-10 backdrop-blur-sm",
@@ -321,7 +374,6 @@ const TreeNode = ({
             : "bg-white/90 border-2 border-slate-200 shadow-lg hover:shadow-xl hover:scale-105 hover:border-blue-300"
         )}
       >
-        {/* آیکون با انیمیشن و رنگ‌بندی قبلی */}
         <div
           className={cn(
             "mb-3 p-2 rounded-lg transition-all duration-300",
@@ -337,7 +389,6 @@ const TreeNode = ({
           <NodeIcon className="w-5 h-5" />
         </div>
 
-        {/* نام محصول */}
         <span
           className={cn(
             "font-bold text-sm text-center mb-2 leading-tight",
@@ -351,7 +402,6 @@ const TreeNode = ({
           {node.productName}
         </span>
 
-        {/* کد محصول */}
         <span
           className={cn(
             "text-[10px] font-mono px-2 py-1 rounded-md border shadow-sm",
@@ -363,7 +413,6 @@ const TreeNode = ({
           {node.productCode}
         </span>
 
-        {/* بج تعداد */}
         {level > 0 && (
           <div
             className={cn(
@@ -377,13 +426,11 @@ const TreeNode = ({
           </div>
         )}
 
-        {/* افکت نور برای نود هدف */}
         {isTarget && (
           <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-yellow-400/20 to-amber-400/20 animate-pulse pointer-events-none" />
         )}
       </div>
 
-      {/* خط اتصال عمودی با گرادیانت */}
       {hasChildren && (
         <div
           className={cn(
@@ -393,15 +440,12 @@ const TreeNode = ({
               : "bg-gradient-to-b from-slate-300 to-slate-400"
           )}
         >
-          {/* گلوله‌های تزئینی روی خط */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-slate-300 shadow-sm" />
         </div>
       )}
 
-      {/* فرزندان */}
       {hasChildren && (
         <div className="flex gap-10 relative pt-2">
-          {/* خط افقی اتصال با فید شدن */}
           {node.children.length > 1 && (
             <div
               className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-slate-300 to-transparent"
@@ -416,7 +460,6 @@ const TreeNode = ({
 
           {node.children.map((child, idx) => (
             <div key={idx} className="flex flex-col items-center relative">
-              {/* خط اتصال عمودی به فرزند */}
               <div className="w-0.5 h-8 bg-gradient-to-b from-slate-300 to-transparent mb-2" />
               <TreeNode
                 node={child}
