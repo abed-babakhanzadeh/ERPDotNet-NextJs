@@ -74,18 +74,29 @@ public class AuthController : ControllerBase
 
     [HttpGet("profile")]
     [Authorize]
-    public IActionResult GetProfile()
+    // تغییر خروجی به ActionResult<UserDto>
+    public async Task<ActionResult<UserDto>> GetProfile()
     {
-        var username = User.FindFirst(ClaimTypes.Name)?.Value;
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var personnelCode = User.FindFirst("PersonnelCode")?.Value;
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        return Ok(new
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null) return Unauthorized("کاربر یافت نشد.");
+
+        // استفاده از DTO واقعی
+        var userDto = new UserDto
         {
-            Id = userId,
-            Username = username,
-            PersonnelCode = personnelCode,
-            ServerTime = DateTime.Now
-        });
+            Id = user.Id,
+            Username = user.UserName!,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Email = user.Email!,
+            PersonnelCode = user.PersonnelCode,
+            IsActive = user.IsActive,
+            CreatedAt = user.CreatedAt.ToString("yyyy/MM/dd"), // یا تبدیل به شمسی
+            Roles = (await _userManager.GetRolesAsync(user)).ToList()
+        };
+
+        return Ok(userDto);
     }
 }
