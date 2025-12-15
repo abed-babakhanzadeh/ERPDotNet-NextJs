@@ -1,11 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Sidebar from "@/components/modules/dashboard/Sidebar";
-import Header from "@/components/modules/dashboard/Header";
+import { AppSidebar } from "@/components/modules/dashboard/AppSidebar";
 import TabsBar from "@/components/modules/dashboard/TabsBar";
-import { clsx } from "clsx";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { Bell } from "lucide-react";
 
 export default function DashboardLayout({
   children,
@@ -13,8 +19,6 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
@@ -24,41 +28,43 @@ export default function DashboardLayout({
   }, [router]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background text-foreground">
-      {/* Sidebar */}
-      <Sidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        isCollapsed={isCollapsed}
-        toggleCollapse={() => setIsCollapsed(!isCollapsed)}
-      />
+    <SidebarProvider defaultOpen={true}>
+      <AppSidebar />
 
-      {/* Main Content Area */}
-      <div
-        className={clsx(
-          "relative flex flex-1 flex-col overflow-hidden transition-all duration-300",
-          isCollapsed ? "md:mr-16" : "md:mr-64"
-        )}
-      >
-        {/* Header - 32px */}
-        <Header
-          onMenuClick={() => setIsSidebarOpen(true)}
-          isCollapsed={isCollapsed}
-        />
-
-        {/* Main Container - pt-8 برای جا دادن Header */}
-        <main className="flex-1 pt-12 flex flex-col overflow-hidden">
-          {/* TabsBar - sticky در بالا */}
-          <div className="sticky pt-2 top-0 z-40 bg-background">
-            <TabsBar />
+      <SidebarInset className="bg-background">
+        {/* Header */}
+        <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b bg-background/95 backdrop-blur px-4 sticky top-0 z-20">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger className="-mr-1" />
+            <Separator orientation="vertical" className="mr-2 h-4" />
+            <h1 className="text-sm font-semibold text-muted-foreground hidden sm:block">
+              پیشخوان سیستم
+            </h1>
           </div>
 
-          {/* Content Area - فضای باقیمانده با اسکرول */}
-          <div className="flex-1 min-h-0 overflow-auto bg-muted/5 p-1 md:p-1">
-            {children}
+          {/* --- بخش اعلانات در هدر --- */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative text-muted-foreground hover:text-foreground"
+            >
+              <Bell className="h-5 w-5" />
+              {/* نشانگر قرمز تعداد اعلان (نمونه) */}
+              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-600 border border-background"></span>
+            </Button>
           </div>
+          {/* ------------------------- */}
+        </header>
+
+        <div className="sticky top-14 z-10 bg-background/95 backdrop-blur border-b shadow-sm">
+          <TabsBar />
+        </div>
+
+        <main className="flex-1 flex flex-col overflow-hidden bg-muted/10 p-4">
+          <div className="flex-1 h-full min-h-0 relative">{children}</div>
         </main>
-      </div>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

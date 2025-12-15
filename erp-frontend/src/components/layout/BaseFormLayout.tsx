@@ -95,95 +95,97 @@ export default function BaseFormLayout({
         </div>
 
         {/* Action Buttons */}
-        <TooltipProvider delayDuration={200}>
-          <div className="flex items-center gap-2 shrink-0">
-            {/* دکمه جدید: تمام صفحه */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsFullscreen(!isFullscreen)}
-                  className="h-8 w-8 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600"
-                >
-                  {isFullscreen ? (
-                    <Minimize2 size={16} />
-                  ) : (
-                    <Maximize2 size={16} />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-[10px] sm:hidden">
-                {isFullscreen ? "خروج از تمام صفحه" : "تمام صفحه"}
-              </TooltipContent>
-            </Tooltip>
+        <div className="flex items-center gap-2 shrink-0">
+          <TooltipProvider delayDuration={200}>
+            <div className="flex items-center gap-2 shrink-0">
+              {/* دکمه‌های سفارشی */}
+              {headerActions}
 
-            {/* دکمه‌های سفارشی */}
-            {headerActions}
-
-            {showActions && onSubmit && (
-              <>
-                {/* دکمه انصراف */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleCancel}
-                      disabled={isSubmitting}
-                      className="h-8 gap-2 border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800 transition-all"
+              {showActions && onSubmit && (
+                <>
+                  {/* دکمه انصراف */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCancel}
+                        disabled={isSubmitting}
+                        className="h-8 gap-2 border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800 transition-all"
+                      >
+                        <X size={15} className="text-slate-500" />
+                        <span className="hidden sm:inline text-xs">انصراف</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="bottom"
+                      className="text-[10px] sm:hidden"
                     >
-                      <X size={15} className="text-slate-500" />
-                      <span className="hidden sm:inline text-xs">انصراف</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    side="bottom"
-                    className="text-[10px] sm:hidden"
-                  >
-                    انصراف
-                  </TooltipContent>
-                </Tooltip>
+                      انصراف
+                    </TooltipContent>
+                  </Tooltip>
 
-                {/* دکمه ذخیره */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="submit"
-                      form={formId}
-                      size="sm"
-                      disabled={isSubmitting || isLoading}
-                      className="h-8 gap-2 bg-gradient-to-l from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white shadow-md hover:shadow-lg transition-all"
+                  {/* دکمه ذخیره */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="submit"
+                        form={formId}
+                        size="sm"
+                        disabled={isSubmitting || isLoading}
+                        className="h-8 gap-2 bg-gradient-to-l from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white shadow-md hover:shadow-lg transition-all"
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="hidden sm:inline text-xs">
+                              در حال ثبت...
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <Save size={15} />
+                            <span className="hidden sm:inline text-xs">
+                              {submitText}
+                            </span>
+                          </>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="bottom"
+                      className="text-[10px] sm:hidden"
                     >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span className="hidden sm:inline text-xs">
-                            در حال ثبت...
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <Save size={15} />
-                          <span className="hidden sm:inline text-xs">
-                            {submitText}
-                          </span>
-                        </>
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    side="bottom"
-                    className="text-[10px] sm:hidden"
-                  >
-                    {submitText}
-                  </TooltipContent>
-                </Tooltip>
-              </>
-            )}
-          </div>
-        </TooltipProvider>
+                      {submitText}
+                    </TooltipContent>
+                  </Tooltip>
+                  <div className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block" />
+                  {/* دکمه جدید: تمام صفحه */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setIsFullscreen(!isFullscreen)}
+                        className="h-8 w-8 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600"
+                      >
+                        {isFullscreen ? (
+                          <Minimize2 size={16} />
+                        ) : (
+                          <Maximize2 size={16} />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-[10px]">
+                      {isFullscreen ? "خروج از تمام صفحه" : "تمام صفحه"}
+                    </TooltipContent>
+                  </Tooltip>
+                </>
+              )}
+            </div>
+          </TooltipProvider>
+        </div>
       </div>
 
       {/* Main Content */}
