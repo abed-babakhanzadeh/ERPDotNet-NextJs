@@ -7,9 +7,10 @@ import { toast } from "sonner";
 import { Layers, Plus, Eye, Pencil, Copy, Trash2, Network } from "lucide-react";
 
 // Components
-import ProtectedPage from "@/components/ui/ProtectedPage"; // استاندارد جدید
-import PermissionGuard from "@/components/ui/PermissionGuard"; // استاندارد جدید
-import MasterDetailLayout from "@/components/ui/MasterDetailLayout"; // لی‌اوت استاندارد
+import ProtectedPage from "@/components/ui/ProtectedPage";
+import PermissionGuard from "@/components/ui/PermissionGuard";
+// import MasterDetailLayout from "@/components/ui/MasterDetailLayout"; // حذف شد
+import BaseListLayout from "@/components/layout/BaseListLayout"; // اضافه شد
 import { DataTable } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -56,28 +57,39 @@ export default function BOMsListPage() {
   useTabPrefetch(["/product-engineering/boms/create"]);
 
   // DataTable Hook
-  const { tableProps, refresh } = useServerDataTable<BOMListDto>({
+  // دریافت totalCount از هوک
+  const { tableProps, refresh, totalCount } = useServerDataTable<BOMListDto>({
     endpoint: "/BOMs/search",
-    initialPageSize: 10,
+    initialPageSize: 30,
   });
 
   // --- تعریف ستون‌ها ---
   const columns: ColumnConfig[] = useMemo(
     () => [
-      // 1. ستون شماره (بدون کپی)
+      {
+        key: "productCode",
+        label: "کد محصول",
+        type: "string",
+        width: "10%",
+      },
+      {
+        key: "productName",
+        label: "نام محصول",
+        type: "string",
+        width: "20%",
+        render: (val) => <span className="font-medium text-sm">{val}</span>,
+      },
       {
         key: "id",
-        label: "شماره",
+        label: "شماره فرمول",
         type: "number",
         width: "8%",
         render: (val) => (
           <div className="flex items-center gap-1">
-            <span className="text-muted-foreground text-[10px]">#</span>
             <span className="font-mono font-medium text-foreground">{val}</span>
           </div>
         ),
       },
-      // 4. عنوان فرمول
       {
         key: "title",
         label: "عنوان فرمول",
@@ -87,31 +99,13 @@ export default function BOMsListPage() {
           <span className="text-sm text-muted-foreground">{val || "-"}</span>
         ),
       },
-      // 2. کد محصول
-      {
-        key: "productCode",
-        label: "کد محصول",
-        type: "string",
-        width: "10%",
-      },
-      // 3. نام محصول
-      {
-        key: "productName",
-        label: "نام محصول",
-        type: "string",
-        width: "20%",
-        render: (val) => <span className="font-medium text-sm">{val}</span>,
-      },
-
-      // 5. تاریخ اعتبار (شمسی سازی شده)
       {
         key: "fromDate",
         label: "تاریخ شروع",
-        type: "string", // برای جستجو استرینگ می‌فرستیم
+        type: "string",
         width: "12%",
         render: (val) => {
           if (!val) return "-";
-          // تبدیل تاریخ میلادی به شمسی
           return (
             <span className="text-xs dir-ltr font-mono">
               {new Date(val).toLocaleDateString("fa-IR")}
@@ -119,7 +113,6 @@ export default function BOMsListPage() {
           );
         },
       },
-      // 6. نسخه
       {
         key: "version",
         label: "نسخه",
@@ -134,7 +127,6 @@ export default function BOMsListPage() {
           </Badge>
         ),
       },
-      // 7. نوع فرمول
       {
         key: "type",
         label: "نوع",
@@ -142,25 +134,20 @@ export default function BOMsListPage() {
         width: "10%",
         render: (val) => <span className="text-xs">{val}</span>,
       },
-      // 8. وضعیت (شامل نشانگر فعال/غیرفعال)
       {
         key: "status",
         label: "وضعیت",
         type: "string",
         width: "12%",
         render: (val, row: BOMListDto) => {
-          // ۱. اولویت با غیرفعال بودن است
           if (row.isActive === false) {
             return (
               <div className="flex items-center">
-                {/* اگر وضعیت قبلی چیزی غیر از "فعال" بوده (مثلا "تایید شده")، خط خورده نشان بده */}
-                {/* اما اگر "فعال" بوده، کلا نشان نده چون الان غیرفعاله */}
                 {val !== "فعال" && val !== "Active" && (
                   <span className="text-[10px] text-muted-foreground line-through ml-2">
                     {val}
                   </span>
                 )}
-
                 <Badge
                   variant="destructive"
                   className="h-5 px-2 text-[10px] shadow-sm w-full justify-center bg-gray-100 text-gray-500 border-gray-300 hover:bg-gray-200"
@@ -171,9 +158,7 @@ export default function BOMsListPage() {
             );
           }
 
-          // ۲. اگر فعال است، بج‌های رنگی نشان بده
           let colorClass = "bg-gray-100 text-gray-700 border-gray-200";
-
           if (val.includes("فعال") || val.includes("Active"))
             colorClass =
               "bg-emerald-100 text-emerald-700 border-emerald-200 shadow-sm";
@@ -242,7 +227,30 @@ export default function BOMsListPage() {
     }
   };
 
-  // --- رندر دکمه‌های عملیات ---
+  // --- تعریف هدر اکشن‌ها برای BaseListLayout ---
+  const headerActions = (
+    <PermissionGuard permission="ProductEngineering.BOM.Create">
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              onClick={handleCreate}
+              size="sm"
+              className="h-8 gap-1.5 md:gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <Plus size={16} />
+              <span className="hidden sm:inline text-xs">فرمول جدید</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-[10px] sm:hidden">
+            فرمول جدید
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </PermissionGuard>
+  );
+
+  // --- رندر دکمه‌های عملیات (داخل جدول) ---
   const renderRowActions = (row: BOMListDto) => {
     return (
       <TooltipProvider delayDuration={0}>
@@ -392,37 +400,22 @@ export default function BOMsListPage() {
     );
   };
 
-  // --- JSX استاندارد شده ---
   return (
     <ProtectedPage permission="ProductEngineering.BOM">
-      <MasterDetailLayout
-        title="مدیریت فرمول‌های ساخت" // عنوان کوتاه‌تر برای موبایل
+      {/* استفاده از لایوت استاندارد لیست */}
+      <BaseListLayout
+        title="مدیریت فرمول‌های ساخت"
         icon={Layers}
-        // --- دکمه کاملاً ریسپانسیو (شبیه صفحه محصولات) ---
-        actions={
-          <PermissionGuard permission="ProductEngineering.BOM.Create">
-            <Button
-              onClick={handleCreate}
-              size="sm"
-              // در موبایل padding کم (px-2) برای آیکون، در دسکتاپ بیشتر
-              className="h-9 gap-2 shadow-sm px-2 sm:px-4 bg-primary hover:bg-primary/90"
-            >
-              <Plus size={16} />
-              {/* متن فقط در سایز sm به بالا دیده می‌شود */}
-              <span className="hidden sm:inline">فرمول جدید</span>
-            </Button>
-          </PermissionGuard>
-        }
+        actions={headerActions}
+        count={totalCount}
       >
-        <div className="page-content">
-          <DataTable
-            columns={columns}
-            {...tableProps}
-            onRowDoubleClick={(row) => handleView(row)}
-            renderRowActions={renderRowActions}
-            renderContextMenu={renderContextMenu}
-          />
-        </div>
+        <DataTable
+          columns={columns}
+          {...tableProps}
+          onRowDoubleClick={(row) => handleView(row)}
+          renderRowActions={renderRowActions}
+          renderContextMenu={renderContextMenu}
+        />
 
         {selectedBOM && (
           <NewVersionDialog
@@ -436,7 +429,7 @@ export default function BOMsListPage() {
             productName={selectedBOM.productName}
           />
         )}
-      </MasterDetailLayout>
+      </BaseListLayout>
     </ProtectedPage>
   );
 }

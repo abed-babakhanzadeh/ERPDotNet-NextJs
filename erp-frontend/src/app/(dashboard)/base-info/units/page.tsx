@@ -19,6 +19,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+// 1. ایمپورت کردن لایوت جدید
+import BaseListLayout from "@/components/layout/BaseListLayout";
 
 const PlaceholderWrapper: React.FC<{
   children: React.ReactNode;
@@ -37,7 +39,8 @@ export default function UnitsPage() {
 
   useTabPrefetch(["/base-info/units/create"]);
 
-  const { tableProps, refresh } = useServerDataTable<Unit>({
+  const { tableProps, refresh, totalCount } = useServerDataTable<Unit>({
+    // totalCount اضافه شد
     endpoint: "/Units/search",
     initialPageSize: 30,
   });
@@ -98,48 +101,45 @@ export default function UnitsPage() {
     addTab(`ویرایش ${row.title}`, `/base-info/units/edit/${row.id}`);
   };
 
+  // 2. تعریف دکمه‌های اکشن به صورت جداگانه برای پاس دادن به لایوت
+  const headerActions = (
+    <PermissionGuardPlaceholder permission="BaseInfo.Units.Create">
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              onClick={handleCreate}
+              size="sm"
+              className="h-8 gap-1.5 md:gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <Plus size={16} />
+              <span className="hidden sm:inline text-xs">واحد جدید</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-[10px] sm:hidden">
+            واحد جدید
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </PermissionGuardPlaceholder>
+  );
+
   return (
     <ProtectedPagePlaceholder permission="BaseInfo.Units">
-      <div className="flex flex-col h-full bg-background">
-        <div className="sticky top-0 z-50 flex items-center justify-between border-b bg-gradient-to-l from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 backdrop-blur supports-[backdrop-filter]:bg-card/90 px-4 py-2.5 shadow-sm h-12">
-          <div className="flex items-center gap-3 overflow-hidden min-w-0">
-            <div className="flex items-center justify-between h-8 mb-2 flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <Ruler className="h-5 w-5 text-primary" />
-                <h1 className="text-sm font-semibold">مدیریت واحدها</h1>
-              </div>
-            </div>
-          </div>
-          <PermissionGuardPlaceholder permission="BaseInfo.Units.Create">
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    onClick={handleCreate}
-                    size="sm"
-                    className="h-7 gap-1.5 md:gap-2"
-                  >
-                    <Plus size={14} />
-                    <span className="hidden sm:inline text-xs">واحد جدید</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-[10px] sm:hidden">
-                  واحد جدید
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </PermissionGuardPlaceholder>
-        </div>
-
-        <div className="flex-1 min-h-0">
-          <DataTable
-            columns={columns}
-            onEdit={(unit) => handleEdit(unit as Unit)}
-            onDelete={handleDelete}
-            {...tableProps}
-          />
-        </div>
-      </div>
+      {/* 3. استفاده از لایوت جدید */}
+      <BaseListLayout
+        title="مدیریت واحدها"
+        icon={Ruler}
+        actions={headerActions}
+        count={totalCount} // اگر تعداد کل را دارید
+      >
+        <DataTable
+          columns={columns}
+          onEdit={(unit) => handleEdit(unit as Unit)}
+          onDelete={handleDelete}
+          {...tableProps}
+        />
+      </BaseListLayout>
     </ProtectedPagePlaceholder>
   );
 }

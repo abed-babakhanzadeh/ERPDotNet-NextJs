@@ -3,14 +3,13 @@
 import React, { useMemo } from "react";
 import { Product, ColumnConfig } from "@/types";
 import apiClient from "@/services/apiClient";
-import { Box, Plus } from "lucide-react";
+import { Box, Plus, ImageIcon } from "lucide-react";
 import ProtectedPage from "@/components/ui/ProtectedPage";
 import PermissionGuard from "@/components/ui/PermissionGuard";
 import { toast } from "sonner";
 import { DataTable } from "@/components/data-table";
 import { useServerDataTable } from "@/hooks/useServerDataTable";
 import { useTabs } from "@/providers/TabsProvider";
-import { ImageIcon } from "lucide-react";
 import { useTabPrefetch } from "@/hooks/useTabPrefetch";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +18,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+// 1. فراخوانی لایوت جدید
+import BaseListLayout from "@/components/layout/BaseListLayout";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5249";
 
@@ -39,7 +40,8 @@ export default function ProductsPage() {
 
   useTabPrefetch(["/base-info/products/create"]);
 
-  const { tableProps, refresh } = useServerDataTable<Product>({
+  // 2. دریافت totalCount از هوک اصلاح شده
+  const { tableProps, refresh, totalCount } = useServerDataTable<Product>({
     endpoint: "/Products/search",
     initialPageSize: 30,
   });
@@ -109,12 +111,10 @@ export default function ProductsPage() {
     addTab("تعریف کالای جدید", "/base-info/products/create");
   };
 
-  // --- هندلر مشاهده (فقط نمایش) ---
   const handleView = (row: Product) => {
     addTab(`جزئیات ${row.name}`, `/base-info/products/edit/${row.id}`);
   };
 
-  // --- هندلر ویرایش (نمایش + حالت ادیت) ---
   const handleEdit = (row: Product) => {
     addTab(
       `ویرایش ${row.name}`,
@@ -134,47 +134,46 @@ export default function ProductsPage() {
     }
   };
 
+  // 3. تعریف دکمه‌های اکشن (کالای جدید) برای ارسال به لایوت
+  const headerActions = (
+    <PermissionGuardPlaceholder permission="BaseInfo.Products.Create">
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              onClick={handleCreate}
+              size="sm"
+              className="h-8 gap-1.5 md:gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <Plus size={16} />
+              <span className="hidden sm:inline text-xs">کالای جدید</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-[10px] sm:hidden">
+            کالای جدید
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </PermissionGuardPlaceholder>
+  );
+
   return (
     <ProtectedPagePlaceholder permission="BaseInfo.Products">
-      <div className="flex flex-col h-full overflow-hidden">
-        <div className="flex items-center justify-between px-3 md:px-4 h-9 border-b bg-muted/50 shrink-0">
-          <div className="flex items-center gap-2">
-            <Box className="h-4 w-4 text-primary" />
-            <h1 className="text-sm font-semibold">مدیریت کالاها</h1>
-          </div>
-
-          <PermissionGuardPlaceholder permission="BaseInfo.Products.Create">
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    onClick={handleCreate}
-                    size="sm"
-                    className="h-7 gap-1.5 md:gap-2"
-                  >
-                    <Plus size={14} />
-                    <span className="hidden sm:inline text-xs">کالای جدید</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-[10px] sm:hidden">
-                  کالای جدید
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </PermissionGuardPlaceholder>
-        </div>
-
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <DataTable
-            columns={columns}
-            // پاس دادن متدهای جدید
-            onView={handleView}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            {...tableProps}
-          />
-        </div>
-      </div>
+      {/* 4. استفاده از BaseListLayout به جای هدر دستی */}
+      <BaseListLayout
+        title="مدیریت کالاها"
+        icon={Box}
+        actions={headerActions}
+        count={totalCount} // نمایش تعداد کل رکوردها
+      >
+        <DataTable
+          columns={columns}
+          onView={handleView}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          {...tableProps}
+        />
+      </BaseListLayout>
     </ProtectedPagePlaceholder>
   );
 }

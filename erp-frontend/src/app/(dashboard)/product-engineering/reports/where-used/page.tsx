@@ -3,14 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import apiClient from "@/services/apiClient";
 import { toast } from "sonner";
-import {
-  Layers,
-  ArrowRight,
-  Search,
-  FileSearch,
-  Network,
-  Eye,
-} from "lucide-react";
+import { Layers, Search, FileSearch, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { TableLookupCombobox } from "@/components/ui/TableLookupCombobox";
@@ -25,14 +18,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
 import VisualTreeDialog from "./VisualTreeDialog";
 import { cn } from "@/lib/utils";
 import { useFormPersist } from "@/hooks/useFormPersist";
+
+// 1. اضافه کردن لایوت جدید
+import BaseListLayout from "@/components/layout/BaseListLayout";
 
 interface ProductLookupDto {
   id: number;
@@ -65,7 +58,7 @@ interface PageState {
 }
 
 export default function WhereUsedPage() {
-  const { closeTab, activeTabId, addTab } = useTabs();
+  const { addTab } = useTabs();
   const searchParams = useSearchParams();
 
   const initialProductId = searchParams.get("productId")
@@ -289,25 +282,15 @@ export default function WhereUsedPage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b px-4 py-3 bg-muted/10">
-        <div className="flex items-center gap-3">
-          <FileSearch className="w-5 h-5 text-muted-foreground" />
-          <h1 className="font-bold text-lg">گزارش موارد مصرف (Where Used)</h1>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => closeTab(activeTabId)}
-        >
-          <ArrowRight className="w-5 h-5" />
-        </Button>
-      </div>
-
-      <div className="p-4 space-y-4 flex-1 overflow-hidden flex flex-col">
+    // 2. استفاده از BaseListLayout
+    <BaseListLayout
+      title="گزارش موارد مصرف (Where Used)"
+      icon={FileSearch}
+      count={reportState.totalCount}
+    >
+      <div className="flex flex-col h-full p-4 gap-4">
         {/* فیلترها */}
-        <div className="bg-card border rounded-lg p-4">
+        <div className="bg-card border rounded-lg p-4 shrink-0 shadow-sm">
           <div className="flex items-end gap-4 flex-wrap">
             <div className="w-1/3 min-w-[300px]">
               <label className="text-sm font-medium mb-1 block">
@@ -380,7 +363,7 @@ export default function WhereUsedPage() {
         </div>
 
         {/* جدول نتایج */}
-        <div className="flex-1 border rounded-lg bg-card overflow-hidden">
+        <div className="flex-1 border rounded-lg bg-card overflow-hidden shadow-sm">
           <DataTable<WhereUsedDto>
             columns={columns}
             data={reportState.data}
@@ -398,7 +381,6 @@ export default function WhereUsedPage() {
             onColumnFilterChange={() => {}}
             onClearAllFilters={() => {}}
             isLoading={loading}
-            // اضافه کردن منوی راست کلیک
             renderContextMenu={renderContextMenu}
             renderRowActions={(row) => (
               <TooltipProvider delayDuration={0}>
@@ -450,6 +432,6 @@ export default function WhereUsedPage() {
           highlightProductId={reportState.selectedProductId}
         />
       )}
-    </div>
+    </BaseListLayout>
   );
 }
