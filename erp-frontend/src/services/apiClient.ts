@@ -1,13 +1,14 @@
 import axios from "axios";
 
-// خواندن از متغیر محیطی با مقدار پیش‌فرض
-// ما /api را اینجا اضافه می‌کنیم تا در فایل env فقط آدرس سرور باشد
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
-  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
-  : "http://localhost:5000/api";
+// اولویت با متغیر محیطی است، اگر نبود لوکال‌هاست
+// در پروداکشن این مقدار برابر http://94.182.39.201:5000 خواهد بود
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+// حذف اسلش اضافه انتهای آدرس اگر وجود داشته باشد
+const cleanBaseUrl = API_URL.replace(/\/+$/, "");
 
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: `${cleanBaseUrl}/api`, // اضافه کردن /api به انتهای آدرس
   headers: {
     "Content-Type": "application/json",
   },
@@ -16,9 +17,12 @@ const apiClient = axios.create({
 // Request Interceptor
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("accessToken");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // بررسی وجود ویندو برای جلوگیری از خطا در SSR
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("accessToken");
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },
@@ -30,16 +34,12 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      // فقط اگر در محیط مرورگر هستیم
       if (typeof window !== "undefined") {
-        // اگر همین الان در صفحه لاگین هستیم، کاری نکن (جلوگیری از لوپ)
-        if (window.location.pathname === "/login") {
-          return Promise.reject(error);
+        // جلوگیری از لوپ در صفحه لاگین
+        if (!window.location.pathname.includes("/login")) {
+          localStorage.removeItem("accessToken");
+          window.location.href = "/login";
         }
-
-        // در غیر این صورت، توکن را پاک کن و برو به لاگین
-        localStorage.removeItem("accessToken");
-        window.location.href = "/login";
       }
     }
     return Promise.reject(error);

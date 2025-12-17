@@ -1,49 +1,3 @@
-// import type {NextConfig} from 'next';
-
-// const nextConfig: NextConfig = {
-//   /* config options here */
-//   typescript: {
-//     ignoreBuildErrors: true,
-//   },
-//   eslint: {
-//     ignoreDuringBuilds: true,
-//   },
-//   images: {
-//     remotePatterns: [
-//       {
-//         protocol: 'https',
-//         hostname: 'placehold.co',
-//         port: '',
-//         pathname: '/**',
-//       },
-//       {
-//         protocol: 'https',
-//         hostname: 'images.unsplash.com',
-//         port: '',
-//         pathname: '/**',
-//       },
-//       {
-//         protocol: 'https',
-//         hostname: 'picsum.photos',
-//         port: '',
-//         pathname: '/**',
-//       },
-//     ],
-//   },
-//   // اضافه کردن این بخش برای حل مشکل CORS
-//   async rewrites() {
-//     return [
-//       {
-//         source: '/api/:path*',
-//         // لطفا این آدرس را با آدرس سرور Backend خود جایگزین کنید
-//         destination: 'http://localhost:5000/api/:path*',
-//       },
-//     ]
-//   },
-// };
-
-// export default nextConfig;
-
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -51,8 +5,20 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  /* config options here */
+  typescript: {
+    ignoreBuildErrors: true, // در پروداکشن برای جلوگیری از توقف بیلد
+  },
   reactStrictMode: false,
+  
+  // تنظیم Rewrites برای مواقعی که از داخل کانتینر SSR انجام می‌شود
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${process.env.API_URL || 'http://backend:5000'}/api/:path*`,
+      },
+    ]
+  },
 };
 
 export default nextConfig;

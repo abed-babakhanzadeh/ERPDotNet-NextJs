@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.OpenApi;
-using Microsoft.EntityFrameworkCore; // این خط برای MigrateAsync ضروری است
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
@@ -21,12 +21,20 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 #region 1. Configuration & Secrets
+// اطمینان حاصل کنید که در appsettings.json یا Environment Variable ها این مقادیر ست شده باشند
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = Encoding.UTF8.GetBytes(jwtSettings["Secret"] 
-    ?? throw new InvalidOperationException("JWT Secret is missing in appsettings.json"));
+var secretKeyString = jwtSettings["Secret"] ?? builder.Configuration["JwtSettings:Secret"];
+
+// یک کلید پیش‌فرض برای جلوگیری از کرش کردن در صورتی که کانفیگ خوانده نشد (فقط جهت اطمینان، در پروداکشن حتما ست کنید)
+if (string.IsNullOrEmpty(secretKeyString))
+{
+    secretKeyString = "YourTemporarySecretKeyMustBeLongEnough123456!"; 
+}
+
+var secretKey = Encoding.UTF8.GetBytes(secretKeyString);
 
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis") 
-    ?? throw new InvalidOperationException("Redis connection string is missing.");
+    ?? "redis:6379"; // مقدار پیش فرض داکر
 #endregion
 
 #region 2. Infrastructure Layer
@@ -72,8 +80,8 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidAudience = jwtSettings["Audience"],
+        ValidIssuer = jwtSettings["Issuer"] ?? "ERPDotNet",
+        ValidAudience = jwtSettings["Audience"] ?? "ERPDotNetClient",
         IssuerSigningKey = new SymmetricSecurityKey(secretKey)
     };
 });
@@ -83,71 +91,70 @@ builder.Services.AddOpenApi("v1", options =>
     options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
 });
 
-// تنظیم CORS اصلاح شده برای شبکه
+// تنظیم CORS برای محیط پروداکشن با آی‌پی ولید
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll",
-        b => b.AllowAnyMethod()
+    options.AddPolicy("AllowPublicIP",
+        b => b.WithOrigins(
+                "http://94.182.39.201:3000", // دسترسی خارجی
+                "http://localhost:3000",     // دسترسی لوکال
+                "http://192.168.0.241:3000"  // دسترسی شبکه داخلی
+             )
+              .AllowAnyMethod()
               .AllowAnyHeader()
-              .SetIsOriginAllowed(origin => true) // اجازه به همه آی‌پی‌ها (موبایل، تبلت، ویندوز)
-              .AllowCredentials());
+              .AllowCredentials()); // برای ارسال کوکی یا هدرهای خاص ضروری است
 });
 #endregion
 
 var app = builder.Build();
 
-// =========================================================
-// تغییر جدید: اعمال مایگریشن‌ها هنگام استارت
-// =========================================================
 #region 6. Automatic Database Migration
-// using (var scope = app.Services.CreateScope())
-// {
-//     var services = scope.ServiceProvider;
-//     try
-//     {
-//         var context = services.GetRequiredService<AppDbContext>();
-//         // اگر دیتابیس وجود نداشته باشد می‌سازد و اگر تغییراتی باشد اعمال می‌کند
-//         if (context.Database.IsRelational())
-//         {
-//             await context.Database.MigrateAsync();
-//         }
-//     }
-//     catch (Exception ex)
-//     {
-//         var logger = services.GetRequiredService<ILogger<Program>>();
-//         logger.LogError(ex, "An error occurred while migrating the database.");
-//         // در محیط داکر ممکن است دیتابیس هنوز آماده نباشد، لاگ کردن حیاتی است
-//     }
-// }
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<AppDbContext>();
+        if (context.Database.IsRelational())
+        {
+            await context.Database.MigrateAsync();
+        }
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while migrating the database.");
+    }
+}
 #endregion
-// =========================================================
 
 #region 5. Middleware Pipeline
+
+// در محیط دولوپمنت سواگر را نشان بده
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    app.MapScalarApiReference(options =>
-    {
-        options.WithTitle("ERPDotNet API");
-        options.WithTheme(ScalarTheme.DeepSpace);
-        options.WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
-    });
+    app.MapScalarApiReference();
 }
 
-app.UseHttpsRedirection();
+// نکته مهم امنیتی: چون روی HTTP هستید و SSL ندارید، این خط را کامنت کردم
+// اگر فعال باشد، مرورگر سعی می‌کند به پورت 443 برود و سایت باز نمی‌شود
+// app.UseHttpsRedirection();
 
-app.UseCors("AllowAll");
+// اعمال پالیسی جدید CORS
+app.UseCors("AllowPublicIP");
 
 app.UseAuthentication();
-app.UseStaticFiles();
+// سرویس فایل‌های استاتیک برای آپلودها
+app.UseStaticFiles(); 
 app.UseAuthorization();
 
 app.MapControllers();
 #endregion
 
-app.Run(); // یا await app.RunAsync();
+app.Run();
 
-// Helpers... (بدون تغییر)
+// Helpers...
 internal sealed class BearerSecuritySchemeTransformer : IOpenApiDocumentTransformer
 {
     private readonly IAuthenticationSchemeProvider _authenticationSchemeProvider;

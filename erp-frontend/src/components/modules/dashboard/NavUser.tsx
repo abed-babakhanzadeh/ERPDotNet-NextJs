@@ -34,13 +34,12 @@ import {
 } from "@/components/ui/sidebar";
 import apiClient from "@/services/apiClient";
 
-// تایپ اطلاعات دریافتی از سرور
+// اصلاح اینترفیس برای تطابق با UserDto بک‌اند
 interface UserProfileDto {
   id: string;
   username: string;
   firstName: string;
   lastName: string;
-  fullName: string;
   email: string;
   avatarPath?: string;
 }
@@ -57,14 +56,11 @@ export function NavUser() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const { data } = await apiClient.get<UserProfileDto>(
-          "/UserAccess/Auth/profile"
-        );
+        // اصلاح آدرس API: حذف /UserAccess اضافی
+        const { data } = await apiClient.get<UserProfileDto>("/Auth/profile");
         setUser(data);
       } catch (error) {
         console.error("خطا در دریافت پروفایل", error);
-        // اگر توکن منقضی شده باشد، اینترسپتور apiClient معمولا ریدارکت می‌کند
-        // اما محض احتیاط اگر ارور 401 بود لاگ اوت کنیم
       } finally {
         setLoading(false);
       }
@@ -76,11 +72,10 @@ export function NavUser() {
   // تابع خروج
   const handleLogout = () => {
     localStorage.removeItem("accessToken");
-    // اگر چیزهای دیگری هم ذخیره کردید پاک کنید
-    router.push("/login"); // یا router.replace
+    router.push("/login");
   };
 
-  // ساخت حروف اول اسم (مثلاً "علی رضایی" -> "عر")
+  // ساخت حروف اول اسم
   const getInitials = () => {
     if (!user) return "U";
     if (user.firstName && user.lastName) {
@@ -97,8 +92,12 @@ export function NavUser() {
     );
   }
 
-  // اگر دیتا نیامد (مثلا ارور خورد) یک چیز پیش‌فرض نشان بده
-  const displayName = user?.fullName || user?.username || "کاربر مهمان";
+  // ساخت نام کامل از روی نام و نام خانوادگی
+  const displayName =
+    user?.firstName && user?.lastName
+      ? `${user.firstName} ${user.lastName}`
+      : user?.username || "کاربر مهمان";
+
   const displayEmail = user?.email || "user@erp.local";
 
   return (
@@ -190,7 +189,6 @@ export function NavUser() {
 
             <DropdownMenuSeparator />
 
-            {/* دکمه خروج */}
             <DropdownMenuItem
               onClick={handleLogout}
               className="gap-2 text-destructive focus:text-destructive cursor-pointer bg-red-50 dark:bg-red-950/30"

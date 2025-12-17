@@ -10,7 +10,7 @@ services:
       - POSTGRES_PASSWORD=poolasa@123
       - POSTGRES_DB=ERP_DB
     ports:
-      - "5435:5432"
+      - "5435:5432" # دسترسی از ویندوز با پورت 5488
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -31,34 +31,29 @@ services:
       - db
       - redis
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      # در داکر، این باید روی پورت داخلی کانتینر گوش دهد
+      - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:5000
+      # تنظیمات داخلی داکر (اینجا لوکال‌هاست معنی ندارد، باید نام سرویس باشد)
       - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=ERP_DB;Username=postgres;Password=poolasa@123
       - ConnectionStrings__Redis=redis:6379
-      # تنظیمات JWT (لطفا مقادیر واقعی و امن قرار دهید)
-      - JwtSettings__Secret=YourSuperSecretKeyForProductionChangeThisASAP123!
-      - JwtSettings__Issuer=ERPDotNet
-      - JwtSettings__Audience=ERPDotNetClient
     ports:
       - "5000:5000"
+    volumes:
+      - ./ERPDotNet/ERPDotNet.API/wwwroot:/app/wwwroot
 
   frontend:
     build:
       context: ./erp-frontend
       dockerfile: Dockerfile
-      # این بخش آرگومان‌ها برای بیلد شدن صحیح نکست جی‌اس حیاتی است
-      args:
-        NEXT_PUBLIC_API_URL: http://94.182.39.201:5000
     container_name: erp_client
     restart: always
     depends_on:
       - backend
     environment:
-      # ارتباط سمت سرور (SSR) از داخل شبکه داکر
+      # بک‌اند داخل شبکه داکر با نام سرویس شناخته می‌شود
       - API_URL=http://backend:5000
-      # ارتباط سمت کلاینت (Browser) از طریق اینترنت
-      - NEXT_PUBLIC_API_URL=http://94.182.39.201:5000
+      # اما مرورگر موبایل شما بک‌اند را با آی‌پی سیستم می‌شناسد
+      - NEXT_PUBLIC_API_URL=http://${HOST_IP}:5000
     ports:
       - "3000:3000"
 

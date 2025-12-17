@@ -116,3 +116,42 @@ $$ LANGUAGE plpgsql;
 
 
 
+----------------------------------------------------------------------------
+
+WITH variables AS (
+    SELECT 
+        10000000 AS record_count,      -- تعداد رکوردی که می‌خواهید بسازید (اینجا ۱۰۰۰ تا)
+        1000 AS start_code        -- کدی که می‌خواهید از آن شروع شود
+)
+INSERT INTO base."products" (
+    "Id", 
+    "Code", 
+    "Name", 
+    "UnitId", 
+    "SupplyType", 
+    "IsActive", 
+    "CreatedAt", 
+    "IsDeleted", 
+    "CreatedBy"
+)
+SELECT 
+    -- تولید ID: آخرین آیدی را میگیرد و یکی یکی اضافه میکند
+    (SELECT COALESCE(MAX("Id"), 0) FROM base."products") + s.i,
+    
+    -- تولید Code: از عدد شروع شما یکی یکی بالا میرود
+    (v.start_code + s.i)::text,
+    
+    -- تولید Name: محصول تستی + آیدی جدید
+    'محصول تستی ' || ((SELECT COALESCE(MAX("Id"), 0) FROM base."products") + s.i)::text,
+    
+    1,          -- UnitId (پیش‌فرض 1)
+    1,          -- SupplyType (پیش‌فرض 1)
+    TRUE,       -- IsActive
+    NOW(),      -- CreatedAt (زمان حال)
+    FALSE,      -- IsDeleted
+    '4844f30a-3dd5-44b3-a187-13758e2cfbab'::uuid -- CreatedBy (از فایل قبلی شما برداشتم)
+
+FROM variables v, generate_series(1, v.record_count) AS s(i);
+
+----------------------------------------------------------
+
